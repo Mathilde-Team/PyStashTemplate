@@ -18,6 +18,12 @@ le projet suit SemVer.
   Registre des sorties (`outputs.enregistrer` / `sortie_par_nom`).
 - `pystashtemplate.dlq` : dead letter queue locale portée de RsysLogstach
   (rotation, purge, gzip) — la DLQ fait partie du socle des sorties.
+- Sortie `opensearch` (issue #12) : sous-classe de référence du client
+  commun, inscrite au registre sous le plugin `opensearch` (choisie par
+  le `output{}` du `.conf`) ; banc de conformité en conteneur dans la CI
+  (workflow `conformite-opensearch.yml`, indexation effective,
+  recherche, `_id` déterministe, rejet de mapping parti en DLQ) ;
+  documentation `docs/sorties.md` avec gabarit de pipeline d'exemple.
 
 ### Évolutions
 
