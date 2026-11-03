@@ -1,0 +1,118 @@
+# Synchronisation automatique des catalogues gettext (issue #38, modèle :
+# Gcm4 .github/workflows/i18n.yml).
+#
+# Après un push sur dev qui touche src/ ou lang/, régénère lang/messages.pot,
+# lang/*.po et les .mo de lang/locale/ (scripts/i18n-update.sh) et, s'il y a
+# une différence, la pousse sur la branche fixe « chore/i18n-catalogues »
+# avec une PR vers dev. Une seule PR reste ouverte : un nouveau run met à
+# jour la même branche (commit ordinaire, jamais de force-push) et
+# `concurrency` annule le run précédent encore en cours.
+#
+# Aucune traduction automatique : les nouvelles chaînes arrivent avec
+# msgstr "" et sont traduites par une personne, sur dev.
+#
+# Création de la PR : le GITHUB_TOKEN ne peut ouvrir une PR que si l'option
+# « Allow GitHub Actions to create and approve pull requests » est active
+# (Settings > Actions > General), ou avec un secret I18N_PR_TOKEN. Sans
+# l'une ou l'autre, la branche est poussée et le résumé du run donne le lien
+# pour ouvrir la PR à la main.
+#
+# CI de la PR : un push fait avec le GITHUB_TOKEN ne déclenche aucun
+# workflow (protection de GitHub contre les boucles) ; ci.yml est donc lancé
+# explicitement sur la branche (workflow_dispatch), pour que ses checks
+# s'attachent au commit de tête.
+name: i18n
+
+"on":
+  push:
+    branches: [dev]
+    paths:
+      - "src/**.py"
+      - "lang/**"
+      - "scripts/i18n-update.sh"
+      - ".github/workflows/i18n.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: i18n-catalogues
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  BRANCHE_I18N: chore/i18n-catalogues
+
+jobs:
+  mise-a-jour:
+    name: PR de mise à jour des catalogues
+    # Pas de boucle : la fusion de la PR i18n elle-même ne change plus rien.
+    if: github.repository == 'Mathilde-Team/RsysLogstach'
+    runs-on: ${{ fromJSON(vars.RUNS_ON_LINUX || '{"group":"maison","labels":["self-hosted","linux"]}') }}
+    permissions:
+      contents: write
+      pull-requests: write
+      actions: write  # gh workflow run ci.yml (voir l'en-tête)
+
+    steps:
+      - name: Checkout de dev
+        uses: actions/checkout@v7
+        with:
+          ref: dev
+          fetch-depth: 0
+
+      - name: gettext
+        run: |
+          SUDO=""; if [ "$(id -u)" != "0" ]; then SUDO="sudo -n"; fi
+          command -v msgattrib >/dev/null || { $SUDO apt-get update && $SUDO env DEBIAN_FRONTEND=noninteractive apt-get install -y gettext; } \
+            || { echo "::error::gettext absent et sudo sans mot de passe indisponible sur ce runner : installer gettext sur la machine (sudo apt-get install gettext)"; exit 1; }
+
+      - name: Branche de mise à jour (reprise si elle existe)
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          if git ls-remote --exit-code --heads origin "$BRANCHE_I18N" >/dev/null; then
+            git fetch origin "$BRANCHE_I18N"
+            git switch -c "$BRANCHE_I18N" "origin/$BRANCHE_I18N"
+            # Ramène dev, puis repart des catalogues de dev : une fusion
+            # textuelle de .po peut dupliquer des entrées (msgmerge :
+            # « duplicate message definition », vu sur Gcm4). Les catalogues
+            # sont entièrement régénérés à l'étape suivante.
+            git merge --no-edit -X theirs origin/dev
+            git checkout origin/dev -- lang/
+          else
+            git switch -c "$BRANCHE_I18N"
+          fi
+
+      - name: Régénération (sans traduction automatique)
+        run: scripts/i18n-update.sh
+
+      - name: Commit et PR
+        env:
+          GH_TOKEN: ${{ secrets.I18N_PR_TOKEN || github.token }}
+        run: |
+          git add lang
+          if git diff --cached --quiet; then
+            if git diff --quiet origin/dev -- lang; then
+              echo "Catalogues déjà à jour, aucune PR." >> "$GITHUB_STEP_SUMMARY"
+              exit 0
+            fi
+          else
+            git commit -m "chore(i18n): synchronise les catalogues de traduction avec les sources de dev"
+          fi
+          git push origin "$BRANCHE_I18N"
+          gh workflow run ci.yml --ref "$BRANCHE_I18N"
+          echo "CI lancée sur \`$BRANCHE_I18N\`." >> "$GITHUB_STEP_SUMMARY"
+          pr="$(gh pr list --head "$BRANCHE_I18N" --base dev --state open --json number --jq '.[0].number // empty')"
+          if [ -n "$pr" ]; then
+            echo "PR #$pr mise à jour." >> "$GITHUB_STEP_SUMMARY"
+            exit 0
+          fi
+          if gh pr create --base dev --head "$BRANCHE_I18N" \
+              --title "chore(i18n): synchronisation des catalogues de traduction" \
+              --body "Généré par le workflow i18n (\`scripts/i18n-update.sh\`). Les nouvelles chaînes arrivent avec \`msgstr\` vide, à traduire par une personne. Cette PR est mise à jour à chaque push sur dev qui change les chaînes. Refs #38"; then
+            echo "PR de mise à jour ouverte." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "::warning::création de PR refusée au jeton du workflow (voir l'en-tête de i18n.yml)"
+            echo "Branche \`$BRANCHE_I18N\` poussée ; ouvrir la PR : ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/compare/dev...${BRANCHE_I18N}" >> "$GITHUB_STEP_SUMMARY"
+          fi

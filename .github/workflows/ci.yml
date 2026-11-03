@@ -1,0 +1,89 @@
+name: CI
+
+"on":
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+jobs:
+  quality:
+    name: Qualité (lint, format, tests)
+    runs-on: ${{ fromJSON(vars.RUNS_ON_LINUX || '"ubuntu-latest"') }}
+
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v7
+
+      - name: Installation de uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Installation de Python
+        run: uv python install
+
+      - name: Installation des dépendances (extra dev)
+        run: uv sync --extra dev
+
+      - name: Lint (ruff check)
+        run: uv run ruff check .
+
+      - name: Formatage (ruff format --check)
+        run: uv run ruff format --check .
+
+      - name: Tests et couverture (pytest --cov, seuil lu dans pyproject.toml)
+        # Suite complète ; couverture lignes + branches de src/pystashtemplate/ ;
+        # seuil bloquant (95 %) déclaré dans pyproject.toml ([tool.coverage.*]).
+        run: uv run pytest -q --cov --cov-report=term-missing
+
+  i18n:
+    # Hérité de l'issue #38 (RsysLogstach) : catalogues gettext bloquants.
+    # Modifier une chaîne _() sans lancer scripts/i18n-update.sh (puis
+    # committer lang/) fait échouer ce job.
+    name: i18n (catalogues à jour)
+    runs-on: ${{ fromJSON(vars.RUNS_ON_LINUX || '"ubuntu-latest"') }}
+
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v7
+
+      - name: Installation de uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Installation de Python
+        run: uv python install
+
+      - name: Installation des dépendances
+        run: uv sync
+
+      - name: gettext
+        run: |
+          SUDO=""; if [ "$(id -u)" != "0" ]; then SUDO="sudo -n"; fi
+          command -v msgfmt >/dev/null || { $SUDO apt-get update && $SUDO env DEBIAN_FRONTEND=noninteractive apt-get install -y gettext; } \
+            || { echo "::error::gettext absent et sudo sans mot de passe indisponible sur ce runner : installer gettext sur la machine (sudo apt-get install gettext)"; exit 1; }
+
+      - name: Catalogues à jour avec les sources, valides et compilés
+        # .pot régénéré depuis src/pystashtemplate/ et comparé, .po
+        # synchronisés, msgfmt --check sur les langues de lang/LINGUAS,
+        # .mo suivis identiques à la compilation.
+        run: scripts/i18n-update.sh --check
+
+      - name: Compilation de toutes les locales
+        run: scripts/i18n-update.sh --compile "$(mktemp -d -p "$RUNNER_TEMP")/locale"
+
+      - name: Roue avec les catalogues compilés
+        run: |
+          out="$(mktemp -d -p "$RUNNER_TEMP")"
+          uv build --wheel --out-dir "$out"
+          attendu="$(sed -e 's/#.*//' -e 's/[[:space:]]//g' lang/LINGUAS | grep -c .)"
+          trouve="$(uv run python -c 'import sys, zipfile; print(sum(n.endswith("/LC_MESSAGES/pystashtemplate.mo") and ".data/data/share/locale/" in n for n in zipfile.ZipFile(sys.argv[1]).namelist()))' "$out"/*.whl)"
+          echo "catalogues dans la roue : $trouve / $attendu"
+          [ "$trouve" = "$attendu" ] || { echo "::error::la roue contient $trouve catalogue(s) compilé(s) pour $attendu langue(s)"; exit 1; }
+
+      - name: Rapport de traduction (résumé du job)
+        if: always()
+        run: uv run python scripts/i18n_report.py --markdown
