@@ -356,5 +356,5 @@ class TestDansUnConf:
 
     def test_step_filters_json(self) -> None:
         doc = {"c": "a"}
-        FilterPipeline([{"type": "translate", "source": "c", "dictionary": {"a": "A"}}]).apply(doc)
+        _run(FilterPipeline([{"type": "translate", "source": "c", "dictionary": {"a": "A"}}]).apply(doc))
         assert doc == {"c": "A"}

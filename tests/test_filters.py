@@ -4,6 +4,8 @@ drop, mutate et la chaîne `FilterPipeline`."""
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 
 from pystashtemplate.filters import (
@@ -15,6 +17,11 @@ from pystashtemplate.filters import (
     apply_mutate,
     load_word_list,
 )
+
+
+def _run(coro):
+    # Sans pytest-asyncio (convention du dépôt, cf. RsysLogstach) : asyncio.run direct (#34).
+    return asyncio.run(coro)
 
 
 class TestDissect:
@@ -275,9 +282,9 @@ class TestFilterPipeline:
         pipeline = FilterPipeline(steps)
         doc_ok = {"message": "app1 INFO connexion ok"}
         doc_drop = {"message": "app1 INFO healthcheck"}
-        assert pipeline.apply(doc_ok) is True
+        assert _run(pipeline.apply(doc_ok)) is True
         assert doc_ok["parsed"] == {"src": "app1", "level": "INFO", "msg": "connexion ok"}
-        assert pipeline.apply(doc_drop) is False
+        assert _run(pipeline.apply(doc_drop)) is False
 
     def test_mutate_dans_la_chaine(self) -> None:
         # Chemin imbriqué : syntaxe à crochets %{...} ("[parsed][port]"),
@@ -285,7 +292,7 @@ class TestFilterPipeline:
         steps = [{"type": "mutate", "convert": {"[parsed][port]": "integer"}}]
         pipeline = FilterPipeline(steps)
         doc = {"parsed": {"port": "22"}}
-        pipeline.apply(doc)
+        _run(pipeline.apply(doc))
         assert doc["parsed"]["port"] == 22
 
     def test_step_type_inconnu_leve(self) -> None:

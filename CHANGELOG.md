@@ -7,6 +7,13 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- `FilterPipeline.apply` devient asynchrone (issue #36, chantier full async #1) :
+  les steps réseau sont attendus — nouveau step `dns` (mêmes options que le
+  plugin `dns` du `.conf`), sans réseau pour les filtres CPU (dissect,
+  regex, kv, mutate, geoip, translate, date, drop), ordre de la chaîne et
+  options communes inchangés. Changement d'API : `await` requis par les
+  appelants directs de `FilterPipeline.apply` (le pont `filters_json` de
+  l'interpréteur l'attend déjà).
 - `DnsFilter.apply` devient asynchrone (issue #35, chantier full async #1) :
   la résolution réseau passe par `dns.asyncresolver` (vraie concurrence
   réseau) ; caches, délais, essais et `PYSTASHTEMPLATE_DNS=off`
