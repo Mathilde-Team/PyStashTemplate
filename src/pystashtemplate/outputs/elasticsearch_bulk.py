@@ -54,6 +54,7 @@ from __future__ import annotations
 import asyncio
 import enum
 import json
+import ssl
 from datetime import datetime, timezone
 from typing import Any, ClassVar
 
@@ -208,9 +209,15 @@ class ElasticsearchBulkOutput(Output):
     def _client_http(self) -> httpx.AsyncClient:
         """Client HTTP paresseux (créé au premier envoi, jamais avant `open`)."""
         if self._client is None:
-            # httpx accepte dans `verify` un booléen OU le chemin d'un
-            # fichier d'autorités (CA bundle) : `cacert` remplace le
-            # magasin système. mTLS : `ssl_certificate` + `ssl_key`.
+            # Contexte TLS explicite dès que la configuration sort du
+            # booléen simple : httpx avec `verify=<chemin>` ET `cert=`
+            # ne présente PAS le certificat client (poignée de main
+            # refusée par un serveur mTLS, constaté au banc #160) — un
+            # `SSLContext` construit à la main (autorités + paire client)
+            # fonctionne. Même approche que `TransportHTTP._contexte_ssl`.
+            verify: bool | ssl.SSLContext = bool(self.options.get("ssl", True))
+            if self.options.get("cacert"):
+                verify = ssl.create_default_context(cafile=str(self.options["cacert"]))
             cert = (
                 (str(self.options["ssl_certificate"]), str(self.options["ssl_key"]))
                 if self.options.get("ssl_certificate")
@@ -219,9 +226,7 @@ class ElasticsearchBulkOutput(Output):
             self._client = httpx.AsyncClient(
                 base_url=self._hosts,
                 auth=(str(self.options["user"]), str(self.options["password"])) if self.options.get("user") else None,
-                verify=str(self.options["cacert"])
-                if self.options.get("cacert")
-                else bool(self.options.get("ssl", True)),
+                verify=verify,
                 cert=cert,
                 timeout=float(self.options.get("timeout", 3.0)),
                 headers={
