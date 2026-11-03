@@ -53,7 +53,7 @@ from pystashtemplate.templates import (
     render_template,
     resolve_field,
 )
-from pystashtemplate.tracing import traced
+from pystashtemplate.tracing import atraced, traced
 from pystashtemplate.util import add_failure_tags
 
 
@@ -1722,7 +1722,7 @@ class FilterPipeline:
             raise ValueError(f"type de filtre inconnu: {filter_type!r}")
         return source, compiled, target
 
-    @traced
+    @atraced
     async def apply(self, doc: dict, *, now: datetime | None = None, on_missing: str = "keep") -> bool:
         """Applique chaque filtre de la chaîne à doc, en place.
 

@@ -29,11 +29,12 @@ modules de `src/` reste acyclique.
 from __future__ import annotations
 
 import functools
-from typing import Callable, TypeVar
+from typing import Any, Callable, Coroutine, TypeVar
 
 from loguru import logger
 
 F = TypeVar("F", bound=Callable)
+A = TypeVar("A", bound=Callable[..., Coroutine[Any, Any, Any]])
 
 
 def traced(func: F) -> F:
@@ -67,6 +68,42 @@ def traced(func: F) -> F:
         logger.debug("{} | entrée", func.__qualname__)
         try:
             result = func(*args, **kwargs)
+        except BaseException as exc:
+            logger.debug("{} | sortie (exception {}) : {}", func.__qualname__, type(exc).__name__, exc)
+            raise
+        logger.debug("{} | sortie", func.__qualname__)
+        return result
+
+    return wrapper
+
+
+def atraced(func: A) -> A:
+    """Équivalent asynchrone de `traced` (#37) : entrée et sortie journalisées.
+
+    Contrairement à `@traced` appliqué à une fonction `async def` — qui
+    journalise la « sortie » dès la création de la coroutine, AVANT que
+    l'appelant ne l'attende — ce décorateur enveloppe le `await` : la
+    sortie n'est journalisée qu'une fois la coroutine réellement terminée
+    (retour normal ou exception propagée). Mêmes règles loguru que
+    `traced` : uniquement le nom qualifié (`__qualname__`), jamais les
+    arguments ni la valeur de retour.
+
+    Préserve `__name__`/`__doc__`/`__wrapped__` (`functools.wraps`) ;
+    la fonction décorée reste une coroutine function, `await`able
+    normalement.
+
+    Args:
+        func: fonction (ou méthode) asynchrone à tracer.
+
+    Returns:
+        La fonction décorée, de même signature apparente que `func`.
+    """
+
+    @functools.wraps(func)
+    async def wrapper(*args, **kwargs):
+        logger.debug("{} | entrée", func.__qualname__)
+        try:
+            result = await func(*args, **kwargs)
         except BaseException as exc:
             logger.debug("{} | sortie (exception {}) : {}", func.__qualname__, type(exc).__name__, exc)
             raise
