@@ -624,11 +624,11 @@ class PipelineInterpreter:
         events = [doc]
         for section in self._ast:
             if section[0] == "filter":
-                events = [
-                    produced
-                    for event in events
-                    for produced in self._run_filter_body(section[1], event, now=now, on_missing=on_missing)
-                ]
+                # #35 : _run_filter_body est asynchrone (filtre dns réseau).
+                produits: list[dict[str, Any]] = []
+                for event in events:
+                    produits.extend(await self._run_filter_body(section[1], event, now=now, on_missing=on_missing))
+                events = produits
             # "input" : voir la docstring du module, "Limites assumées" — rien à appliquer.
         results: list[tuple[dict[str, Any], list[OutputAction]]] = []
         for event in events:
@@ -645,10 +645,13 @@ class PipelineInterpreter:
     # ------------------------------------------------------------------
 
     @traced
-    def _run_filter_body(
+    async def _run_filter_body(
         self, body: list, doc: dict[str, Any], *, now: datetime | None, on_missing: str
     ) -> list[dict[str, Any]]:
         """Exécute séquentiellement les entrées d'un corps `filter{}` (ou d'une branche).
+
+        Asynchrone depuis #35 (chantier full async #1) : le plugin `dns`
+        attend la résolution réseau (`dns.asyncresolver`).
 
         Returns:
             Les événements qui sortent du corps : `[doc]` en général, plus
@@ -667,12 +670,12 @@ class PipelineInterpreter:
                     if matched is None:
                         produced.append(event)
                     else:
-                        produced.extend(self._run_filter_body(matched, event, now=now, on_missing=on_missing))
+                        produced.extend(await self._run_filter_body(matched, event, now=now, on_missing=on_missing))
                 i = end if events else _skip_chain_tail(body, i + 1)
             else:
                 for event in events:
                     try:
-                        produced.extend(self._run_filter_plugin(entry, event, now=now, on_missing=on_missing))
+                        produced.extend(await self._run_filter_plugin(entry, event, now=now, on_missing=on_missing))
                     except _DocumentDropped as exc:
                         logger.debug("événement écarté par un filtre : {}", exc)
                 i += 1
@@ -681,7 +684,7 @@ class PipelineInterpreter:
         return events
 
     @traced
-    def _run_filter_plugin(
+    async def _run_filter_plugin(
         self, entry: list, doc: dict[str, Any], *, now: datetime | None, on_missing: str
     ) -> list[dict[str, Any]]:
         """Dispatche un plugin `filter{}` vers son comportement (ou l'ignore, tracé).
@@ -727,7 +730,7 @@ class PipelineInterpreter:
         elif name == "xml":
             reussi = self._apply_xml(doc, options)
         elif name == "dns":
-            reussi = self._apply_dns(doc, options)
+            reussi = await self._apply_dns(doc, options)
         elif name in PLUGINS_SIMPLES:
             reussi = PLUGINS_SIMPLES[name](doc, options)
         elif name == "cidr":
@@ -884,8 +887,10 @@ class PipelineInterpreter:
         return filtre.apply(doc)
 
     @traced
-    def _apply_dns(self, doc: dict[str, Any], options: dict[str, Any]) -> bool:
+    async def _apply_dns(self, doc: dict[str, Any], options: dict[str, Any]) -> bool:
         """`filter { dns { reverse => [...] resolve => [...] } }` — délègue à `dnslookup.DnsFilter` (#121).
+
+        Asynchrone depuis #35 (chantier full async #1).
 
         Construit une fois par jeu d'options (clé JSON triée). Options
         invalides (par exemple un `${VAR}` non résolu à la place d'un
@@ -905,7 +910,7 @@ class PipelineInterpreter:
         filtre = self._dns_filters[cle]
         if filtre is None:
             return False
-        return filtre.apply(doc)
+        return await filtre.apply(doc)
 
     @traced
     def _apply_json(self, doc: dict[str, Any], options: dict[str, Any]) -> bool:

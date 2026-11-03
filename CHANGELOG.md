@@ -5,6 +5,16 @@ le projet suit SemVer.
 
 ## [Non publié]
 
+### Évolutions
+
+- `DnsFilter.apply` devient asynchrone (issue #35, chantier full async #1) :
+  la résolution réseau passe par `dns.asyncresolver` (vraie concurrence
+  réseau) ; caches, délais, essais et `PYSTASHTEMPLATE_DNS=off`
+  inchangés. La chaîne `filter{}` de l'interpréteur (`_run_filter_body`,
+  `_run_filter_plugin`, `_apply_dns`) attend désormais les filtres
+  asynchrones ; `FilterPipeline` (JSON) reste à convertir (#36). Changement
+  d'API pour les appelants directs de `DnsFilter.apply` : `await` requis.
+
 ## [0.2.0] - 2026-11-03
 
 ### Ajouté
