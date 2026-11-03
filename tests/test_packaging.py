@@ -51,8 +51,13 @@ class TestPyproject:
         modules = sorted(p.name for p in src.glob("*.py"))
         for attendu in ("filters.py", "interpreter.py", "templates.py", "__init__.py"):
             assert attendu in modules, f"{attendu} manque dans src/pystashtemplate/"
-        for interdit in ("omprog.py", "indexer.py", "dlq.py", "metrics.py", "opensearchconf.py"):
+        for interdit in ("omprog.py", "indexer.py", "metrics.py", "opensearchconf.py"):
             assert interdit not in modules, f"{interdit} (connecteur) ne doit pas être dans la bibliothèque"
+        # `dlq.py` est passé dans la bibliothèque (chantier sorties #2) :
+        # la DLQ fait partie du socle, le connecteur la réexporte.
+        assert "dlq.py" in modules, "dlq.py (socle sorties) manque dans src/pystashtemplate/"
+        for attendu in ("outputs",):
+            assert (src / attendu).is_dir(), f"{attendu}/ (socle sorties #11) manque"
 
 
 class TestTraductions:
