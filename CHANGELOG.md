@@ -5,6 +5,8 @@ le projet suit SemVer.
 
 ## [Non publié]
 
+## [0.2.0] - 2026-11-03
+
 ### Ajouté
 
 - Client commun « API _bulk Elasticsearch » (issue #11, chantier
@@ -31,8 +33,6 @@ le projet suit SemVer.
   (`src/pystashtemplate/**/*.py`) ; `test_no_cross_imports` et
   `test_packaging` étendus en conséquence (le graphe couvre
   `outputs/`, `dlq` est un module du socle, plus du connecteur).
-### Évolutions
-
 - `PipelineInterpreter.apply` et `apply_events` deviennent asynchrones
   (`async def`, chantier full async #1, issue #34) : sémantique
   inchangée, mais **changement d'API** — l'appelant doit désormais
@@ -46,6 +46,13 @@ le projet suit SemVer.
 - Socle des sorties agnostiques (`outputs.base`, issue #4) : interface
   `Output`, capacités déclarées, registre `REGISTRY`, sortie factice
   `null`.
+
+### Corrigé
+
+- Sortie `_bulk` : contexte TLS explicite (autorités + paire client) —
+  httpx avec `verify=<chemin>` ET `cert=` ne présentait PAS le
+  certificat client (mTLS refusé par un serveur exigeant, constaté au
+  banc de conformité RsysLogstach #160).
 
 ## [0.1.0] - 2026-11-03
 
