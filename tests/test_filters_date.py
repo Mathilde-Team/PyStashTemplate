@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from datetime import timedelta
 from zoneinfo import ZoneInfo
 
@@ -17,6 +18,11 @@ import pytest
 
 from pystashtemplate.filters import DateFilter, FilterPipeline, parse_date_value, translate_date_pattern
 from pystashtemplate.interpreter import PipelineInterpreter
+
+
+def _run(coro):
+    # Sans pytest-asyncio (convention du dépôt, cf. RsysLogstach) : asyncio.run direct (#34).
+    return asyncio.run(coro)
 
 
 def _pipeline(**options):
@@ -130,7 +136,7 @@ class TestDateFilterDirect:
     def test_meme_resultat_que_le_plugin_conf(self):
         conf = 'filter { date { match => ["t", "dd/MM/yyyy HH:mm"] timezone => "Europe/Paris" } }'
         doc_conf = {"t": "24/10/2026 08:15"}
-        PipelineInterpreter(conf).apply(doc_conf)  # modifie le document en place
+        _run(PipelineInterpreter(conf).apply(doc_conf))  # modifie le document en place
         doc_json = {"t": "24/10/2026 08:15"}
         _pipeline(match=["t", "dd/MM/yyyy HH:mm"], timezone="Europe/Paris").apply(doc_json)
         assert doc_conf["@timestamp"] == doc_json["@timestamp"] == "2026-10-24T06:15:00+00:00"

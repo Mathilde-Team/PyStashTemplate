@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import uuid
 from pathlib import Path
 
@@ -11,8 +12,13 @@ import pytest
 from pystashtemplate.interpreter import PipelineInterpreter
 
 
+def _run(coro):
+    # Sans pytest-asyncio (convention du dépôt, cf. RsysLogstach) : asyncio.run direct (#34).
+    return asyncio.run(coro)
+
+
 def _f(plugin: str, doc: dict, corps: str = "") -> dict:
-    PipelineInterpreter(f"filter {{ {plugin} {{ {corps} }} }}").apply(doc)
+    _run(PipelineInterpreter(f"filter {{ {plugin} {{ {corps} }} }}").apply(doc))
     return doc
 
 
@@ -66,7 +72,7 @@ class TestCidr:
             ({"src": "8.8.8.8", "dst": "10.1.1.1"}, ["prive"]),
             ({"src": "8.8.8.8"}, None),
         ):
-            interp.apply(doc)
+            _run(interp.apply(doc))
             assert doc.get("tags") == tags
         assert len(interp._cidr_cache) == 1
 

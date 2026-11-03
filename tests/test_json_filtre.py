@@ -3,11 +3,18 @@
 
 from __future__ import annotations
 
+import asyncio
+
 from pystashtemplate.interpreter import PipelineInterpreter
 
 
+def _run(coro):
+    # Sans pytest-asyncio (convention du dépôt, cf. RsysLogstach) : asyncio.run direct (#34).
+    return asyncio.run(coro)
+
+
 def _conf(doc: dict, corps: str) -> dict:
-    PipelineInterpreter(f"filter {{ json {{ {corps} }} }}").apply(doc)
+    _run(PipelineInterpreter(f"filter {{ json {{ {corps} }} }}").apply(doc))
     return doc
 
 
