@@ -6,6 +6,7 @@ license = "GPL-3.0-or-later"
 requires-python = ">=3.11"
 dependencies = [
     "loguru>=0.7",
+    "aiohttp>=3.14",  # transport HTTP asynchrone des sorties (#5)
     "geoip2",
     "maxminddb",
     "pyyaml",
@@ -21,6 +22,7 @@ dependencies = [
 [project.optional-dependencies]
 dev = [
     "pytest>=7.0",
+    "cryptography>=43",  # certificats de test TLS/mTLS (#5)
     "pytest-cov>=7.1.0",  # couverture lignes + branches, seuil bloquant
     "mmdb-writer>=0.2.7",  # bases .mmdb réelles générées par les tests
     "ruff",
