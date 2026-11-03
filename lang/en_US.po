@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-03 22:12+0000\n"
+"POT-Creation-Date: 2026-11-03 22:26+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: deusyv\n"
 "Language-Team: English\n"
@@ -133,6 +133,39 @@ msgstr "unreadable _bulk response error={error}"
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
 msgid "sortie : _id refusé par le produit, ignoré"
 msgstr "output: _id rejected by the product, ignored"
+
+#: src/pystashtemplate/outputs/lotisseur.py
+msgid "arrêt demandé mais le lotisseur n'a jamais démarré"
+msgstr "shutdown requested but the lotisseur was never started"
+
+#: src/pystashtemplate/outputs/lotisseur.py
+#, python-brace-format
+msgid "arrêt du lotisseur forcé après {}s : des événements peuvent être perdus"
+msgstr "lotisseur forced shutdown after {}s: events may be lost"
+
+#: src/pystashtemplate/outputs/lotisseur.py
+#, python-brace-format
+msgid "envoi du lot annulé (arrêt forcé) : {} document(s) perdus"
+msgstr "batch send cancelled (forced shutdown): {} document(s) lost"
+
+#: src/pystashtemplate/outputs/lotisseur.py
+msgid "lotisseur arrêté : plus aucun document accepté"
+msgstr "lotisseur stopped: no more documents accepted"
+
+#: src/pystashtemplate/outputs/lotisseur.py
+#, python-brace-format
+msgid "option batch_bytes du lotisseur : {} (doit être strictement positif)"
+msgstr "lotisseur batch_bytes option: {} (must be strictly positive)"
+
+#: src/pystashtemplate/outputs/lotisseur.py
+#, python-brace-format
+msgid "option {} du lotisseur : {} (doit être strictement positif)"
+msgstr "lotisseur option {}: {} (must be strictly positive)"
+
+#: src/pystashtemplate/outputs/lotisseur.py
+#, python-brace-format
+msgid "échec de l'envoi du lot ({} document(s))"
+msgstr "batch send failed ({} document(s))"
 
 #: src/pystashtemplate/outputs/transport.py
 #, python-brace-format
