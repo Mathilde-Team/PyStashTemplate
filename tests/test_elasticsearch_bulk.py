@@ -117,7 +117,6 @@ def test_sous_classe_de_quelques_lignes_parametre_le_produit() -> None:
 
     enregistrer_avant = dict(REGISTRY)
     try:
-        QuickwitSortie  # (le décorateur n'existe plus : inscription directe)
         REGISTRY[QuickwitSortie.plugin] = QuickwitSortie
         serveur = FauxServeur([("ok", [])])
         s = REGISTRY["quickwit-test"](
