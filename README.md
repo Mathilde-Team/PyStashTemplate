@@ -16,6 +16,12 @@ outil (…beat) pourrait le faire).
 - `grok`, `fingerprint`, `multievents`, `useragent`, `xmlfilter`, `simples` : plugins
 - `enrichment` : GeoIP (mmdb réels), translate, DNS (issue #22, variable `PYSTASHTEMPLATE_DNS=off`)
 - `dnslookup`, `util`, `tracing`, `i18n` : utilitaires
+- `dlq` : dead letter queue locale pour les échecs d'envoi permanents
+  (portée de RsysLogstach, chantier « sorties » #2)
+- `outputs` : sorties agnostiques (#2) — `outputs.elasticsearch_bulk`
+  est le client commun de la famille « API _bulk Elasticsearch »
+  (Elasticsearch, OpenSearch, VictoriaLogs, Quickwit, OpenObserve : #11) ;
+  chaque produit n'est plus qu'une sous-classe de quelques lignes
 
 ## Utilisation
 

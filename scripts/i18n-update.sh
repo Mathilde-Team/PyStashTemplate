@@ -67,7 +67,7 @@ normalize() {
 }
 
 sources() {
-    (cd "$ROOT" && git ls-files 'src/pystashtemplate/*.py' | sort -u)
+    (cd "$ROOT" && git ls-files 'src/pystashtemplate/*.py' 'src/pystashtemplate/**/*.py' | sort -u)
 }
 
 generate_pot() {

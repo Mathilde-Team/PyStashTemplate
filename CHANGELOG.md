@@ -3,6 +3,29 @@
 Format tenu à jour d'après « Keep a Changelog » (https://keepachangelog.com/fr/1.1.0/),
 le projet suit SemVer.
 
+## [Non publié]
+
+### Ajouté
+
+- Client commun « API _bulk Elasticsearch » (issue #11, chantier
+  « sorties agnostiques » #2) : `pystashtemplate.outputs.elasticsearch_bulk`
+  — un seul client NDJSON paramétrable par sortie (préfixe de chemin,
+  actions supportées, `_id` accepté, en-têtes propres, rapport par
+  élément ou statut global), sérialisation en flux, analyse `items[]`
+  (4xx permanent → DLQ, 429/5xx transitoire → rendu à l'appelant),
+  lotissement `batch_size` et réessais paramétrables (`reessais_max`,
+  par défaut 0 pour la parité avec l'indexer de RsysLogstach).
+  Registre des sorties (`outputs.enregistrer` / `sortie_par_nom`).
+- `pystashtemplate.dlq` : dead letter queue locale portée de RsysLogstach
+  (rotation, purge, gzip) — la DLQ fait partie du socle des sorties.
+
+### Évolutions
+
+- `scripts/i18n-update.sh` : les sources suivent aussi les sous-paquets
+  (`src/pystashtemplate/**/*.py`) ; `test_no_cross_imports` et
+  `test_packaging` étendus en conséquence (le graphe couvre
+  `outputs/`, `dlq` est un module du socle, plus du connecteur).
+
 ## [0.1.0] - 2026-11-03
 
 ### Ajouté
