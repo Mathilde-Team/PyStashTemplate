@@ -34,7 +34,7 @@ from loguru import logger
 
 from pystashtemplate.i18n import _
 from pystashtemplate.outputs.base import Document, Output
-from pystashtemplate.tracing import traced
+from pystashtemplate.tracing import atraced, traced
 
 # Marqueur de fin d'entrée : un document ne peut jamais être un tuple,
 # donc aucun conflit avec un vrai événement.
@@ -128,6 +128,7 @@ class Lotisseur:
     # ------------------------------------------------------------------
     # Cycle de vie
     # ------------------------------------------------------------------
+    @atraced
     async def demarrer(self) -> None:
         """Lance la tâche de consommation (idempotent)."""
         logger.debug("Lotisseur.demarrer | entrée")
@@ -136,6 +137,7 @@ class Lotisseur:
             self._tache = asyncio.create_task(self._boucle(), name="lotisseur")
         logger.debug("Lotisseur.demarrer | sortie")
 
+    @atraced
     async def ajouter(self, document: Document) -> None:
         """Ajoute un document, en attendant si la file est pleine.
 
@@ -157,6 +159,7 @@ class Lotisseur:
         await self._file.put(document)  # attend si la file est pleine
         logger.debug("Lotisseur.ajouter | sortie (file : {})", self._file.qsize())
 
+    @atraced
     async def arreter(self) -> None:
         """Arrêt propre : vide la file et les lots en cours, sans perte.
 
@@ -190,6 +193,7 @@ class Lotisseur:
     # ------------------------------------------------------------------
     # Consommation
     # ------------------------------------------------------------------
+    @atraced
     async def _boucle(self) -> None:
         """Consume la file, constitue les lots et les pousse vers la sortie."""
         logger.debug("Lotisseur._boucle | entrée")
@@ -217,6 +221,7 @@ class Lotisseur:
         await self._attendre_en_vol()
         logger.debug("Lotisseur._boucle | sortie (file vidée, lots en vol partis)")
 
+    @atraced
     async def _pousser(self, lot: list[Document]) -> None:
         """Envoie un lot vers la sortie, en limitant la concurrence.
 
@@ -243,6 +248,7 @@ class Lotisseur:
         tache.add_done_callback(lambda _: self._fin_vol.set() if not self._en_vol else None)
         logger.debug("Lotisseur._pousser | sortie (en vol : {})", len(self._en_vol))
 
+    @atraced
     async def _envoyer_lot(self, lot: list[Document], semaphore: asyncio.Semaphore) -> None:
         """Tâche d'envoi d'un lot : `send()` de la sortie sous créneau réservé.
 
@@ -263,6 +269,7 @@ class Lotisseur:
         finally:
             semaphore.release()
 
+    @atraced
     async def _attendre_en_vol(self) -> None:
         """Attend que tous les lots en vol soient partis."""
         logger.debug("Lotisseur._attendre_en_vol | entrée")
@@ -270,6 +277,7 @@ class Lotisseur:
             await self._fin_vol.wait()
         logger.debug("Lotisseur._attendre_en_vol | sortie")
 
+    @atraced
     async def __aenter__(self) -> Lotisseur:
         """`async with` : démarre le lotisseur et le renvoie."""
         logger.debug("Lotisseur.__aenter__ | entrée")
@@ -277,6 +285,7 @@ class Lotisseur:
         logger.debug("Lotisseur.__aenter__ | sortie")
         return self
 
+    @atraced
     async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
         """`async with` : arrête proprement le lotisseur, même sur exception."""
         logger.debug("Lotisseur.__aexit__ | entrée (exc={})", exc_type and exc_type.__name__)
@@ -308,6 +317,7 @@ class MoteurSorties:
             Lotisseur(sortie, options) for sortie, options in zip(sorties, options_par_sortie, strict=True)
         ]
 
+    @atraced
     async def demarrer(self) -> None:
         """Démarre tous les lotisseurs."""
         logger.debug("MoteurSorties.demarrer | entrée")
@@ -315,6 +325,7 @@ class MoteurSorties:
             await lotisseur.demarrer()
         logger.debug("MoteurSorties.demarrer | sortie | {} lotisseur(s)", len(self.lotisseurs))
 
+    @atraced
     async def emettre(self, document: Document, indices: Sequence[int] | None = None) -> None:
         """Émet un document vers les sorties sélectionnées (toutes si None).
 
@@ -329,6 +340,7 @@ class MoteurSorties:
             await lotisseur.ajouter(document)
         logger.debug("MoteurSorties.emettre | sortie | {} cible(s)", len(cibles))
 
+    @atraced
     async def arreter(self) -> None:
         """Arrête proprement tous les lotisseurs (vidage sans perte)."""
         logger.debug("MoteurSorties.arreter | entrée")

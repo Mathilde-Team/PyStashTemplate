@@ -171,13 +171,16 @@ def _est_tracede(func: ast.FunctionDef | ast.AsyncFunctionDef) -> bool:
 
     ``@traced`` (``src/tracing.py``) enveloppe l'appel entier : entrée et
     chaque sortie (retour ou exception) sont journalisées structurellement.
+    ``@atraced`` (depuis #37) fait de même pour les fonctions ``async def``
+    en enveloppant le ``await`` — la sortie est journalisée quand la
+    coroutine se termine réellement.
     """
     logger.debug("_est_tracede() appelée | fonction={}", func.name)
     for deco in func.decorator_list:
-        if isinstance(deco, ast.Name) and deco.id == "traced":
+        if isinstance(deco, ast.Name) and deco.id in ("traced", "atraced"):
             logger.debug("_est_tracede() retourne | True (nom direct)")
             return True
-        if isinstance(deco, ast.Attribute) and deco.attr == "traced":
+        if isinstance(deco, ast.Attribute) and deco.attr in ("traced", "atraced"):
             logger.debug("_est_tracede() retourne | True (attribut)")
             return True
     logger.debug("_est_tracede() retourne | False")

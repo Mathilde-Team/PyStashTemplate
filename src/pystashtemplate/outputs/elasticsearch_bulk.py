@@ -64,7 +64,7 @@ from loguru import logger
 from pystashtemplate.dlq import LocalDeadLetterQueue
 from pystashtemplate.i18n import _
 from pystashtemplate.outputs.base import ACTIONS, Document, Output
-from pystashtemplate.tracing import traced
+from pystashtemplate.tracing import atraced, traced
 
 # Statuts HTTP traités comme des échecs définitifs de TOUT le lot : un
 # 400/404 sur la requête _bulk elle-même (payload refusé, index absent)
@@ -289,7 +289,7 @@ class ElasticsearchBulkOutput(Output):
                 lignes.append(json.dumps(pending["doc"], ensure_ascii=False))
         return "\n".join(lignes) + "\n"
 
-    @traced
+    @atraced
     async def envoyer(
         self,
         doc: dict[str, Any],
@@ -356,6 +356,7 @@ class ElasticsearchBulkOutput(Output):
         logger.debug("ElasticsearchBulkOutput.envoyer | sortie")
         return outcomes[-1]
 
+    @atraced
     async def send(self, batch: list[Document]) -> None:
         """Envoie un lot de documents (contrat `Output` #4).
 
@@ -377,6 +378,7 @@ class ElasticsearchBulkOutput(Output):
             logger.debug("ElasticsearchBulkOutput.send | {} → {}", outcome.value, doc)
         logger.debug("ElasticsearchBulkOutput.send | sortie")
 
+    @atraced
     async def flush(self) -> None:
         """Pousse les documents en attente (contrat `Output` : arrêt propre).
 
@@ -389,7 +391,7 @@ class ElasticsearchBulkOutput(Output):
         await self._flush()
         logger.debug("ElasticsearchBulkOutput.flush | sortie")
 
-    @traced
+    @atraced
     async def _flush(self) -> list[SendOutcome]:
         """Envoie le tampon en un `_bulk` et renvoie le résultat de chaque document.
 
@@ -409,7 +411,7 @@ class ElasticsearchBulkOutput(Output):
             return [SendOutcome.RETRYABLE] * len(pendings)
         return await self._analyser_reponse(pendings, response)
 
-    @traced
+    @atraced
     async def _envoyer_lot(self, pendings: list[dict[str, Any]]) -> httpx.Response | None:
         """POSTe le NDJSON, avec retentes sur échec transitoire.
 
@@ -448,7 +450,7 @@ class ElasticsearchBulkOutput(Output):
                 continue
             return response
 
-    @traced
+    @atraced
     async def _analyser_reponse(self, pendings: list[dict[str, Any]], response: httpx.Response) -> list[SendOutcome]:
         """Analyse la réponse `_bulk` et renvoie le résultat de chaque document.
 
@@ -485,7 +487,7 @@ class ElasticsearchBulkOutput(Output):
             outcomes.append(await self._permanent(pending, str(erreur)))
         return outcomes
 
-    @traced
+    @atraced
     async def _permanent(self, pending: dict[str, Any], erreur: str) -> SendOutcome:
         """Échec définitif d'un document : DLQ si configurée, sinon RETRYABLE."""
         logger.warning(_("envoi _bulk échoué définitivement erreur={error}"), error=erreur)
@@ -494,12 +496,14 @@ class ElasticsearchBulkOutput(Output):
         await self._dlq.write(pending["doc"], index=pending["index"], error=erreur)
         return SendOutcome.DEAD_LETTERED
 
+    @atraced
     async def open(self) -> None:
         """Ouvre la sortie : le client HTTP est paresseux, rien à ouvrir ici (contrat `Output`)."""
         logger.debug("ElasticsearchBulkOutput.open | entrée")
         self._client_http()  # crée le client (et valide TLS/auth) sans requête
         logger.debug("ElasticsearchBulkOutput.open | sortie")
 
+    @atraced
     async def close(self) -> None:
         """Ferme proprement le client HTTP (idempotent)."""
         logger.debug("ElasticsearchBulkOutput.close | entrée")
@@ -508,7 +512,7 @@ class ElasticsearchBulkOutput(Output):
             self._client = None
         logger.debug("ElasticsearchBulkOutput.close | sortie")
 
-    @traced
+    @atraced
     async def health(self) -> dict[str, Any]:
         """Interroge le serveur (GET /) : sa version, ou lève l'erreur.
 

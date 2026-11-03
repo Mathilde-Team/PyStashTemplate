@@ -47,7 +47,7 @@ import dns.reversename
 from loguru import logger
 
 from pystashtemplate.templates import _MISSING, assign_field, parse_field_path, resolve_field
-from pystashtemplate.tracing import traced
+from pystashtemplate.tracing import atraced, traced
 from pystashtemplate.util import add_failure_tags
 
 HOSTS_SYSTEME = "/etc/hosts"
@@ -142,12 +142,12 @@ class FichierHosts:
         logger.debug("hosts {} : {} nom(s)", self._chemin, len(self._noms_vers_adresses))
         return self._noms_vers_adresses
 
-    @traced
+    @atraced
     async def adresses(self, nom: str) -> list[str]:
         """Adresses de `nom` dans l'ordre du fichier."""
         return list(self._charger().get(nom, []))
 
-    @traced
+    @atraced
     async def noms(self, adresse: str) -> list[str]:
         """Noms de `adresse` (nom canonique d'abord)."""
         self._charger()
@@ -186,7 +186,7 @@ class ServeurDns:
             self._resolveur = resolveur
         return self._resolveur
 
-    @traced
+    @atraced
     async def _requete(self, nom: str, type_: str) -> list[str]:
         """Réponses d'une requête ; aucune si le nom n'existe pas ou sans réponse."""
         if (
@@ -206,12 +206,12 @@ class ServeurDns:
         logger.debug("dns : {} {} | {}", nom, type_, resultats)
         return resultats
 
-    @traced
+    @atraced
     async def adresses(self, nom: str) -> list[str]:
         """Adresses IPv4 puis IPv6."""
         return [*await self._requete(nom, "A"), *await self._requete(nom, "AAAA")]
 
-    @traced
+    @atraced
     async def noms(self, adresse: str) -> list[str]:
         """Noms PTR, sans point final."""
         return [nom.rstrip(".") for nom in await self._requete(dns.reversename.from_address(adresse).to_text(), "PTR")]
@@ -375,7 +375,7 @@ class DnsFilter:
         logger.debug("dns : {} résolveur(s)", len(resolveurs))
         return resolveurs
 
-    @traced
+    @atraced
     async def apply(self, doc: dict[str, Any]) -> bool:
         """Applique `resolve` puis `reverse` ; True si le filtre est allé au bout.
 
@@ -389,7 +389,7 @@ class DnsFilter:
         logger.debug("dns : terminé")
         return True
 
-    @traced
+    @atraced
     async def _traiter(self, doc: dict[str, Any], champs: list[str], *, inverse: bool) -> bool:
         """`resolve(event)` / `reverse(event)` : False quand Ruby fait `return`."""
         for champ in champs:
@@ -416,7 +416,7 @@ class DnsFilter:
             self._ecrire(doc, chemin, resultat, tableau=tableau)
         return True
 
-    @traced
+    @atraced
     async def _chercher(self, doc: dict[str, Any], brut: str, *, inverse: bool) -> str | None:
         """Résultat (caches compris) ; None si échec, délai dépassé ou erreur."""
         if self._cache_echecs is not None and self._cache_echecs.lire(brut):
@@ -447,7 +447,7 @@ class DnsFilter:
         if self._cache_echecs is not None:
             self._cache_echecs.ecrire(brut, True)
 
-    @traced
+    @atraced
     async def _avec_essais(self, brut: str, *, inverse: bool) -> str | None:
         """`retriable_request` : nouveaux essais après un délai dépassé ou une erreur réseau."""
         essais = 0
@@ -461,7 +461,7 @@ class DnsFilter:
                 essais += 1
                 logger.debug("dns : nouvel essai {} pour {}", essais, brut)
 
-    @traced
+    @atraced
     async def _adresse(self, nom: str) -> str | None:
         """Première adresse du premier résolveur qui répond."""
         ascii_ = _vers_ascii(nom)
@@ -470,7 +470,7 @@ class DnsFilter:
                 return adresse
         return None
 
-    @traced
+    @atraced
     async def _nom(self, adresse: str) -> str | None:
         """Premier nom du premier résolveur qui répond, en Unicode."""
         for resolveur in self._resolveurs_actifs:

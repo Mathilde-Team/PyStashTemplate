@@ -39,6 +39,7 @@ import aiohttp
 from loguru import logger
 
 from pystashtemplate.i18n import _
+from pystashtemplate.tracing import atraced
 
 
 class TransportErreur(Exception):
@@ -165,6 +166,7 @@ class TransportHTTP:
         logger.debug("_contexte_ssl | contexte prêt")
         return contexte
 
+    @atraced
     async def open(self) -> None:
         """Ouvre le pool de connexions (keep-alive) ; sans effet si déjà ouvert."""
         logger.debug("open |")
@@ -180,6 +182,7 @@ class TransportHTTP:
             self._session = aiohttp.ClientSession(connector=connecteur, timeout=delais)
             logger.debug("open | pool ouvert ({} connexions max)", self._connexions_max)
 
+    @atraced
     async def close(self) -> None:
         """Ferme le pool ; les requêtes en cours attendent leur fin."""
         logger.debug("close |")
@@ -190,6 +193,7 @@ class TransportHTTP:
         else:
             logger.debug("close | déjà fermé")
 
+    @atraced
     async def __aenter__(self) -> "TransportHTTP":
         """`open()` puis sert de gestionnaire asynchrone."""
         logger.debug("__aenter__ |")
@@ -197,6 +201,7 @@ class TransportHTTP:
         logger.debug("__aenter__ | ouvert")
         return self
 
+    @atraced
     async def __aexit__(self, exc_type: object, exc: object, tb: object) -> None:
         """`close()` dans tous les cas (l'exception, s'il y en a une, remonte)."""
         logger.debug("__aexit__ | exception : {}", type(exc).__name__ if exc else "aucune")
@@ -257,6 +262,7 @@ class TransportHTTP:
         logger.debug("_delai | {} s retenu", delai)
         return delai
 
+    @atraced
     async def envoyer(
         self,
         url: str,
