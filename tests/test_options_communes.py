@@ -7,6 +7,7 @@ seulement, dans cet ordre ; jamais après un échec (`tag_on_failure`).
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 import pytest
@@ -14,6 +15,12 @@ from conftest import IP_INCONNUE, IP_STRASBOURG
 
 from pystashtemplate.filters import apply_common_options
 from pystashtemplate.interpreter import PipelineInterpreter
+
+
+def _run(coro):
+    # Sans pytest-asyncio (convention du dépôt, cf. RsysLogstach) : asyncio.run direct (#34).
+    return asyncio.run(coro)
+
 
 COMMUNES = (
     'add_field => { "[ok][src]" => "%{host}" } add_tag => ["vu"] remove_field => ["brut"] remove_tag => ["ancien"]'
@@ -23,7 +30,7 @@ COMMUNES = (
 def _appliquer(conf: str, doc: dict) -> dict:
     interp = PipelineInterpreter(conf)
     try:
-        interp.apply(doc)
+        _run(interp.apply(doc))
     finally:
         interp.close()
     return doc

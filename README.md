@@ -31,10 +31,83 @@ uv run pytest -q --cov   # tests, couverture lignes + branches (seuil 95 %)
 ```
 
 ```python
+import asyncio
+
 from pystashtemplate.interpreter import PipelineInterpreter
 
 interp = PipelineInterpreter('filter { grok { match => { "message" => "%{IP:ip}" } } }')
-interp.apply({"message": "1.2.3.4"})
+asyncio.run(interp.apply({"message": "1.2.3.4"}))  # asynchrone depuis #34
+```
+
+## Sorties agnostiques (#4)
+
+Le chantier « sorties agnostiques » (décision du 03/11/2026) vise à ce
+que le même `.conf` livre à OpenSearch, Elasticsearch, VictoriaLogs… en
+changeant seulement le nom du plugin. Étape 1 livrée : le contrat commun.
+
+`pystashtemplate.outputs` fournit :
+
+- `Output` (`outputs/base.py`) : classe abstraite au cycle asynchrone
+  `open()` / `send(batch)` / `flush()` / `close()`, les quatre abstraites
+  (une sortie les écrit toutes), utilisable en `async with`. Chaque
+  sous-classe déclare son `plugin` (nom du bloc `output{}`) et ses
+  capacités `Capacites` : actions supportées (`index`, `create`,
+  `update`, `delete`), `_id` de document accepté (`accepte_id`), accusé
+  de réception élément par élément (`accuse_par_evenement`) ou global,
+  taille maximale de requête. `verifie_action()` lève (traduit) sur une
+  action non supportée.
+- `REGISTRY` : nom de plugin → classe, alimenté par le décorateur
+  `enregistrer` ; `null` (sortie factice qui mémorise sans rien livrer)
+  y est toujours enregistrée, pour les tests.
+- `compiler_sorties(plugins)` : instancie les sorties de
+  `PipelineInterpreter.output_plugins` (branches `if` comprises, options
+  rendues contre le document) ; un plugin inconnu est refusé à la
+  compilation du pipeline par une `ValueError` traduite.
+  `sorties_du_pipeline(interpreter)` enchaîne les deux.
+
+```python
+from pystashtemplate.interpreter import PipelineInterpreter
+from pystashtemplate.outputs import sorties_du_pipeline
+
+interp = PipelineInterpreter("output { null {} }")
+sorties = sorties_du_pipeline(interp)  # [NullOutput(...)]
+```
+
+Suit : lots et contre-pression (#6), DLQ et réessais génériques (#7),
+schéma de configuration commun (#8), puis les sorties une à une
+(`opensearch` #12, `elasticsearch` #13, `victorialogs` #14…).
+
+### Transport HTTP commun (#5)
+
+`pystashtemplate.outputs.transport.TransportHTTP` est le transport
+unique des sorties HTTP (aiohttp, dépendance directe du paquet) :
+
+- pool de connexions keep-alive (`connexions_max`, `keepalive`), délais
+  configurables (`timeout_total`, `timeout_connexion`) ;
+- TLS (`ca_certificats`, option `ssl_certificate_authorities`) et mTLS
+  (`certificat_client`/`cle_client`), `verification_tls=False` pour
+  `ssl_verification_mode => none` ;
+- authentifications `AuthBasique`, `AuthBearer`, `AuthApiKey`
+  (Elasticsearch) et en-têtes libres — jamais journalisées ;
+- compression gzip de la requête (`compression=True`) ;
+- réessais (backoff exponentiel avec jitter, plafonnés par `delai_max`)
+  sur délai dépassé, erreur de connexion, `429` (avec `Retry-After`
+  respecté, en secondes ou date HTTP) et `5xx` ; aucun réessai sur un
+  `4xx` définiif : la réponse remonte telle quelle ; réseau épuisé →
+  `TransportErreur` (échec transitoire, à rejouer).
+
+```python
+from pystashtemplate.outputs.transport import AuthBearer, TransportHTTP
+
+async with TransportHTTP(essais_max=5, delai_initial=0.5) as transport:
+    reponse = await transport.envoyer(
+        "https://os:9200/_bulk",
+        corps=corps_ndjson,
+        authentification=AuthBearer(jeton),
+        compression=True,
+    )
+    if reponse.statut // 100 != 2:  # DLQ, métriques… (#7)
+        ...
 ```
 
 ## Internationalisation
