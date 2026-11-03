@@ -89,52 +89,50 @@ msgstr "action \"{}\" not supported by this output (supported: {})"
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
 #, python-brace-format
 msgid "envoi _bulk refusé définitivement statut={statut}"
-msgstr ""
+msgstr "_bulk submission permanently rejected status={statut}"
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
-#, fuzzy, python-brace-format
-#| msgid "Indexation OpenSearch échouée erreur={error}"
+#, python-brace-format
 msgid "envoi _bulk échoué (réseau) erreur={error}"
 msgstr "OpenSearch indexing failed error={error}"
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
-#, fuzzy, python-brace-format
-#| msgid "Indexation OpenSearch échouée définitivement erreur={error}"
+#, python-brace-format
 msgid "envoi _bulk échoué définitivement erreur={error}"
 msgstr "OpenSearch indexing failed permanently error={error}"
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
 #, python-brace-format
 msgid "envoi _bulk échoué statut={statut}"
-msgstr ""
+msgstr "_bulk submission failed status={statut}"
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
 #, python-brace-format
 msgid "envoi _bulk élément échoué statut={statut}"
-msgstr ""
+msgstr "_bulk item failed status={statut}"
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
 msgid "hosts est requis (ex. https://opensearch:9200)"
-msgstr ""
+msgstr "hosts is required (e.g. https://opensearch:9200)"
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
 #, python-brace-format
 msgid "options inconnues pour cette sortie : {}"
-msgstr ""
+msgstr "unknown options for this output: {}"
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
 #, python-brace-format
 msgid "réponse _bulk : {} éléments attendus, {} reçus"
-msgstr ""
+msgstr "_bulk response: {} items expected, {} received"
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
 #, python-brace-format
 msgid "réponse _bulk illisible erreur={error}"
-msgstr ""
+msgstr "unreadable _bulk response error={error}"
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
 msgid "sortie : _id refusé par le produit, ignoré"
-msgstr ""
+msgstr "output: _id rejected by the product, ignored"
 
 #: src/pystashtemplate/outputs/transport.py
 #, python-brace-format
