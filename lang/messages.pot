@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-03 22:12+0000\n"
+"POT-Creation-Date: 2026-11-03 22:26+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -131,6 +131,39 @@ msgstr ""
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
 #, python-brace-format
 msgid "envoi _bulk échoué définitivement erreur={error}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/lotisseur.py
+#, python-brace-format
+msgid "option {} du lotisseur : {} (doit être strictement positif)"
+msgstr ""
+
+#: src/pystashtemplate/outputs/lotisseur.py
+#, python-brace-format
+msgid "option batch_bytes du lotisseur : {} (doit être strictement positif)"
+msgstr ""
+
+#: src/pystashtemplate/outputs/lotisseur.py
+msgid "lotisseur arrêté : plus aucun document accepté"
+msgstr ""
+
+#: src/pystashtemplate/outputs/lotisseur.py
+msgid "arrêt demandé mais le lotisseur n'a jamais démarré"
+msgstr ""
+
+#: src/pystashtemplate/outputs/lotisseur.py
+#, python-brace-format
+msgid "arrêt du lotisseur forcé après {}s : des événements peuvent être perdus"
+msgstr ""
+
+#: src/pystashtemplate/outputs/lotisseur.py
+#, python-brace-format
+msgid "envoi du lot annulé (arrêt forcé) : {} document(s) perdus"
+msgstr ""
+
+#: src/pystashtemplate/outputs/lotisseur.py
+#, python-brace-format
+msgid "échec de l'envoi du lot ({} document(s))"
 msgstr ""
 
 #: src/pystashtemplate/outputs/transport.py

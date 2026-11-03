@@ -46,6 +46,9 @@ le projet suit SemVer.
 - Socle des sorties agnostiques (`outputs.base`, issue #4) : interface
   `Output`, capacités déclarées, registre `REGISTRY`, sortie factice
   `null`.
+- Lots et contre-pression (`outputs.lotisseur`, issue #6) : `Lotisseur`
+  tamporise les documents vers une sortie (taille de lot, délai,
+  réveil immédiat à l'arrêt — arrêt propre, rien de perdu).
 
 ### Corrigé
 
