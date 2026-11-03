@@ -12,6 +12,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 
 import pytest
@@ -25,6 +26,11 @@ from pystashtemplate.filters import (
     apply_mutate,
     convert_value,
 )
+
+
+def _run(coro):
+    # Sans pytest-asyncio (convention du dépôt, cf. RsysLogstach) : asyncio.run direct (#34).
+    return asyncio.run(coro)
 
 
 class TestConvertValueDocumentationLogstash:
@@ -201,7 +207,7 @@ class TestStepGeoip:
             [{"type": "geoip", "source": "[client][ip]", "database": base_geoip_city, "fields": ["city_name"]}]
         )
         doc = {"client": {"ip": IP_STRASBOURG}}
-        assert pipeline.apply(doc) is True
+        assert _run(pipeline.apply(doc)) is True
         pipeline.close()
         assert doc["geoip"] == {"city_name": "Strasbourg"}
 
@@ -252,7 +258,7 @@ class TestStepTranslate:
     )
     def test_dans_un_pipeline_json(self, dico: str, doc: dict, options: dict, attendu) -> None:
         step = {"type": "translate", "dictionary_path": dico, "source": "i", "target": "[if][nom]", **options}
-        FilterPipeline([step]).apply(doc, on_missing="empty")
+        _run(FilterPipeline([step]).apply(doc, on_missing="empty"))
         assert doc["if"]["nom"] == attendu
 
     def test_sans_correspondance_ni_fallback(self, dico: str) -> None:
@@ -273,6 +279,42 @@ class TestStepTranslate:
             TranslateFilter({"dictionary_path": str(chemin), "source": "i", "target": "nom"})
 
 
+class TestStepDns:
+    def test_step_dns_resoud_via_hostsfile(self, tmp_path) -> None:
+        # #36 : step "dns" attendu par FilterPipeline.apply (chaîne async) ;
+        # résolution locale (fichier hosts), aucun réseau.
+        hosts = tmp_path / "hosts"
+        hosts.write_text("10.0.0.1 web.local\n", encoding="utf-8")
+        pipeline = FilterPipeline(
+            [
+                {"type": "dissect", "source": "m", "pattern": "%{hote} %{reste}"},
+                {
+                    "type": "dns",
+                    "resolve": ["hote"],
+                    "action": "replace",
+                    "hostsfile": [str(hosts)],
+                },
+            ]
+        )
+        doc = {"m": "web.local reste"}
+        assert _run(pipeline.apply(doc)) is True
+        assert doc == {"m": "web.local reste", "hote": "10.0.0.1", "reste": "reste"}
+
+    def test_step_dns_echec_ne_cartent_pas_le_document(self, tmp_path) -> None:
+        # Comme le plugin `dns` du `.conf` : un échec (nom inconnu) arrête
+        # le filtre dns mais pas la chaîne — le document continue.
+        hosts = tmp_path / "hosts"
+        hosts.write_text("10.0.0.1 web.local\n", encoding="utf-8")
+        pipeline = FilterPipeline([{"type": "dns", "resolve": ["h"], "action": "replace", "hostsfile": [str(hosts)]}])
+        doc = {"h": "inconnu", "autre": 1}
+        assert _run(pipeline.apply(doc)) is True
+        assert doc == {"h": "inconnu", "autre": 1}
+
+    def test_step_dns_option_invalide_leve_a_la_compilation(self) -> None:
+        with pytest.raises(ValueError, match="dns"):
+            FilterPipeline([{"type": "dns", "action": "supprimer"}])
+
+
 class TestFilterPipelineComplements:
     def test_regex_vers_target_et_sans_correspondance(self) -> None:
         pipeline = FilterPipeline(
@@ -283,7 +325,7 @@ class TestFilterPipelineComplements:
             ]
         )
         doc = {"msg": "IFNET/4: lien up", "parsed": {"deja": 1}}
-        assert pipeline.apply(doc) is True
+        assert _run(pipeline.apply(doc)) is True
         assert doc["parsed"] == {"deja": 1, "mod": "IFNET", "sev": "4"}
 
     def test_drop_sans_mots(self) -> None:
