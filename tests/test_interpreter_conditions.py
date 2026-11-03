@@ -11,6 +11,7 @@ que le parse `logstash_pipeline_parser`.
 
 from __future__ import annotations
 
+import asyncio
 from datetime import datetime, timezone
 
 import pytest
@@ -18,9 +19,14 @@ import pytest
 from pystashtemplate.interpreter import PipelineInterpreter, _coerce_literal, _evaluate_expression
 
 
+def _run(coro):
+    # Sans pytest-asyncio (convention du dépôt, cf. RsysLogstach) : asyncio.run direct (#34).
+    return asyncio.run(coro)
+
+
 def _vrai(condition: str, doc: dict) -> bool:
     """La condition `if <condition>` retient-elle la branche pour `doc` ?"""
-    actions = PipelineInterpreter(f"output {{ if {condition} {{ oui {{ }} }} }}").apply(doc)
+    actions = _run(PipelineInterpreter(f"output {{ if {condition} {{ oui {{ }} }} }}").apply(doc))
     return bool(actions)
 
 
@@ -184,13 +190,13 @@ class TestChainesDeBranches:
     )
     def test_une_seule_branche_puis_la_suite(self, n: int, tags: list, sorties: list) -> None:
         doc = {"n": n}
-        actions = PipelineInterpreter(self.CONF).apply(doc)
+        actions = _run(PipelineInterpreter(self.CONF).apply(doc))
         assert doc["tags"] == tags
         assert [a.plugin for a in actions] == sorties
 
     def test_filtre_sans_branche_retenue(self) -> None:
         doc = {"n": 9}
-        PipelineInterpreter('filter { if [n] == 1 { mutate { add_tag => ["x"] } } }').apply(doc)
+        _run(PipelineInterpreter('filter { if [n] == 1 { mutate { add_tag => ["x"] } } }').apply(doc))
         assert doc == {"n": 9}
 
     def test_branches_imbriquees(self) -> None:
@@ -202,14 +208,14 @@ class TestChainesDeBranches:
         }
         """
         interp = PipelineInterpreter(conf)
-        assert [x.plugin for x in interp.apply({"a": 1, "b": 1})] == ["ab"]
-        assert [x.plugin for x in interp.apply({"a": 1})] == ["a_seul"]
-        assert [x.plugin for x in interp.apply({"b": 1})] == ["b_seul"]
-        assert interp.apply({}) == []
+        assert [x.plugin for x in _run(interp.apply({"a": 1, "b": 1}))] == ["ab"]
+        assert [x.plugin for x in _run(interp.apply({"a": 1}))] == ["a_seul"]
+        assert [x.plugin for x in _run(interp.apply({"b": 1}))] == ["b_seul"]
+        assert _run(interp.apply({})) == []
 
     def test_sections_input_ignorees(self) -> None:
         interp = PipelineInterpreter("input { stdin { } } output { stdout { } }")
-        assert [x.plugin for x in interp.apply({})] == ["stdout"]
+        assert [x.plugin for x in _run(interp.apply({}))] == ["stdout"]
 
 
 class TestOptions:
@@ -222,12 +228,12 @@ class TestOptions:
             add_tag => ["y"]
         } }"""
         doc: dict = {}
-        PipelineInterpreter(conf).apply(doc)
+        _run(PipelineInterpreter(conf).apply(doc))
         assert (doc["a"], doc["b"], doc["tags"]) == ("1", "2", ["x", "y"])
 
     def test_option_scalaire_repetee_derniere_gagne(self) -> None:
         conf = 'output { s { index => "a" index => "b" } }'
-        assert PipelineInterpreter(conf).apply({})[0].options == {"index": "b"}
+        assert _run(PipelineInterpreter(conf).apply({}))[0].options == {"index": "b"}
 
     def test_options_de_sortie_rendues_recursivement(self) -> None:
         conf = """output { opensearch {
@@ -237,7 +243,7 @@ class TestOptions:
             headers => { "X-Source" => "%{[host][name]}" "X-Fixe" => "ok" }
         } }"""
         maintenant = datetime(2026, 10, 22, 8, 30, tzinfo=timezone.utc)
-        options = PipelineInterpreter(conf).apply(DOC, now=maintenant)[0].options
+        options = _run(PipelineInterpreter(conf).apply(DOC, now=maintenant))[0].options
         assert options == {
             "hosts": ["https://sw1.lan:9200", "https://secours:9200"],
             "index": "logs-2026.10.22",
@@ -248,12 +254,12 @@ class TestOptions:
     def test_on_missing_empty_pour_les_sorties(self) -> None:
         conf = 'output { s { index => "logs-%{[absent]}" } }'
         interp = PipelineInterpreter(conf)
-        assert interp.apply({})[0].options["index"] == "logs-%{[absent]}"
-        assert interp.apply({}, on_missing="empty")[0].options["index"] == "logs-"
+        assert _run(interp.apply({}))[0].options["index"] == "logs-%{[absent]}"
+        assert _run(interp.apply({}, on_missing="empty"))[0].options["index"] == "logs-"
 
     def test_plugin_filter_non_interprete_ignore(self) -> None:
         doc = {"message": "a=1"}
-        assert PipelineInterpreter('filter { ruby { code => "x" } }').apply(doc) == []
+        assert _run(PipelineInterpreter('filter { ruby { code => "x" } }').apply(doc)) == []
         assert doc == {"message": "a=1"}
 
     def test_coerce_literal(self) -> None:
@@ -276,18 +282,18 @@ class TestDissectCas:
     )
     def test_ignore_sans_modifier(self, conf: str) -> None:
         doc = {"message": "a b"}
-        PipelineInterpreter(conf).apply(doc)
+        _run(PipelineInterpreter(conf).apply(doc))
         assert doc == {"message": "a b"}
 
     def test_sans_correspondance_tag_echec(self) -> None:
         doc = {"message": "a b"}
-        PipelineInterpreter('filter { dissect { mapping => { "message" => "%{a} x %{b}" } } }').apply(doc)
+        _run(PipelineInterpreter('filter { dissect { mapping => { "message" => "%{a} x %{b}" } } }').apply(doc))
         assert doc == {"message": "a b", "tags": ["_dissectfailure"]}  # #117
 
     def test_patron_compile_une_seule_fois(self) -> None:
         interp = PipelineInterpreter('filter { dissect { mapping => { "message" => "%{a} %{b}" } } }')
         for message in ("1 2", "3 4"):
             doc = {"message": message}
-            interp.apply(doc)
+            _run(interp.apply(doc))
         assert (doc["a"], doc["b"]) == ("3", "4")
         assert list(interp._dissect_cache) == ["%{a} %{b}"]

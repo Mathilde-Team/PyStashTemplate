@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import warnings
 
 import pytest
@@ -17,12 +18,18 @@ from pystashtemplate.grok import (
 )
 from pystashtemplate.interpreter import PipelineInterpreter
 
+
+def _run(coro):
+    # Sans pytest-asyncio (convention du dépôt, cf. RsysLogstach) : asyncio.run direct (#34).
+    return asyncio.run(coro)
+
+
 LIGNE_SYSLOG = "Nov  3 12:00:01 sw1 sshd[123]: Accepted password for bob"
 
 
 def _grok(options_conf: str, doc: dict) -> dict:
     """Applique `filter { grok { <options_conf> } }` à `doc` et le renvoie."""
-    PipelineInterpreter(f"filter {{ grok {{ {options_conf} }} }}").apply(doc)
+    _run(PipelineInterpreter(f"filter {{ grok {{ {options_conf} }} }}").apply(doc))
     return doc
 
 
@@ -274,8 +281,8 @@ class TestPluginGrok:
 
     def test_compilation_unique_par_jeu_d_options(self) -> None:
         interp = PipelineInterpreter('filter { grok { match => { "m" => "%{WORD:w}" } } }')
-        interp.apply({"m": "a"})
-        interp.apply({"m": "b"})
+        _run(interp.apply({"m": "a"}))
+        _run(interp.apply({"m": "b"}))
         assert len(interp._grok_cache) == 1
 
     def test_dans_une_condition(self) -> None:
@@ -283,7 +290,7 @@ class TestPluginGrok:
             'filter { if [type] == "syslog" { grok { match => { "message" => "%{SYSLOGBASE}" } } } }'
         )
         doc = {"type": "syslog", "message": LIGNE_SYSLOG}
-        interp.apply(doc)
+        _run(interp.apply(doc))
         assert doc["program"] == "sshd"
 
 

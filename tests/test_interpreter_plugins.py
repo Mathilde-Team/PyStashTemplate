@@ -11,6 +11,7 @@ sans faire échouer le document.
 
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
 
@@ -20,10 +21,15 @@ from conftest import ENREGISTREMENT_PERSO, IP_INCONNUE, IP_STRASBOURG
 from pystashtemplate.interpreter import PipelineInterpreter
 
 
+def _run(coro):
+    # Sans pytest-asyncio (convention du dépôt, cf. RsysLogstach) : asyncio.run direct (#34).
+    return asyncio.run(coro)
+
+
 def _appliquer(conf: str, doc: dict, **kwargs) -> tuple[dict, list | None]:
     interp = PipelineInterpreter(conf)
     try:
-        resultat = interp.apply(doc, **kwargs)
+        resultat = _run(interp.apply(doc, **kwargs))
     finally:
         interp.close()
     return doc, resultat
@@ -89,7 +95,7 @@ class TestTranslate:
         interp._translate_dictionary_factory = compter
         for idx in ("1", "2"):
             doc = {"idx": idx}
-            interp.apply(doc)
+            _run(interp.apply(doc))
         assert doc["nom"] == "Lan"
         assert chargements == [dico_ifname]
 
@@ -145,7 +151,7 @@ class TestMmdb:
         conf = f'filter {{ mmdb {{ source => "ip" database => "{base_mmdb_perso}" target => "geo" }} }}'
         interp = PipelineInterpreter(conf)
         for _ in range(2):
-            interp.apply({"ip": IP_STRASBOURG})
+            _run(interp.apply({"ip": IP_STRASBOURG}))
         assert list(interp._mmdb_lookups) == [base_mmdb_perso]
         interp.close()
         assert interp._mmdb_lookups == {}
@@ -203,7 +209,7 @@ class TestGeoip:
         conf = f'filter {{ geoip {{ source => "c" database => "{base_geoip_city}" }} }}'
         interp = PipelineInterpreter(conf)
         for _ in range(2):
-            interp.apply({"c": IP_STRASBOURG})
+            _run(interp.apply({"c": IP_STRASBOURG}))
         assert list(interp._geoip_lookups) == [base_geoip_city]
         interp.close()
         assert interp._geoip_lookups == {}
@@ -244,11 +250,11 @@ class TestFiltersJson:
     def test_pipeline_compile_une_seule_fois(self, tmp_path: Path) -> None:
         chemin = _filtres(tmp_path, [{"type": "mutate", "add_tag": ["vu"]}])
         interp = PipelineInterpreter(f'filter {{ filters_json {{ path => "{chemin}" }} }}')
-        interp.apply({})
+        _run(interp.apply({}))
         compile_ = interp._filter_pipelines[chemin]
         Path(chemin).write_text("pas du JSON", encoding="utf-8")  # plus relu
         doc: dict = {}
-        interp.apply(doc)
+        _run(interp.apply(doc))
         assert interp._filter_pipelines[chemin] is compile_
         assert doc["tags"] == ["vu"]
 
@@ -276,7 +282,7 @@ class TestFiltersJson:
         chemin = _filtres(tmp_path, [{"type": "geoip", "source": "c", "database": base_geoip_city}])
         interp = PipelineInterpreter(f'filter {{ filters_json {{ path => "{chemin}" }} }}')
         doc = {"c": IP_STRASBOURG}
-        interp.apply(doc)
+        _run(interp.apply(doc))
         assert doc["geoip"]["city_name"] == "Strasbourg"
         fermes: list[str] = []
         pipeline = interp._filter_pipelines[chemin]

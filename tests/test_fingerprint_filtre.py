@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import base64
 import hashlib
 import hmac
@@ -14,8 +15,13 @@ from pystashtemplate.fingerprint import FingerprintFilter, _valeur_texte
 from pystashtemplate.interpreter import PipelineInterpreter
 
 
+def _run(coro):
+    # Sans pytest-asyncio (convention du dépôt, cf. RsysLogstach) : asyncio.run direct (#34).
+    return asyncio.run(coro)
+
+
 def _conf(doc: dict, corps: str = "") -> dict:
-    PipelineInterpreter(f"filter {{ fingerprint {{ {corps} }} }}").apply(doc)
+    _run(PipelineInterpreter(f"filter {{ fingerprint {{ {corps} }} }}").apply(doc))
     return doc
 
 
@@ -56,7 +62,7 @@ class TestMethodes:
         interp = PipelineInterpreter('filter { fingerprint { method => "XX" add_tag => ["t"] } }')
         for _ in range(2):
             doc = {"message": "abc"}
-            interp.apply(doc)
+            _run(interp.apply(doc))
             assert doc == {"message": "abc"}
         assert len(interp._fingerprint_cache) == 1
 
@@ -97,5 +103,5 @@ def test_valeur_texte(valeur: object, texte: str) -> None:
 def test_kv_source_non_texte_ignoree() -> None:
     """Couvre la garde `source` non texte de `_apply_kv` (#113), arrivée sans test sur dev."""
     doc = {"message": "a=1"}
-    PipelineInterpreter('filter { kv { source => ["message"] add_tag => ["t"] } }').apply(doc)
+    _run(PipelineInterpreter('filter { kv { source => ["message"] add_tag => ["t"] } }').apply(doc))
     assert doc == {"message": "a=1"}

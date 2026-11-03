@@ -3,11 +3,18 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 from lxml import etree
 
 from pystashtemplate.interpreter import PipelineInterpreter
 from pystashtemplate.xmlfilter import XmlFilter, _paires, _texte_ruby, _vide, options_analyse
+
+
+def _run(coro):
+    # Sans pytest-asyncio (convention du dépôt, cf. RsysLogstach) : asyncio.run direct (#34).
+    return asyncio.run(coro)
 
 
 def _xml(options: dict, valeur: object) -> tuple[bool, dict]:
@@ -240,18 +247,18 @@ class TestInterpreteur:
     def test_conf(self) -> None:
         conf = 'filter { xml { source => "m" target => "d" xpath => ["/r/b/text()", "[x][y]"] add_tag => ["ok"] } }'
         doc = {"m": "<r><b>1</b></r>"}
-        PipelineInterpreter(conf).apply(doc)
+        _run(PipelineInterpreter(conf).apply(doc))
         assert doc == {"m": "<r><b>1</b></r>", "x": {"y": ["1"]}, "d": {"b": ["1"]}, "tags": ["ok"]}
 
     def test_echec_sans_options_communes(self) -> None:
         doc = {"m": "<r>"}
-        PipelineInterpreter('filter { xml { source => "m" target => "d" add_tag => ["ok"] } }').apply(doc)
+        _run(PipelineInterpreter('filter { xml { source => "m" target => "d" add_tag => ["ok"] } }').apply(doc))
         assert doc["tags"] == ["_xmlparsefailure"]
 
     def test_bloc_invalide_ignore_et_cache(self) -> None:
         interp = PipelineInterpreter('filter { xml { source => "m" add_tag => ["ok"] } }')
         for _ in range(2):
             doc = {"m": "<r/>"}
-            interp.apply(doc)
+            _run(interp.apply(doc))
             assert doc == {"m": "<r/>"}
         assert len(interp._xml_filters) == 1

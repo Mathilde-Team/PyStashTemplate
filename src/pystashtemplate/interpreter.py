@@ -548,8 +548,7 @@ class PipelineInterpreter:
             pipeline.close()
         self._filter_pipelines.clear()
 
-    @traced
-    def apply(
+    async def apply(
         self,
         doc: dict[str, Any],
         *,
@@ -585,8 +584,13 @@ class PipelineInterpreter:
             aussi si un `split` l'a remplacé, et les événements créés par
             `clone` / `split` ne sont pas rendus — voir `apply_events`
             (#141), qu'utilise omprog.
+
+        Asynchrone depuis #34 (chantier full async, #1) : sémantique
+        inchangée, l'appelant doit désormais `await` (la migration du
+        connecteur RsysLogstach suit, #159).
         """
-        for event, actions in self.apply_events(doc, now=now, on_missing=on_missing):
+        logger.debug("apply | doc={}", doc)
+        for event, actions in await self.apply_events(doc, now=now, on_missing=on_missing):
             if event is doc:
                 logger.debug("apply | {} action(s)", len(actions))
                 return actions
@@ -594,7 +598,7 @@ class PipelineInterpreter:
         return None
 
     @traced
-    def apply_events(
+    async def apply_events(
         self,
         doc: dict[str, Any],
         *,
@@ -614,6 +618,8 @@ class PipelineInterpreter:
             Liste (événement, actions de sortie rendues pour lui), dans
             l'ordre de production ; `[]` si tout a été écarté. Les actions
             sont `[]` si aucune sortie n'est atteinte (voir `has_output`).
+            Asynchrone depuis #34 (chantier full async, #1) : sémantique
+            inchangée, l'appelant doit désormais `await`.
         """
         events = [doc]
         for section in self._ast:
