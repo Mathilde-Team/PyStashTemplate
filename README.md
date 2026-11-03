@@ -21,7 +21,10 @@ outil (…beat) pourrait le faire).
 - `outputs` : sorties agnostiques (#2) — `outputs.elasticsearch_bulk`
   est le client commun de la famille « API _bulk Elasticsearch »
   (Elasticsearch, OpenSearch, VictoriaLogs, Quickwit, OpenObserve : #11) ;
-  chaque produit n'est plus qu'une sous-classe de quelques lignes
+  chaque produit n'est plus qu'une sous-classe de quelques lignes, dont
+  `outputs.opensearch` (#12, inscrite au registre sous le plugin
+  `opensearch`, banc de conformité en conteneur en CI) — voir
+  [docs/sorties.md](docs/sorties.md)
 
 ## Utilisation
 
