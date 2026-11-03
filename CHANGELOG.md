@@ -3,6 +3,50 @@
 Format tenu à jour d'après « Keep a Changelog » (https://keepachangelog.com/fr/1.1.0/),
 le projet suit SemVer.
 
+## [Non publié]
+
+### Ajouté
+
+- Client commun « API _bulk Elasticsearch » (issue #11, chantier
+  « sorties agnostiques » #2) : `pystashtemplate.outputs.elasticsearch_bulk`
+  — un seul client NDJSON paramétrable par sortie (préfixe de chemin,
+  actions supportées, `_id` accepté, en-têtes propres, rapport par
+  élément ou statut global), sérialisation en flux, analyse `items[]`
+  (4xx permanent → DLQ, 429/5xx transitoire → rendu à l'appelant),
+  lotissement `batch_size` et réessais paramétrables (`reessais_max`,
+  par défaut 0 pour la parité avec l'indexer de RsysLogstach).
+  Registre des sorties (`outputs.enregistrer` / `sortie_par_nom`).
+- `pystashtemplate.dlq` : dead letter queue locale portée de RsysLogstach
+  (rotation, purge, gzip) — la DLQ fait partie du socle des sorties.
+- Sortie `opensearch` (issue #12) : sous-classe de référence du client
+  commun, inscrite au registre sous le plugin `opensearch` (choisie par
+  le `output{}` du `.conf`) ; banc de conformité en conteneur dans la CI
+  (workflow `conformite-opensearch.yml`, indexation effective,
+  recherche, `_id` déterministe, rejet de mapping parti en DLQ) ;
+  documentation `docs/sorties.md` avec gabarit de pipeline d'exemple.
+
+### Évolutions
+
+- `scripts/i18n-update.sh` : les sources suivent aussi les sous-paquets
+  (`src/pystashtemplate/**/*.py`) ; `test_no_cross_imports` et
+  `test_packaging` étendus en conséquence (le graphe couvre
+  `outputs/`, `dlq` est un module du socle, plus du connecteur).
+### Évolutions
+
+- `PipelineInterpreter.apply` et `apply_events` deviennent asynchrones
+  (`async def`, chantier full async #1, issue #34) : sémantique
+  inchangée, mais **changement d'API** — l'appelant doit désormais
+  `await` (ou `asyncio.run`) le résultat. Les filtres internes restent
+  synchrones pour l'instant (étapes suivantes #35–#38) ; RsysLogstach,
+  épinglé à `v0.1.0`, n'est pas concerné avant sa migration (#159).
+- Transport HTTP asynchrone commun des sorties (`outputs.transport`,
+  issue #5) : pool aiohttp keep-alive, TLS/mTLS, authentifications,
+  gzip, réessais 429/5xx avec `Retry-After`, `TransportErreur` sur
+  réseau épuisé.
+- Socle des sorties agnostiques (`outputs.base`, issue #4) : interface
+  `Output`, capacités déclarées, registre `REGISTRY`, sortie factice
+  `null`.
+
 ## [0.1.0] - 2026-11-03
 
 ### Ajouté

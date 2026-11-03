@@ -105,16 +105,18 @@ class SortieInconnueError(ValueError):
         self.disponibles = list(disponibles)
 
 
-# Import tardif : la sortie factice s'inscrit au registre ci-dessus au
-# moment de son import — le registre doit exister (définitions ci-dessus)
+# Import tardif : les sorties s'inscrivent au registre ci-dessus au
+# moment de leur import — le registre doit exister (définitions ci-dessus)
 # avant que ce module ne soit chargé.
 from pystashtemplate.outputs.null import NullOutput  # noqa: E402
+from pystashtemplate.outputs.opensearch import OpenSearchOutput  # noqa: E402
 
 __all__ = [
     "ACTIONS",
     "Capacites",
     "Document",
     "NullOutput",
+    "OpenSearchOutput",
     "Output",
     "REGISTRY",
     "SortieInconnueError",

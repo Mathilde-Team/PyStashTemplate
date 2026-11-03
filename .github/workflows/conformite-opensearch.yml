@@ -1,0 +1,57 @@
+# Banc de conformité OpenSearch (issue #12) : la sortie `opensearch` contre
+# la vraie API `_bulk` d'un conteneur éphémère. Complète les tests
+# unitaires (faux serveur `httpx.MockTransport`) : ici, c'est le produit
+# réel qui répond — indexation effective, recherche, `_id` déterministe,
+# rejet de mapping parti en DLQ.
+#
+# Runner hébergé GitHub (ubuntu-latest, autorisé par la MISSION) : Docker
+# y est garanti, contrairement aux runners maison.
+name: Banc de conformité OpenSearch
+
+"on":
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conformite:
+    name: "Sortie opensearch contre un vrai OpenSearch"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v7
+
+      - name: Installation de uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Installation de Python
+        run: uv python install
+
+      - name: Installation des dépendances
+        run: uv sync --extra dev
+
+      - name: OpenSearch éphémère (sans plugin de sécurité)
+        run: |
+          docker run -d --name opensearch -p 9200:9200 \
+            -e DISABLE_SECURITY_PLUGIN=true \
+            -e "discovery.type=single-node" \
+            -e "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m" \
+            opensearchproject/opensearch:2.19.1
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:9200 >/dev/null; then echo "OpenSearch prêt"; exit 0; fi
+            sleep 2
+          done
+          docker logs opensearch
+          echo "::error::OpenSearch n'a pas démarré" && exit 1
+
+      - name: Banc de conformité
+        env:
+          PYSTASHTEMPLATE_OPENSEARCH_URL: http://localhost:9200
+        run: uv run pytest tests/test_integration_opensearch.py -v

@@ -3,14 +3,21 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 
 from pystashtemplate.interpreter import PipelineInterpreter
 from pystashtemplate.multievents import SPLIT_FAILURE_TAG, CloneFilter, SplitFilter, _ruby_split
 
 
+def _run(coro):
+    # Sans pytest-asyncio (convention du dépôt, cf. RsysLogstach) : asyncio.run direct (#34).
+    return asyncio.run(coro)
+
+
 def _events(conf: str, doc: dict) -> list[tuple[dict, list]]:
-    return PipelineInterpreter(conf).apply_events(doc)
+    return _run(PipelineInterpreter(conf).apply_events(doc))
 
 
 def _docs(conf: str, doc: dict) -> list[dict]:
@@ -63,8 +70,8 @@ def test_clone_drop_de_l_original_garde_la_copie():
     conf = 'filter { clone { clones => ["c"] } if "c" not in [tags] { drop {} } }'
     pi = PipelineInterpreter(conf)
     doc = {"m": 1}
-    assert [e for e, _ in pi.apply_events(doc)] == [{"m": 1, "tags": ["c"]}]
-    assert pi.apply({"m": 1}) is None
+    assert [e for e, _ in _run(pi.apply_events(doc))] == [{"m": 1, "tags": ["c"]}]
+    assert _run(pi.apply({"m": 1})) is None
 
 
 @pytest.mark.parametrize("options", [{}, {"clones": [1]}, {"clones": {"a": "b"}}])
@@ -75,7 +82,7 @@ def test_clone_options_invalides(options):
 
 def test_clone_invalide_bloc_ignore():
     pi = PipelineInterpreter("filter { clone { } clone { } }")
-    assert [e for e, _ in pi.apply_events({"m": 1})] == [{"m": 1}]
+    assert [e for e, _ in _run(pi.apply_events({"m": 1}))] == [{"m": 1}]
 
 
 def test_clone_liste_vide():
@@ -181,4 +188,4 @@ def test_ruby_split(text, terminator, expected):
 
 
 def test_apply_renvoie_none_si_split_remplace_l_original():
-    assert PipelineInterpreter("filter { split { } }").apply({"message": "a\nb"}) is None
+    assert _run(PipelineInterpreter("filter { split { } }").apply({"message": "a\nb"})) is None

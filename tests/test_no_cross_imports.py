@@ -23,23 +23,36 @@ import ast
 from pathlib import Path
 
 SRC = Path(__file__).resolve().parents[1] / "src" / "pystashtemplate"
-MODULES = sorted(p.stem for p in SRC.glob("*.py") if p.stem != "__init__")
-MODULES_CONNECTEUR = {"omprog", "indexer", "dlq", "metrics", "opensearchconf"}
+# Sous-paquets inclus (outputs/…) : le nom du module est son chemin
+# pointé depuis le paquet, ex. `outputs.elasticsearch_bulk`.
+MODULES = sorted(
+    ".".join(p.relative_to(SRC).with_suffix("").parts) for p in SRC.rglob("*.py") if p.name != "__init__.py"
+)
+# `dlq` est passé dans la bibliothèque (chantier sorties #2) : il n'est
+# plus un module du connecteur.
+MODULES_CONNECTEUR = {"omprog", "indexer", "metrics", "opensearchconf"}
+
+
+def _path_of(module_name: str) -> Path:
+    """Fichier source d'un module (nom pointé)."""
+    return SRC.joinpath(*module_name.split(".")).with_suffix(".py")
 
 
 def _imports_of(module_name: str) -> set[str]:
     """Imports internes (vers un autre module du paquet) d'un module, via ast."""
-    tree = ast.parse((SRC / f"{module_name}.py").read_text(encoding="utf-8"))
+    tree = ast.parse(_path_of(module_name).read_text(encoding="utf-8"))
     internal: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
             internal.update(
-                alias.name.split(".")[1] for alias in node.names if alias.name.startswith("pystashtemplate.")
+                alias.name[len("pystashtemplate.") :]
+                for alias in node.names
+                if alias.name.startswith("pystashtemplate.")
             )
         elif isinstance(node, ast.ImportFrom) and node.module:
             # `from pystashtemplate.X import ...` → X
-            if node.module.startswith("pystashtemplate"):
-                internal.add(node.module.split(".")[1] or "")
+            if node.module.startswith("pystashtemplate."):
+                internal.add(node.module[len("pystashtemplate.") :])
     return internal & set(MODULES)
 
 
@@ -88,7 +101,7 @@ def test_bibliotheque_n_importe_jamais_le_connecteur() -> None:
     # opensearchconf) reste dans RsysLogstach et dépend de la bibliothèque —
     # jamais l'inverse.
     for m in MODULES:
-        arbre = ast.parse((SRC / f"{m}.py").read_text(encoding="utf-8"))
+        arbre = ast.parse(_path_of(m).read_text(encoding="utf-8"))
         for node in ast.walk(arbre):
             noms: list[str] = []
             if isinstance(node, ast.Import):
