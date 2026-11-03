@@ -31,7 +31,7 @@ from pathlib import Path
 
 from loguru import logger
 
-from pystashtemplate.tracing import traced
+from pystashtemplate.tracing import atraced, traced
 
 _SIZE_UNITS = {"": 1, "b": 1, "k": 1024, "kb": 1024, "m": 1024**2, "mb": 1024**2, "g": 1024**3, "gb": 1024**3}
 _DURATION_UNITS = {"s": 1, "m": 60, "h": 3600, "d": 86400, "w": 7 * 86400}
@@ -139,7 +139,7 @@ class LocalDeadLetterQueue:
         self._retention = retention or None
         self._compress = compress
 
-    @traced
+    @atraced
     async def write(self, doc: dict, *, index: str, error: str) -> None:
         """Ajoute une ligne JSON au fichier DLQ pour ce document.
 

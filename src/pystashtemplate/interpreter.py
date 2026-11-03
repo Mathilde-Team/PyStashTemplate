@@ -274,7 +274,7 @@ from pystashtemplate.multievents import CloneFilter, SplitFilter
 from pystashtemplate.simples import PLUGINS as PLUGINS_SIMPLES
 from pystashtemplate.simples import appliquer_cidr, reseaux_cidr
 from pystashtemplate.templates import _MISSING, assign_field, parse_field_path, render_template, resolve_field
-from pystashtemplate.tracing import traced
+from pystashtemplate.tracing import atraced, traced
 from pystashtemplate.useragent import UserAgentFilter
 from pystashtemplate.util import add_failure_tags, load_json_file
 from pystashtemplate.xmlfilter import XmlFilter
@@ -548,6 +548,7 @@ class PipelineInterpreter:
             pipeline.close()
         self._filter_pipelines.clear()
 
+    @atraced
     async def apply(
         self,
         doc: dict[str, Any],
@@ -597,7 +598,7 @@ class PipelineInterpreter:
         logger.debug("apply | document d'origine écarté (drop ou split)")
         return None
 
-    @traced
+    @atraced
     async def apply_events(
         self,
         doc: dict[str, Any],
@@ -644,7 +645,7 @@ class PipelineInterpreter:
     # filter{}
     # ------------------------------------------------------------------
 
-    @traced
+    @atraced
     async def _run_filter_body(
         self, body: list, doc: dict[str, Any], *, now: datetime | None, on_missing: str
     ) -> list[dict[str, Any]]:
@@ -683,7 +684,7 @@ class PipelineInterpreter:
         logger.debug("_run_filter_body | {} événement(s)", len(events))
         return events
 
-    @traced
+    @atraced
     async def _run_filter_plugin(
         self, entry: list, doc: dict[str, Any], *, now: datetime | None, on_missing: str
     ) -> list[dict[str, Any]]:
@@ -714,7 +715,7 @@ class PipelineInterpreter:
         elif name == "geoip":
             reussi = self._apply_geoip(doc, options)
         elif name == "filters_json":
-            self._apply_filters_json(doc, options, now=now, on_missing=on_missing)
+            await self._apply_filters_json(doc, options, now=now, on_missing=on_missing)
         elif name == "date":
             reussi = self._apply_date(doc, options)
         elif name == "drop":
@@ -886,7 +887,7 @@ class PipelineInterpreter:
             return False
         return filtre.apply(doc)
 
-    @traced
+    @atraced
     async def _apply_dns(self, doc: dict[str, Any], options: dict[str, Any]) -> bool:
         """`filter { dns { reverse => [...] resolve => [...] } }` — délègue à `dnslookup.DnsFilter` (#121).
 
@@ -1235,8 +1236,8 @@ class PipelineInterpreter:
         """`tag_on_failure` du plugin `geoip` (défaut `["_geoip_lookup_failure"]`, comme Logstash)."""
         add_failure_tags(doc, options.get("tag_on_failure", ["_geoip_lookup_failure"]))
 
-    @traced
-    def _apply_filters_json(
+    @atraced
+    async def _apply_filters_json(
         self, doc: dict[str, Any], options: dict[str, Any], *, now: datetime | None, on_missing: str
     ) -> None:
         """`filters_json { path => "..." [on_missing => "keep"|"empty"] }` (session 18).
@@ -1280,7 +1281,7 @@ class PipelineInterpreter:
                 return
             self._filter_pipelines[path] = pipeline
         step_on_missing = options.get("on_missing", "keep")
-        if not pipeline.apply(doc, now=now, on_missing=step_on_missing):
+        if not await pipeline.apply(doc, now=now, on_missing=step_on_missing):
             raise _DocumentDropped
 
     @traced

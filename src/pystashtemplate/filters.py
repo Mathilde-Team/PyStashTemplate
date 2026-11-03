@@ -42,6 +42,7 @@ import maxminddb
 import yaml
 from loguru import logger
 
+from pystashtemplate.dnslookup import DnsFilter
 from pystashtemplate.enrichment import GeoIPLookup, TranslateDictionary
 from pystashtemplate.i18n import _
 from pystashtemplate.templates import (
@@ -52,7 +53,7 @@ from pystashtemplate.templates import (
     render_template,
     resolve_field,
 )
-from pystashtemplate.tracing import traced
+from pystashtemplate.tracing import atraced, traced
 from pystashtemplate.util import add_failure_tags
 
 
@@ -1584,7 +1585,12 @@ def load_word_list(path: str) -> list[str]:
 
 
 class FilterPipeline:
-    """Chaîne de filtres façon Logstash (dissect, regex, kv, drop, mutate, geoip, translate, date), en séquence."""
+    """Chaîne de filtres façon Logstash (dissect, regex, kv, drop, mutate, geoip, translate, date, dns), en séquence.
+
+    `apply` est asynchrone depuis #36 (chantier full async #1) : les steps
+    réseau (`dns`) sont attendus ; les filtres CPU (dissect, regex, kv,
+    mutate…) restent exécutés en ligne.
+    """
 
     @traced
     def __init__(
@@ -1622,7 +1628,9 @@ class FilterPipeline:
                 attend "match" ([champ, motif, ...], requis) et
                 "target"/"timezone"/"tag_on_failure" (optionnels) : voir
                 `DateFilter`, identique au plugin `date` de
-                `--pipeline-conf`. Voir
+                `--pipeline-conf`. "dns" (depuis #36) reprend les options
+                du plugin `dns` du `.conf` (voir `dnslookup.DnsFilter`) :
+                résolution réseau asynchrone, `await`ée par `apply`. Voir
                 filters.example.json et blocklist.example.txt.
             geoip_lookup_factory: Callable construisant une
                 `enrichment.GeoIPLookup` à partir d'un chemin de base,
@@ -1678,6 +1686,9 @@ class FilterPipeline:
             if not DateFilter.match_valide(options.get("match")):
                 raise ValueError("filtre date : 'match' doit valoir [champ, motif, ...]")
             return None, DateFilter(options), None
+        if filter_type == "dns":
+            options = {key: value for key, value in step.items() if key not in ("type", "_comment")}
+            return None, DnsFilter(options), None
         source = step["source"]
         target = step.get("target")
         if filter_type == "dissect":
@@ -1711,9 +1722,17 @@ class FilterPipeline:
             raise ValueError(f"type de filtre inconnu: {filter_type!r}")
         return source, compiled, target
 
-    @traced
-    def apply(self, doc: dict, *, now: datetime | None = None, on_missing: str = "keep") -> bool:
+    @atraced
+    async def apply(self, doc: dict, *, now: datetime | None = None, on_missing: str = "keep") -> bool:
         """Applique chaque filtre de la chaîne à doc, en place.
+
+        Asynchrone depuis #36 (chantier full async #1) : les steps réseau
+        (`dns`) sont attendus (`await`) ; les filtres CPU (dissect, regex,
+        kv, mutate, geoip, translate, date, drop) restent exécutés en
+        ligne, l'ordre de la chaîne est inchangé. Comme le plugin `dns`
+        du `.conf`, un step `dns` qui échoue (délai dépassé, valeur
+        refusée) n'écarte pas le document : la chaîne continue, sans
+        options communes à appliquer ici.
 
         Un filtre "dissect"/"regex"/"kv" dont le champ source est absent, non
         textuel, ou dont le patron ne correspond pas est ignoré pour ce
@@ -1740,6 +1759,9 @@ class FilterPipeline:
             (aucun traitement ultérieur ne doit avoir lieu), True sinon.
         """
         for source, compiled, target in self._steps:
+            if isinstance(compiled, DnsFilter):
+                await compiled.apply(doc)
+                continue
             if isinstance(compiled, MutateFilter):
                 compiled.apply(doc, now=now, on_missing=on_missing)
                 continue

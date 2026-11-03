@@ -34,12 +34,12 @@ class TestStepDateFilters:
 
     def test_iso8601_vers_timestamp(self):
         doc = {"horodatage": "2026-10-24T08:15:00+02:00"}
-        assert _pipeline(match=["horodatage", "ISO8601"]).apply(doc) is True
+        assert _run(_pipeline(match=["horodatage", "ISO8601"]).apply(doc)) is True
         assert doc["@timestamp"] == "2026-10-24T06:15:00+00:00"
 
     def test_iso8601_suffixe_z(self):
         doc = {"t": "2026-10-24T06:15:00Z"}
-        _pipeline(match=["t", "ISO8601"]).apply(doc)
+        _run(_pipeline(match=["t", "ISO8601"]).apply(doc))
         assert doc["@timestamp"] == "2026-10-24T06:15:00+00:00"
 
     @pytest.mark.parametrize(
@@ -48,57 +48,57 @@ class TestStepDateFilters:
     )
     def test_epoch(self, motif, valeur):
         doc = {"t": valeur}
-        _pipeline(match=["t", motif]).apply(doc)
+        _run(_pipeline(match=["t", motif]).apply(doc))
         assert doc["@timestamp"] == "2026-10-24T06:15:00+00:00"
 
     def test_motif_joda_avec_fuseau_iana(self):
         doc = {"t": "Oct 24 2026 08:15:00"}
-        _pipeline(match=["t", "MMM dd yyyy HH:mm:ss"], timezone="Europe/Paris").apply(doc)
+        _run(_pipeline(match=["t", "MMM dd yyyy HH:mm:ss"], timezone="Europe/Paris").apply(doc))
         assert doc["@timestamp"] == "2026-10-24T06:15:00+00:00"
 
     def test_fuseau_inconnu_retombe_sur_utc(self):
         doc = {"t": "2026-10-24 06:15:00"}
-        _pipeline(match=["t", "yyyy-MM-dd HH:mm:ss"], timezone="Pas/Un_Fuseau").apply(doc)
+        _run(_pipeline(match=["t", "yyyy-MM-dd HH:mm:ss"], timezone="Pas/Un_Fuseau").apply(doc))
         assert doc["@timestamp"] == "2026-10-24T06:15:00+00:00"
 
     def test_sss_et_zone_textuelle_dans_le_step(self):
         # #118 : SSS + « CET » (+01:00) → 05:15:00.123 UTC.
         doc = {"t": "2026-10-24 06:15:00.123 CET"}
-        _pipeline(match=["t", "yyyy-MM-dd HH:mm:ss.SSS z"]).apply(doc)
+        _run(_pipeline(match=["t", "yyyy-MM-dd HH:mm:ss.SSS z"]).apply(doc))
         assert doc["@timestamp"] == "2026-10-24T05:15:00.123000+00:00"
 
     def test_locale_dans_le_step(self):
         # #118 : option `locale` du plugin officiel, noms français.
         doc = {"t": "lun. 24 oct. 2026 06:15:00"}
-        _pipeline(match=["t", "EEE dd MMM yyyy HH:mm:ss"], locale="fr").apply(doc)
+        _run(_pipeline(match=["t", "EEE dd MMM yyyy HH:mm:ss"], locale="fr").apply(doc))
         assert doc["@timestamp"] == "2026-10-24T06:15:00+00:00"
 
     def test_premier_motif_qui_correspond(self):
         doc = {"t": "24/10/2026 06:15"}
-        _pipeline(match=["t", "ISO8601", 42, "dd/MM/yyyy HH:mm"]).apply(doc)
+        _run(_pipeline(match=["t", "ISO8601", 42, "dd/MM/yyyy HH:mm"]).apply(doc))
         assert doc["@timestamp"] == "2026-10-24T06:15:00+00:00"
         assert "tags" not in doc
 
     def test_target_imbrique(self):
         doc = {"evt": {"t": "2026-10-24T06:15:00Z"}}
-        _pipeline(match=["[evt][t]", "ISO8601"], target="[evt][date]").apply(doc)
+        _run(_pipeline(match=["[evt][t]", "ISO8601"], target="[evt][date]").apply(doc))
         assert doc["evt"]["date"] == "2026-10-24T06:15:00+00:00"
         assert "@timestamp" not in doc
 
     def test_echec_tag_par_defaut(self):
         doc = {"t": "pas une date"}
-        assert _pipeline(match=["t", "ISO8601"]).apply(doc) is True  # date n'écarte jamais le document
+        assert _run(_pipeline(match=["t", "ISO8601"]).apply(doc)) is True  # date n'écarte jamais le document
         assert doc["tags"] == ["_dateparsefailure"]
         assert "@timestamp" not in doc
 
     def test_champ_absent_tag_personnalise(self):
         doc = {"tags": ["deja"]}
-        _pipeline(match=["t", "ISO8601"], tag_on_failure=["_date_ko"]).apply(doc)
+        _run(_pipeline(match=["t", "ISO8601"], tag_on_failure=["_date_ko"]).apply(doc))
         assert doc["tags"] == ["deja", "_date_ko"]
 
     def test_champ_none(self):
         doc = {"t": None}
-        _pipeline(match=["t", "ISO8601"]).apply(doc)
+        _run(_pipeline(match=["t", "ISO8601"]).apply(doc))
         assert doc["tags"] == ["_dateparsefailure"]
 
     def test_suite_de_la_chaine_executee(self):
@@ -108,7 +108,7 @@ class TestStepDateFilters:
             {"type": "mutate", "remove_field": ["quand"]},
         ]
         doc = {"message": "2026-10-24T06:15:00Z bonjour"}
-        assert FilterPipeline(steps).apply(doc) is True
+        assert _run(FilterPipeline(steps).apply(doc)) is True
         assert doc["@timestamp"] == "2026-10-24T06:15:00+00:00"
         assert "quand" not in doc
         assert doc["reste"] == "bonjour"
@@ -138,7 +138,7 @@ class TestDateFilterDirect:
         doc_conf = {"t": "24/10/2026 08:15"}
         _run(PipelineInterpreter(conf).apply(doc_conf))  # modifie le document en place
         doc_json = {"t": "24/10/2026 08:15"}
-        _pipeline(match=["t", "dd/MM/yyyy HH:mm"], timezone="Europe/Paris").apply(doc_json)
+        _run(_pipeline(match=["t", "dd/MM/yyyy HH:mm"], timezone="Europe/Paris").apply(doc_json))
         assert doc_conf["@timestamp"] == doc_json["@timestamp"] == "2026-10-24T06:15:00+00:00"
 
 

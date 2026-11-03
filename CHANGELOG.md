@@ -7,6 +7,19 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- `atraced` (issue #37, chantier full async #1) : équivalent asynchrone de
+  `@traced` dans `tracing.py` — la sortie est journalisée quand la
+  coroutine se termine réellement (autour du `await`), et non dès sa
+  création. Toutes les fonctions `async def` de `src/` sont décorées
+  (remplacement de `@traced`, ajout sur les non décorées) ;
+  `audit_debug_sorties` reconnaît `@atraced` comme trace structurelle.
+- `FilterPipeline.apply` devient asynchrone (issue #36, chantier full async #1) :
+  les steps réseau sont attendus — nouveau step `dns` (mêmes options que le
+  plugin `dns` du `.conf`), sans réseau pour les filtres CPU (dissect,
+  regex, kv, mutate, geoip, translate, date, drop), ordre de la chaîne et
+  options communes inchangés. Changement d'API : `await` requis par les
+  appelants directs de `FilterPipeline.apply` (le pont `filters_json` de
+  l'interpréteur l'attend déjà).
 - `DnsFilter.apply` devient asynchrone (issue #35, chantier full async #1) :
   la résolution réseau passe par `dns.asyncresolver` (vraie concurrence
   réseau) ; caches, délais, essais et `PYSTASHTEMPLATE_DNS=off`

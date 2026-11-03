@@ -34,7 +34,7 @@ from typing import Any, ClassVar, Self
 from loguru import logger
 
 from pystashtemplate.i18n import _
-from pystashtemplate.tracing import traced
+from pystashtemplate.tracing import atraced, traced
 
 # Actions d'indexation d'un document, comme l'API `_bulk` de la famille
 # Elasticsearch (issue #2 PyStashTemplate : `index`, `create`, `update`,
@@ -143,6 +143,7 @@ class Output(ABC):
     async def close(self) -> None:
         """Libère la connexion et les ressources (idempotent)."""
 
+    @atraced
     async def __aenter__(self) -> Self:
         """`async with` : ouvre la sortie et la renvoie."""
         logger.debug("Output.__aenter__ | {} | ouverture", self.plugin)
@@ -150,6 +151,7 @@ class Output(ABC):
         logger.debug("Output.__aenter__ | {} | sortie", self.plugin)
         return self
 
+    @atraced
     async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
         """`async with` : ferme la sortie, même sur exception."""
         logger.debug("Output.__aexit__ | {} | fermeture (exc={})", self.plugin, exc_type and exc_type.__name__)

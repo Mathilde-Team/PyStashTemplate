@@ -15,6 +15,7 @@ from typing import ClassVar
 from loguru import logger
 
 from pystashtemplate.outputs import Capacites, Document, Output, enregistrer
+from pystashtemplate.tracing import atraced
 
 
 @enregistrer
@@ -29,21 +30,25 @@ class NullOutput(Output):
         taille_max_requete=None,
     )
 
+    @atraced
     async def open(self) -> None:
         """Sans effet : la sortie puits n'a aucune connexion à ouvrir."""
         logger.debug("NullOutput.open | sans effet")
         logger.debug("NullOutput.open | sortie")
 
+    @atraced
     async def send(self, batch: Sequence[Document]) -> None:
         """Oublie le lot, après l'avoir compté en debug."""
         logger.debug("NullOutput.send | {} document(s) ignoré(s)", len(batch))
         logger.debug("NullOutput.send | sortie")
 
+    @atraced
     async def flush(self) -> None:
         """Sans effet : rien n'est jamais mis en attente."""
         logger.debug("NullOutput.flush | sans effet")
         logger.debug("NullOutput.flush | sortie")
 
+    @atraced
     async def close(self) -> None:
         """Sans effet : aucune ressource à libérer."""
         logger.debug("NullOutput.close | sans effet")
