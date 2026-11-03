@@ -62,6 +62,9 @@ def test_documents_indexes_sont_retrouvables() -> None:
 
     asyncio.run(scenario())
     try:
+        # Rendre les documents cherchables AVANT la recherche : sans refresh
+        # explicite, OpenSearch ne les expose qu'à son intervalle (~1 s).
+        httpx.post(f"{URL}/{index}/_refresh")
         reponse = httpx.get(f"{URL}/{index}/_search", params={"size": 10})
         reponse.raise_for_status()
         corps = reponse.json()
@@ -87,6 +90,7 @@ def test_document_id_deterministe_indexe_une_fois() -> None:
 
     asyncio.run(scenario())
     try:
+        httpx.post(f"{URL}/{index}/_refresh")
         reponse = httpx.get(f"{URL}/{index}/_search", params={"size": 10})
         reponse.raise_for_status()
         corps = reponse.json()
