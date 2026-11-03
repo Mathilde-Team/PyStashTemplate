@@ -31,10 +31,12 @@ uv run pytest -q --cov   # tests, couverture lignes + branches (seuil 95 %)
 ```
 
 ```python
+import asyncio
+
 from pystashtemplate.interpreter import PipelineInterpreter
 
 interp = PipelineInterpreter('filter { grok { match => { "message" => "%{IP:ip}" } } }')
-interp.apply({"message": "1.2.3.4"})
+asyncio.run(interp.apply({"message": "1.2.3.4"}))  # asynchrone depuis #34
 ```
 
 ## Sorties agnostiques (#4)

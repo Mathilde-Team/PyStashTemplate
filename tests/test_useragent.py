@@ -3,10 +3,18 @@
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 
 from pystashtemplate.interpreter import PipelineInterpreter
 from pystashtemplate.useragent import UserAgentFilter, _ajuster_version, _entier_ruby, _version_os, _version_ua
+
+
+def _run(coro):
+    # Sans pytest-asyncio (convention du dépôt, cf. RsysLogstach) : asyncio.run direct (#34).
+    return asyncio.run(coro)
+
 
 CHROME = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.90 Safari/537.36"
@@ -19,7 +27,7 @@ IPHONE = (
 
 def _ua(options_conf: str, doc: dict) -> dict:
     """Applique `filter { useragent { <options_conf> } }` à `doc` et le renvoie."""
-    PipelineInterpreter(f"filter {{ useragent {{ {options_conf} }} }}").apply(doc)
+    _run(PipelineInterpreter(f"filter {{ useragent {{ {options_conf} }} }}").apply(doc))
     return doc
 
 
@@ -178,7 +186,7 @@ class TestRegexes:
         interp = PipelineInterpreter(f"filter {{ useragent {{ {options} }} }}")
         for _ in range(2):
             doc = {"agent": CHROME}
-            interp.apply(doc)
+            _run(interp.apply(doc))
             assert doc == {"agent": CHROME}
 
 
@@ -203,6 +211,6 @@ class TestOptions:
         interp = PipelineInterpreter('filter { useragent { source => "agent" } }')
         for ua in ("curl/7.68.0", "curl/8.0.1"):
             doc = {"agent": ua}
-            interp.apply(doc)
+            _run(interp.apply(doc))
         assert doc["user_agent"]["version"] == "8.0.1"
         assert len(interp._useragent_filters) == 1

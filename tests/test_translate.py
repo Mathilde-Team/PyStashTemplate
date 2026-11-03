@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import os
 from pathlib import Path
 
@@ -13,9 +14,14 @@ from pystashtemplate.filters import FilterPipeline, TranslateFilter, _option_boo
 from pystashtemplate.interpreter import PipelineInterpreter
 
 
+def _run(coro):
+    # Sans pytest-asyncio (convention du dépôt, cf. RsysLogstach) : asyncio.run direct (#34).
+    return asyncio.run(coro)
+
+
 def _conf(options_conf: str, doc: dict) -> dict:
     """Applique `filter { translate { <options_conf> } }` à `doc` et le renvoie."""
-    PipelineInterpreter(f"filter {{ translate {{ {options_conf} }} }}").apply(doc)
+    _run(PipelineInterpreter(f"filter {{ translate {{ {options_conf} }} }}").apply(doc))
     return doc
 
 
@@ -333,7 +339,7 @@ class TestDansUnConf:
         interp = PipelineInterpreter('filter { translate { source => "a" field => "b" } }')
         for _ in range(2):
             doc = {"a": "1"}
-            interp.apply(doc)
+            _run(interp.apply(doc))
             assert doc == {"a": "1"}
         assert list(interp._translate_filters.values()) == [None]
 
@@ -344,7 +350,7 @@ class TestDansUnConf:
             f'translate {{ source => "c" target => "t2" dictionary_path => "{chemin}" }} }}'
         )
         doc = {"c": "a"}
-        interp.apply(doc)
+        _run(interp.apply(doc))
         assert (doc["t1"], doc["t2"]) == (1, 1)
         assert len(interp._translate_dictionaries) == 1 and len(interp._translate_filters) == 2
 

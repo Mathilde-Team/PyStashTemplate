@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import asyncio
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -11,6 +12,11 @@ import pytest
 import pystashtemplate.templates as templates
 from pystashtemplate.interpreter import PipelineInterpreter
 from pystashtemplate.templates import ESCAPE_STYLES, parse_field_path, render_template, set_escape_style
+
+
+def _run(coro):
+    # Sans pytest-asyncio (convention du dépôt, cf. RsysLogstach) : asyncio.run direct (#34).
+    return asyncio.run(coro)
 
 
 @pytest.fixture(autouse=True)
@@ -45,7 +51,7 @@ def test_gabarit_et_pipeline() -> None:
     set_escape_style("percent")
     doc = {"map[k]": "v"}
     assert render_template("%{map%5Bk%5D}", doc) == "v"
-    PipelineInterpreter('filter { mutate { add_field => { "[out%5B1%5D]" => "%{map%5Bk%5D}" } } }').apply(doc)
+    _run(PipelineInterpreter('filter { mutate { add_field => { "[out%5B1%5D]" => "%{map%5Bk%5D}" } } }').apply(doc))
     assert doc["out[1]"] == "v"
 
 
@@ -60,7 +66,7 @@ def test_lecture_pipeline_avec_style_ampersand(tmp_path: Path) -> None:
     conf.write_text('filter { mutate { copy => { "[a&#91;0&#93;]": "b" } } }'.replace(":", " =>"))
     interp = PipelineInterpreter(conf.read_text(encoding="utf-8"))
     doc = {"a[0]": "v"}
-    interp.apply(doc)
+    _run(interp.apply(doc))
     assert doc["b"] == "v"
 
 

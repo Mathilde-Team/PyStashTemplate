@@ -10,12 +10,19 @@ et des motifs `grok` (#112).
 
 from __future__ import annotations
 
+import asyncio
+
 import pytest
 from logstash_pipeline_parser import Pipeline
 from logstash_pipeline_parser import tree as parser_tree
 
 import pystashtemplate.interpreter as interpreter
 from pystashtemplate.interpreter import PipelineInterpreter, _normalize_attrs
+
+
+def _run(coro):
+    # Sans pytest-asyncio (convention du dépôt, cf. RsysLogstach) : asyncio.run direct (#34).
+    return asyncio.run(coro)
 
 
 def _options(conf: str) -> dict:
@@ -59,12 +66,12 @@ class TestChainesBrutes:
 class TestEffetsSurLesFiltres:
     def test_gsub_point_litteral(self) -> None:
         doc = {"m": "a.b axb"}
-        PipelineInterpreter(r'filter { mutate { gsub => ["m", "a\.b", "X"] } }').apply(doc)
+        _run(PipelineInterpreter(r'filter { mutate { gsub => ["m", "a\.b", "X"] } }').apply(doc))
         assert doc["m"] == "X axb"
 
     def test_gsub_classe_de_caracteres(self) -> None:
         doc = {"m": "port 8080"}
-        PipelineInterpreter(r'filter { mutate { gsub => ["m", "\d+", "N"] } }').apply(doc)
+        _run(PipelineInterpreter(r'filter { mutate { gsub => ["m", "\d+", "N"] } }').apply(doc))
         assert doc["m"] == "port N"
 
     @pytest.mark.parametrize(
@@ -76,5 +83,5 @@ class TestEffetsSurLesFiltres:
         ],
     )
     def test_condition_regex_en_chaine(self, condition: str, attendu: bool) -> None:
-        actions = PipelineInterpreter(f"output {{ if {condition} {{ o {{ }} }} }}").apply({"m": "eth0 up"})
+        actions = _run(PipelineInterpreter(f"output {{ if {condition} {{ o {{ }} }} }}").apply({"m": "eth0 up"}))
         assert bool(actions) is attendu

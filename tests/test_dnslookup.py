@@ -8,6 +8,7 @@ client dnspython est remplacé là où il est testé.
 
 from __future__ import annotations
 
+import asyncio
 from types import SimpleNamespace
 
 import dns.exception
@@ -27,6 +28,11 @@ from pystashtemplate.dnslookup import (
     serveurs_normalises,
 )
 from pystashtemplate.interpreter import PipelineInterpreter
+
+
+def _run(coro):
+    # Sans pytest-asyncio (convention du dépôt, cf. RsysLogstach) : asyncio.run direct (#34).
+    return asyncio.run(coro)
 
 
 class Double:
@@ -339,7 +345,7 @@ class TestInterpreteur:
         options = f'reverse => ["[host][ip]"] action => "replace" hostsfile => ["{hosts}"] add_tag => ["dns"]'
         conf = f"filter {{ dns {{ {options} }} }}"
         doc = {"host": {"ip": "10.0.0.1"}}
-        PipelineInterpreter(conf).apply(doc)
+        _run(PipelineInterpreter(conf).apply(doc))
         assert doc == {"host": {"ip": "web.local"}, "tags": ["dns"]}
 
     def test_variable_non_resolue_refus_au_chargement(self) -> None:
@@ -365,5 +371,5 @@ class TestInterpreteur:
         )
         interp = PipelineInterpreter(conf)
         doc = {"ip": "10.0.0.1"}
-        interp.apply(doc)
+        _run(interp.apply(doc))
         assert doc == {"ip": "web.local", "tags": ["dns"]}
