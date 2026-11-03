@@ -11,6 +11,7 @@ from __future__ import annotations
 import asyncio
 from types import SimpleNamespace
 
+import dns.asyncresolver
 import dns.exception
 import dns.resolver
 import pytest
@@ -49,11 +50,11 @@ class Double:
         if self._erreurs:
             raise self._erreurs.pop(0)
 
-    def adresses(self, nom: str) -> list[str]:
+    async def adresses(self, nom: str) -> list[str]:
         self._peut_echouer()
         return self._adresses.get(nom, [])
 
-    def noms(self, adresse: str) -> list[str]:
+    async def noms(self, adresse: str) -> list[str]:
         self._peut_echouer()
         return self._noms.get(adresse, [])
 
@@ -66,7 +67,7 @@ DOUBLE = {
 
 def _dns(options: dict, doc: dict, *resolveurs: Double) -> bool:
     """Applique `DnsFilter(options)` avec les résolveurs donnés (un double par défaut)."""
-    return DnsFilter(options, resolveurs=list(resolveurs) or [Double(**DOUBLE)]).apply(doc)
+    return _run(DnsFilter(options, resolveurs=list(resolveurs) or [Double(**DOUBLE)]).apply(doc))
 
 
 class TestResolve:
@@ -173,7 +174,7 @@ class TestEssaisEtCaches:
         double = Double(adresses={"x": ["1.1.1.1"]})
         filtre = DnsFilter({"resolve": ["h"], "hit_cache_size": 10}, resolveurs=[double])
         for _ in range(3):
-            assert filtre.apply({"h": "x"})
+            assert _run(filtre.apply({"h": "x"}))
         assert double.appels == 1
 
     def test_cache_des_echecs_et_expiration(self) -> None:
@@ -184,19 +185,19 @@ class TestEssaisEtCaches:
             resolveurs=[double],
             horloge=lambda: maintenant[0],
         )
-        assert not filtre.apply({"h": "x"})
-        assert not filtre.apply({"h": "x"})
+        assert not _run(filtre.apply({"h": "x"}))
+        assert not _run(filtre.apply({"h": "x"}))
         assert double.appels == 1
         maintenant[0] = 6.0
-        assert not filtre.apply({"h": "x"})
+        assert not _run(filtre.apply({"h": "x"}))
         assert double.appels == 2
 
     def test_cache_des_echecs_sur_delai(self) -> None:
         double = Double(erreurs=[DelaiDepasse("t")])
         filtre = DnsFilter({"resolve": ["h"], "failed_cache_size": 1, "max_retries": 0}, resolveurs=[double])
-        assert not filtre.apply({"h": "x"})
+        assert not _run(filtre.apply({"h": "x"}))
         doc = {"h": "x"}
-        assert not filtre.apply(doc)
+        assert not _run(filtre.apply(doc))
         assert double.appels == 1 and "tags" not in doc
 
     def test_cache_ttl_lru(self) -> None:
@@ -217,14 +218,14 @@ class TestFichierHosts:
             encoding="utf-8",
         )
         fichier = FichierHosts(str(hosts))
-        assert fichier.adresses("web.local") == ["10.0.0.1", "10.0.0.2"]
-        assert fichier.noms("10.0.0.1") == ["web.local", "web"]
-        assert fichier.noms("::1") == ["six"]
-        assert fichier.adresses("seul") == []
-        assert fichier.noms("bizarre") == ["nom-bizarre"]
+        assert _run(fichier.adresses("web.local")) == ["10.0.0.1", "10.0.0.2"]
+        assert _run(fichier.noms("10.0.0.1")) == ["web.local", "web"]
+        assert _run(fichier.noms("::1")) == ["six"]
+        assert _run(fichier.adresses("seul")) == []
+        assert _run(fichier.noms("bizarre")) == ["nom-bizarre"]
 
     def test_absent(self, tmp_path) -> None:
-        assert FichierHosts(str(tmp_path / "absent")).adresses("x") == []
+        assert _run(FichierHosts(str(tmp_path / "absent")).adresses("x")) == []
 
     def test_ordre_des_resolveurs(self, tmp_path, monkeypatch) -> None:
         a, b, systeme = tmp_path / "a", tmp_path / "b", tmp_path / "systeme"
@@ -234,7 +235,7 @@ class TestFichierHosts:
         monkeypatch.setattr(dnslookup, "HOSTS_SYSTEME", str(systeme))
         doc = {"x": "x", "y": "y", "z": "z", "w": "w"}
         filtre = DnsFilter({"resolve": ["x", "y", "z"], "action": "replace", "hostsfile": [str(a), str(b)]})
-        assert filtre.apply(doc)
+        assert _run(filtre.apply(doc))
         assert doc == {"x": "10.0.0.1", "y": "10.0.0.2", "z": "10.0.0.3", "w": "w"}
         assert len(filtre._resolveurs_actifs) == 3
 
@@ -245,14 +246,14 @@ class TestServeurDns:
         """Remplace `Resolver.resolve` par une table `(nom, type) → réponse ou exception`."""
         appels: list = []
 
-        def resolve(self, nom, type_, search=True):
+        async def resolve(self, nom, type_, search=True):
             appels.append((nom, type_, self.nameservers, self.lifetime))
             reponse = reponses.get((nom, type_), dns.resolver.NoAnswer())
             if isinstance(reponse, Exception):
                 raise reponse
             return [SimpleNamespace(to_text=lambda v=v: v) for v in reponse]
 
-        monkeypatch.setattr(dns.resolver.Resolver, "resolve", resolve)
+        monkeypatch.setattr(dns.asyncresolver.Resolver, "resolve", resolve)
         monkeypatch.delenv("RSYSLOGSTACH_DNS", raising=False)
         monkeypatch.delenv("PYSTASHTEMPLATE_DNS", raising=False)
         return appels
@@ -263,17 +264,17 @@ class TestServeurDns:
             {("v6.fr", "AAAA"): ["::1"], ("1.0.0.10.in-addr.arpa.", "PTR"): ["web.local."]},
         )
         serveur = ServeurDns(0.5, serveurs_normalises({"address": ["192.0.2.53"], "search": "lan", "ndots": "2"}))
-        assert list(serveur.adresses("v6.fr")) == ["::1"]
-        assert serveur.noms("10.0.0.1") == ["web.local"]
+        assert _run(serveur.adresses("v6.fr")) == ["::1"]
+        assert _run(serveur.noms("10.0.0.1")) == ["web.local"]
         assert appels[0] == ("v6.fr", "A", ["192.0.2.53"], 0.5)
         assert serveur._client().ndots == 2
 
     def test_nxdomain_et_delai(self, monkeypatch) -> None:
         self._client(monkeypatch, {("x", "A"): dns.resolver.NXDOMAIN(), ("t", "A"): dns.exception.Timeout()})
         serveur = ServeurDns(0.1, serveurs_normalises("192.0.2.53"))
-        assert list(serveur.adresses("x")) == []
+        assert _run(serveur.adresses("x")) == []
         with pytest.raises(DelaiDepasse):
-            list(serveur.adresses("t"))
+            _run(serveur.adresses("t"))
 
     def test_configuration_systeme(self, monkeypatch) -> None:
         self._client(monkeypatch, {("x", "A"): ["10.1.1.1"]})
@@ -281,11 +282,11 @@ class TestServeurDns:
         filtre = DnsFilter({"resolve": ["h"], "action": "replace", "timeout": 1})
         assert isinstance(filtre._resolveurs_actifs[-1], ServeurDns)
         doc = {"h": "x"}
-        assert filtre.apply(doc)
+        assert _run(filtre.apply(doc))
         assert doc == {"h": "10.1.1.1"}
 
     def test_coupe_par_variable(self) -> None:
-        assert ServeurDns(0.5, serveurs_normalises("192.0.2.53")).noms("10.0.0.1") == []
+        assert _run(ServeurDns(0.5, serveurs_normalises("192.0.2.53")).noms("10.0.0.1")) == []
 
 
 class TestOptions:
@@ -328,7 +329,7 @@ class TestOptions:
     def test_resolveurs_par_defaut(self) -> None:
         assert len(DnsFilter({"nameserver": "192.0.2.53"})._resolveurs_actifs) == 2
         assert len(DnsFilter({"nameserver": []})._resolveurs_actifs) == 1
-        assert DnsFilter({}).apply({"h": "x"})
+        assert _run(DnsFilter({}).apply({"h": "x"}))
 
     def test_adresses_et_idn(self) -> None:
         assert est_adresse("10.0.0.1") and est_adresse("::1") and not est_adresse("010.0.0.1")

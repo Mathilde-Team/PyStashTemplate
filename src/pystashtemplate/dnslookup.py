@@ -36,9 +36,10 @@ import ipaddress
 import os
 import time
 from collections import OrderedDict
-from collections.abc import Callable, Iterable, Iterator
+from collections.abc import Callable
 from typing import Any, Protocol
 
+import dns.asyncresolver
 import dns.exception
 import dns.name
 import dns.resolver
@@ -60,12 +61,17 @@ class DelaiDepasse(Exception):
 
 
 class Resolveur(Protocol):
-    """Source de résolution : fichier hosts ou serveur DNS."""
+    """Source de résolution : fichier hosts ou serveur DNS.
 
-    def adresses(self, nom: str) -> Iterable[str]:
+    Asynchrone depuis #35 (chantier full async #1) : `dns.asyncresolver`
+    fournit la vraie concurrence réseau côté serveurs DNS ; les fichiers
+    hosts (lectures locales rapides) portent la même interface.
+    """
+
+    async def adresses(self, nom: str) -> list[str]:
         """Adresses du nom, dans l'ordre."""
 
-    def noms(self, adresse: str) -> Iterable[str]:
+    async def noms(self, adresse: str) -> list[str]:
         """Noms de l'adresse, dans l'ordre."""
 
 
@@ -137,12 +143,12 @@ class FichierHosts:
         return self._noms_vers_adresses
 
     @traced
-    def adresses(self, nom: str) -> list[str]:
+    async def adresses(self, nom: str) -> list[str]:
         """Adresses de `nom` dans l'ordre du fichier."""
         return list(self._charger().get(nom, []))
 
     @traced
-    def noms(self, adresse: str) -> list[str]:
+    async def noms(self, adresse: str) -> list[str]:
         """Noms de `adresse` (nom canonique d'abord)."""
         self._charger()
         return list(self._adresses_vers_noms.get(_normaliser_adresse(adresse), []))
@@ -162,16 +168,16 @@ class ServeurDns:
         """
         self._serveurs = serveurs
         self._timeout = timeout
-        self._resolveur: dns.resolver.Resolver | None = None
+        self._resolveur: dns.asyncresolver.Resolver | None = None
 
     @traced
-    def _client(self) -> dns.resolver.Resolver:
-        """Résolveur dnspython, construit au premier usage."""
+    def _client(self) -> dns.asyncresolver.Resolver:
+        """Résolveur dnspython asynchrone, construit au premier usage."""
         if self._resolveur is None:
             if self._serveurs is None:
-                resolveur = dns.resolver.Resolver(configure=True)
+                resolveur = dns.asyncresolver.Resolver(configure=True)
             else:
-                resolveur = dns.resolver.Resolver(configure=False)
+                resolveur = dns.asyncresolver.Resolver(configure=False)
                 resolveur.nameservers = list(self._serveurs["nameserver"])
                 resolveur.search = [dns.name.from_text(domaine) for domaine in self._serveurs["search"]]
                 resolveur.ndots = self._serveurs["ndots"]
@@ -181,7 +187,7 @@ class ServeurDns:
         return self._resolveur
 
     @traced
-    def _requete(self, nom: str, type_: str) -> list[str]:
+    async def _requete(self, nom: str, type_: str) -> list[str]:
         """Réponses d'une requête ; aucune si le nom n'existe pas ou sans réponse."""
         if (
             os.environ.get(VARIABLE_DESACTIVATION) or os.environ.get(VARIABLE_DESACTIVATION_ANCIENNE, "")
@@ -189,7 +195,7 @@ class ServeurDns:
             logger.debug("dns : requêtes réseau coupées ({}=off)", VARIABLE_DESACTIVATION)
             return []
         try:
-            reponse = self._client().resolve(nom, type_, search=True)
+            reponse = await self._client().resolve(nom, type_, search=True)
         except dns.exception.Timeout as exc:
             logger.debug("dns : délai dépassé pour {} {} : {}", nom, type_, exc)
             raise DelaiDepasse(str(exc)) from exc
@@ -201,15 +207,14 @@ class ServeurDns:
         return resultats
 
     @traced
-    def adresses(self, nom: str) -> Iterator[str]:
+    async def adresses(self, nom: str) -> list[str]:
         """Adresses IPv4 puis IPv6."""
-        yield from self._requete(nom, "A")
-        yield from self._requete(nom, "AAAA")
+        return [*await self._requete(nom, "A"), *await self._requete(nom, "AAAA")]
 
     @traced
-    def noms(self, adresse: str) -> list[str]:
+    async def noms(self, adresse: str) -> list[str]:
         """Noms PTR, sans point final."""
-        return [nom.rstrip(".") for nom in self._requete(dns.reversename.from_address(adresse).to_text(), "PTR")]
+        return [nom.rstrip(".") for nom in await self._requete(dns.reversename.from_address(adresse).to_text(), "PTR")]
 
 
 @traced
@@ -371,17 +376,21 @@ class DnsFilter:
         return resolveurs
 
     @traced
-    def apply(self, doc: dict[str, Any]) -> bool:
-        """Applique `resolve` puis `reverse` ; True si le filtre est allé au bout."""
+    async def apply(self, doc: dict[str, Any]) -> bool:
+        """Applique `resolve` puis `reverse` ; True si le filtre est allé au bout.
+
+        Asynchrone depuis #35 (chantier full async #1) : la résolution
+        réseau passe par `dns.asyncresolver`.
+        """
         for champs, inverse in ((self._resolve, False), (self._reverse, True)):
-            if champs is not None and not self._traiter(doc, champs, inverse=inverse):
+            if champs is not None and not await self._traiter(doc, champs, inverse=inverse):
                 logger.debug("dns : filtre arrêté")
                 return False
         logger.debug("dns : terminé")
         return True
 
     @traced
-    def _traiter(self, doc: dict[str, Any], champs: list[str], *, inverse: bool) -> bool:
+    async def _traiter(self, doc: dict[str, Any], champs: list[str], *, inverse: bool) -> bool:
         """`resolve(event)` / `reverse(event)` : False quand Ruby fait `return`."""
         for champ in champs:
             chemin = parse_field_path(champ)
@@ -401,14 +410,14 @@ class DnsFilter:
             if inverse and not est_adresse(brut):
                 logger.debug("dns : pas une adresse : {!r}", brut)
                 return False
-            resultat = self._chercher(doc, brut, inverse=inverse)
+            resultat = await self._chercher(doc, brut, inverse=inverse)
             if resultat is None:
                 return False
             self._ecrire(doc, chemin, resultat, tableau=tableau)
         return True
 
     @traced
-    def _chercher(self, doc: dict[str, Any], brut: str, *, inverse: bool) -> str | None:
+    async def _chercher(self, doc: dict[str, Any], brut: str, *, inverse: bool) -> str | None:
         """Résultat (caches compris) ; None si échec, délai dépassé ou erreur."""
         if self._cache_echecs is not None and self._cache_echecs.lire(brut):
             logger.debug("dns : échec récent en cache : {}", brut)
@@ -416,7 +425,7 @@ class DnsFilter:
         try:
             resultat = self._cache_succes.lire(brut) if self._cache_succes is not None else None
             if resultat is None:
-                resultat = self._avec_essais(brut, inverse=inverse)
+                resultat = await self._avec_essais(brut, inverse=inverse)
                 if resultat is not None and self._cache_succes is not None:
                     self._cache_succes.ecrire(brut, resultat)
         except DelaiDepasse:
@@ -439,12 +448,12 @@ class DnsFilter:
             self._cache_echecs.ecrire(brut, True)
 
     @traced
-    def _avec_essais(self, brut: str, *, inverse: bool) -> str | None:
+    async def _avec_essais(self, brut: str, *, inverse: bool) -> str | None:
         """`retriable_request` : nouveaux essais après un délai dépassé ou une erreur réseau."""
         essais = 0
         while True:
             try:
-                return self._nom(brut) if inverse else self._adresse(brut)
+                return await (self._nom(brut) if inverse else self._adresse(brut))
             except (DelaiDepasse, OSError) as exc:
                 if essais >= self._max_retries:
                     logger.debug("dns : abandon après {} essai(s) : {}", essais + 1, exc)
@@ -453,19 +462,19 @@ class DnsFilter:
                 logger.debug("dns : nouvel essai {} pour {}", essais, brut)
 
     @traced
-    def _adresse(self, nom: str) -> str | None:
+    async def _adresse(self, nom: str) -> str | None:
         """Première adresse du premier résolveur qui répond."""
         ascii_ = _vers_ascii(nom)
         for resolveur in self._resolveurs_actifs:
-            for adresse in resolveur.adresses(ascii_):
+            for adresse in await resolveur.adresses(ascii_):
                 return adresse
         return None
 
     @traced
-    def _nom(self, adresse: str) -> str | None:
+    async def _nom(self, adresse: str) -> str | None:
         """Premier nom du premier résolveur qui répond, en Unicode."""
         for resolveur in self._resolveurs_actifs:
-            for nom in resolveur.noms(adresse):
+            for nom in await resolveur.noms(adresse):
                 return _vers_unicode(nom)
         return None
 
