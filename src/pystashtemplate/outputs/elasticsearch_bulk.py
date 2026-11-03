@@ -9,15 +9,23 @@ OpenObserve — #2) ne sont plus que des sous-classes de quelques lignes
 - `chemin_bulk` : préfixe de chemin avant `/_bulk` (`/insert/elasticsearch`
   pour VictoriaLogs, `/api/v1/_elastic` pour Quickwit, `/api/{org}` pour
   OpenObserve) ;
-- `actions` : actions supportées (Quickwit n'accepte que `create`) ;
-- `id_accepte` : `_id` accepté ou non (Quickwit le refuse) ;
-- `rapport_par_element` : réponse analysée élément par élément
-  (`items[]`) ou seulement statut HTTP global (Quickwit ne rapporte pas
-  les erreurs par élément) — dégradation documentée ;
+- `capacites` : actions supportées (Quickwit n'accepte que `create`),
+  `_id` accepté ou non, accusé de réception par élément (`items[]`) ou
+  statut HTTP global (Quickwit ne rapporte pas les erreurs par élément) —
+  dégradation documentée ;
 - `en_tetes` : en-têtes HTTP propres (authentification OpenObserve…).
 
-Comportement (parité avec l'`indexer` de RsysLogstach, que #160 migre
-dessus sans changement) :
+Deux portes d'entrée, même tampon :
+
+- `envoyer(doc, ...)` — API par document, utilisée par le connecteur
+  RsysLogstach (l'`indexer` y migre en #160, sans changement de
+  comportement) : rend un `SendOutcome` par document ;
+- `send(batch)` — contrat `Output` du socle (#4) : les options du bloc
+  `output{}`, déjà rendues par l'interpréteur contre chaque document,
+  servent le lot entier (cas courant : `index` fixe, pas de `_id` par
+  document — les options par document passent par `envoyer`).
+
+Comportement (parité avec l'`indexer` de RsysLogstach) :
 
 - un échec **permanent** (4xx : 400 mapping, 404…) mène le document en
   DLQ si elle est configurée (`SendOutcome.DEAD_LETTERED`), sinon
@@ -25,18 +33,20 @@ dessus sans changement) :
 - un échec **transitoire** (connexion, délai dépassé, 429, 5xx) rend le
   document à l'appelant (`RETRYABLE`) : il le retient et le renvoie,
   exactement comme rsyslog le fait pour l'indexer historique. Le client
-  ne re-tampone pas un échec transitoire (un double envoi serait
+  ne re-tamponne pas un échec transitoire (un double envoi serait
   possible si l'appelant renvoyait aussi) ;
-- `reessais_max` (0 par défaut, parité exacte) : après un échec
-  transitoire, retente le lot jusqu'à `reessais_max` fois, délai
-  `reessai_delai` entre chaque (exponentiel : délai × 2^n) ;
+- `retry_max` (0 par défaut, parité exacte) : après un échec
+  transitoire, retente le lot jusqu'à `retry_max` fois, délai
+  `retry_backoff` entre chaque (exponentiel : délai × 2^n) ;
 - `batch_size` (1 par défaut) : les documents sont tamponnés et envoyés
-  en un seul `_bulk` quand le tampon est plein — `send` renvoie alors
+  en un seul `_bulk` quand le tampon est plein — `envoyer` renvoie alors
   `SendOutcome.EN_ATTENTE` pour un document seulement tamponné (résultat
   non encore connu), le résultat réel arrivant au `flush()` suivant.
 
-Ne dépend que de `tracing`, `i18n` et `dlq` (feuilles du graphe) ;
-utilise `httpx` pour le client HTTP asynchrone.
+Ne dépend que de `dlq`, `i18n` et `tracing` (feuilles du graphe) ;
+utilise `httpx` pour le client HTTP asynchrone. Les méthodes asynchrones
+journalisent entrée/sortie à la main (`tracing.traced` est synchrone —
+décorateur asynchrone : #37).
 """
 
 from __future__ import annotations
@@ -45,17 +55,15 @@ import asyncio
 import enum
 import json
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, ClassVar
 
 import httpx
 from loguru import logger
 
 from pystashtemplate.dlq import LocalDeadLetterQueue
 from pystashtemplate.i18n import _
+from pystashtemplate.outputs.base import ACTIONS, Document, Output
 from pystashtemplate.tracing import traced
-
-# Actions `bulk` du plugin de sortie Logstash (RsysLogstach #126).
-ACTIONS = ("index", "create", "update", "delete")
 
 # Statuts HTTP traités comme des échecs définitifs de TOUT le lot : un
 # 400/404 sur la requête _bulk elle-même (payload refusé, index absent)
@@ -65,7 +73,7 @@ ACTIONS = ("index", "create", "update", "delete")
 _STATUTS_PERMANENTS = frozenset({400, 404})
 
 # Statuts HTTP transitoires de la requête entière : retentés (jusqu'à
-# `reessais_max`), puis rendus à l'appelant comme un échec transitoire.
+# `retry_max`), puis rendus à l'appelant comme un échec transitoire.
 _STATUTS_TRANSITOIRES = frozenset({408, 425, 429})
 
 
@@ -94,7 +102,7 @@ class SendOutcome(enum.Enum):
     EN_ATTENTE = "en_attente"
 
 
-class ElasticsearchBulkOutput:
+class ElasticsearchBulkOutput(Output):
     """Envoi de documents par l'API `_bulk` (NDJSON), paramétrable par produit.
 
     Chaque document tamponné devient une paire de lignes NDJSON (ligne
@@ -102,100 +110,134 @@ class ElasticsearchBulkOutput:
     défaut pour la parité avec l'indexer historique de RsysLogstach.
     L'`index` peut être un gabarit sprintf `%{+YYYY.MM.dd}` : déjà rendu
     par l'interpréteur du `output{}`, il arrive ici en nom complet ; la
-    sortie autonome fournit aussi `index_pattern` (strftime, ex.
+    sortie fournit aussi le motif strftime (`index`, ex.
     ``logs-%Y.%m.%d``) rendu à chaque envoi quand aucun `index` n'est
-    passé pour le document.
+    passé pour le document. Sous-classe du contrat `Output` (#4) : le
+    nom de plugin (`plugin`) et l'inscription au registre sont à la
+    charge de chaque produit (ex. `opensearch` : #12).
     """
 
-    # Capacités par défaut de la famille (surchargeables par sous-classe).
-    chemin_bulk: str = ""
-    actions: tuple[str, ...] = ACTIONS
-    id_accepte: bool = True
-    rapport_par_element: bool = True
+    # Préfixe de chemin avant `/_bulk` (surchargeable par sous-classe).
+    chemin_bulk: ClassVar[str] = ""
+    # En-têtes HTTP propres au produit (surchargeables par sous-classe).
+    en_tetes_par_defaut: ClassVar[dict[str, str]] = {}
 
     @traced
     def __init__(
         self,
+        options: dict[str, Any],
         *,
-        base_url: str,
-        index_pattern: str = "logs-%Y.%m.%d",
-        auth: tuple[str, str] | None = None,
-        en_tetes: dict[str, str] | None = None,
-        verify: bool = True,
-        ca_certs: str | None = None,
-        client_cert: str | None = None,
-        client_key: str | None = None,
-        timeout: float = 3.0,
-        batch_size: int = 1,
-        reessais_max: int = 0,
-        reessai_delai: float = 1.0,
-        dlq: LocalDeadLetterQueue | None = None,
         transport: httpx.AsyncBaseTransport | None = None,
+        dlq: LocalDeadLetterQueue | None = None,
     ) -> None:
-        """Prépare le client HTTP et le tampon NDJSON.
+        """Prépare le client HTTP et le tampon NDJSON depuis les options du bloc.
 
         Args:
-            base_url: URL de base, ex. ``https://opensearch:9200`` (le
-                chemin `_bulk` complet est `{chemin_bulk}/_bulk`).
-            index_pattern: Motif strftime du nom d'index (défaut, un
-                index par jour) quand `send` ne reçoit pas d'`index`.
-            auth: Couple (utilisateur, mot de passe), ou None.
-            en_tetes: En-têtes HTTP propres au produit (fusionnés après
-                les en-têtes standards).
-            verify: Vérifier les certificats TLS.
-            ca_certs: Autorité de signature (PEM) du serveur.
-            client_cert: Certificat client PEM (mTLS).
-            client_key: Clé privée PEM de `client_cert`.
-            timeout: Délai d'attente du client HTTP, en secondes.
-            batch_size: Documents tamponnés avant envoi d'un `_bulk`.
-            reessais_max: Retentes d'un lot après échec transitoire (0 =
-                jamais, parité avec l'indexer historique).
-            reessai_delai: Délai de base entre retentes (exponentiel).
-            dlq: Dead letter queue locale optionnelle pour les échecs
-                permanents.
+            options: Options du bloc `output{}` : connexion (`hosts`,
+                `user`, `password`, `ssl`, `cacert`, `ssl_certificate`,
+                `ssl_key`, `timeout`), envoi (`index`, `batch_size`,
+                `retry_max`, `retry_backoff`, `action`, `pipeline`,
+                `routing`, `doc_as_upsert`) et DLQ (`dlq_path`). Une
+                `dlq` toute construite (tests) prime sur `dlq_path`.
             transport: Transport httpx de remplacement (couture de test —
                 un faux serveur via `httpx.MockTransport`).
 
         Raises:
-            ValueError: `batch_size` ou `reessais_max` négatif.
+            ValueError: `batch_size` ou `retry_max` négatif, option
+                inconnue ou mal formée.
         """
-        if batch_size < 1 or reessais_max < 0:
-            raise ValueError("batch_size (>= 1) et reessais_max (>= 0) doivent être positifs")
-        self._index_pattern = index_pattern
-        self._dlq = dlq
+        super().__init__(options)
+        inconnues = set(options) - self.OPTIONS_CONNUES
+        if inconnues:
+            raise ValueError(_("options inconnues pour cette sortie : {}").format(", ".join(sorted(inconnues))))
+        self._hosts = self._hosts_de(options.get("hosts"))
+        self._index_pattern = options.get("index") or "logs-%Y.%m.%d"
+        batch_size = int(options.get("batch_size", 1))
+        retry_max = int(options.get("retry_max", 0))
+        if batch_size < 1 or retry_max < 0:
+            raise ValueError("batch_size (>= 1) et retry_max (>= 0) doivent être positifs")
         self._batch_size = batch_size
-        self._reessais_max = reessais_max
-        self._reessai_delai = reessai_delai
-        self._en_tetes = dict(en_tetes) if en_tetes else {}
+        self._retry_max = retry_max
+        self._retry_backoff = float(options.get("retry_backoff", 1.0))
+        self._dlq = dlq
+        if self._dlq is None and options.get("dlq_path"):
+            self._dlq = LocalDeadLetterQueue(str(options["dlq_path"]))
+        self._transport = transport
         self._pending: list[dict[str, Any]] = []
-        # Failover multi-nœuds (RsysLogstach #37) : le transport
-        # opensearch-py retentait le nœud suivant ; httpx, lui, ne gère
-        # qu'une URL — la re-tamponisation d'un échec transitoire étant
-        # rendue à l'appelant (voir la docstring du module), le failover
-        # revient à l'appelant (rsyslog) qui renvoie le document.
-        # httpx accepte dans `verify` un booléen OU le chemin d'un fichier
-        # d'autorités (CA bundle) : `ca_certs` remplace le magasin système.
-        self._client = httpx.AsyncClient(
-            base_url=base_url,
-            auth=auth,
-            verify=ca_certs or verify,
-            cert=(client_cert, client_key) if client_cert else None,
-            timeout=timeout,
-            headers={"Content-Type": "application/x-ndjson", **self._en_tetes},
-            transport=transport,
-        )
+        self._client: httpx.AsyncClient | None = None
+
+    # Options lues par cette famille de sorties (garde-fou : une option
+    # inconnue est une faute de frappe qui mérite un échec franc).
+    OPTIONS_CONNUES: ClassVar[frozenset[str]] = frozenset(
+        {
+            "hosts",
+            "index",
+            "user",
+            "password",
+            "ssl",
+            "cacert",
+            "ssl_certificate",
+            "ssl_key",
+            "timeout",
+            "batch_size",
+            "retry_max",
+            "retry_backoff",
+            "action",
+            "pipeline",
+            "routing",
+            "doc_as_upsert",
+            "dlq_path",
+            "headers",
+        }
+    )
 
     @traced
-    async def health(self) -> dict[str, Any]:
-        """Interroge le serveur (GET /) : sa version, ou lève l'erreur.
+    def _hosts_de(self, hosts: Any) -> str:
+        """Première URL des `hosts` (chaîne seule ou liste).
 
-        Utilisé par le contrôle de santé périodique d'un connecteur
-        (RsysLogstach #37) : `GET {base_url}` renvoie la version du
-        produit, comme `client.info()` de l'indexer historique.
+        Raises:
+            ValueError: `hosts` absent ou liste vide.
         """
-        response = await self._client.get("/")
-        response.raise_for_status()
-        return response.json()
+        if isinstance(hosts, str):
+            return hosts
+        if isinstance(hosts, (list, tuple)) and hosts:
+            return str(hosts[0])
+        raise ValueError(_("hosts est requis (ex. https://opensearch:9200)"))
+
+    @traced
+    def _client_http(self) -> httpx.AsyncClient:
+        """Client HTTP paresseux (créé au premier envoi, jamais avant `open`)."""
+        if self._client is None:
+            # httpx accepte dans `verify` un booléen OU le chemin d'un
+            # fichier d'autorités (CA bundle) : `cacert` remplace le
+            # magasin système. mTLS : `ssl_certificate` + `ssl_key`.
+            cert = (
+                (str(self.options["ssl_certificate"]), str(self.options["ssl_key"]))
+                if self.options.get("ssl_certificate")
+                else None
+            )
+            self._client = httpx.AsyncClient(
+                base_url=self._hosts,
+                auth=(str(self.options["user"]), str(self.options["password"])) if self.options.get("user") else None,
+                verify=str(self.options["cacert"])
+                if self.options.get("cacert")
+                else bool(self.options.get("ssl", True)),
+                cert=cert,
+                timeout=float(self.options.get("timeout", 3.0)),
+                headers={
+                    "Content-Type": "application/x-ndjson",
+                    **self.en_tetes_par_defaut,
+                    **self._en_tetes_d_options(),
+                },
+                transport=self._transport,
+            )
+        return self._client
+
+    @traced
+    def _en_tetes_d_options(self) -> dict[str, str]:
+        """En-têtes propres passés dans les options (chaque valeur devient une chaîne)."""
+        en_tetes = self.options.get("headers")
+        return {str(k): str(v) for k, v in en_tetes.items()} if isinstance(en_tetes, dict) else {}
 
     @traced
     def _current_index(self) -> str:
@@ -206,16 +248,16 @@ class ElasticsearchBulkOutput:
     def _ligne_action(self, pending: dict[str, Any]) -> str:
         """Ligne d'action NDJSON du document (première ligne de la paire).
 
-        L'action a déjà été validée par `send` (inconnue, non supportée
-        par la sortie, `update`/`delete` sans `_id`) : ici, il ne reste
-        qu'à la mettre en forme.
+        L'action a déjà été validée par `envoyer` (inconnue, non
+        supportée par la sortie, `update`/`delete` sans `_id`) : ici, il
+        ne reste qu'à la mettre en forme.
         """
         action = pending["action"]
         meta: dict[str, Any] = {"_index": pending["index"]}
         document_id = pending["document_id"]
-        if document_id and self.id_accepte:
+        if document_id and self.capacites.accepte_id:
             meta["_id"] = document_id
-        elif document_id and not self.id_accepte:
+        elif document_id and not self.capacites.accepte_id:
             logger.warning(_("sortie : _id refusé par le produit, ignoré"))
         if pending["routing"]:
             meta["routing"] = pending["routing"]
@@ -243,7 +285,7 @@ class ElasticsearchBulkOutput:
         return "\n".join(lignes) + "\n"
 
     @traced
-    async def send(
+    async def envoyer(
         self,
         doc: dict[str, Any],
         *,
@@ -260,7 +302,7 @@ class ElasticsearchBulkOutput:
             doc: Document prêt à envoyer.
             index: Nom d'index pour CE document (déjà rendu par
                 l'interpréteur si gabarit sprintf) ; `None` retombe sur le
-                motif quotidien `index_pattern`.
+                motif quotidien `index`.
             document_id: `_id` pour CE document ; ignoré si le produit
                 n'accepte pas de `_id` (dégradation documentée).
             action: `index` (défaut), `create`, `update` ou `delete`.
@@ -279,12 +321,13 @@ class ElasticsearchBulkOutput:
                 `update`/`delete` sans `document_id`.
             ValueError: pipelines différents dans un même lot.
         """
+        logger.debug("ElasticsearchBulkOutput.envoyer | entrée")
         resolved_index = index or self._current_index()
-        if action in ("update", "delete") and not (document_id and self.id_accepte):
+        if action in ("update", "delete") and not (document_id and self.capacites.accepte_id):
             raise ActionInvalideError(f"l'action {action} exige document_id")
         if action not in ACTIONS:
             raise ActionInvalideError(f"action inconnue : {action!r}")
-        if action not in self.actions:
+        if action not in self.capacites.actions:
             raise ActionInvalideError(f"action non supportée par la sortie : {action!r}")
         if pipeline:
             for pending in self._pending:
@@ -301,17 +344,52 @@ class ElasticsearchBulkOutput:
         }
         self._pending.append(pending)
         if len(self._pending) < self._batch_size:
-            logger.debug("send | document tamponné ({})", len(self._pending))
+            logger.debug("ElasticsearchBulkOutput.envoyer | document tamponné ({})", len(self._pending))
+            logger.debug("ElasticsearchBulkOutput.envoyer | sortie")
             return SendOutcome.EN_ATTENTE
-        outcomes = await self.flush()
+        outcomes = await self._flush()
+        logger.debug("ElasticsearchBulkOutput.envoyer | sortie")
         return outcomes[-1]
 
+    async def send(self, batch: list[Document]) -> None:
+        """Envoie un lot de documents (contrat `Output` #4).
+
+        Chaque document part avec les options du bloc `output{}` (déjà
+        rendues par l'interpréteur) : `index`, `action`, `pipeline`,
+        `routing`, `doc_as_upsert`. Le résultat de chaque document est
+        journalisé ; les échecs suivent la même politique que `envoyer`
+        (permanent → DLQ, transitoire rendu à l'appelant).
+        """
+        logger.debug("ElasticsearchBulkOutput.send | entrée ({} document(s))", len(batch))
+        for doc in batch:
+            outcome = await self.envoyer(
+                dict(doc),
+                action=str(self.options.get("action", "index")),
+                pipeline=self.options.get("pipeline"),
+                routing=self.options.get("routing"),
+                doc_as_upsert=bool(self.options.get("doc_as_upsert", False)),
+            )
+            logger.debug("ElasticsearchBulkOutput.send | {} → {}", outcome.value, doc)
+        logger.debug("ElasticsearchBulkOutput.send | sortie")
+
+    async def flush(self) -> None:
+        """Pousse les documents en attente (contrat `Output` : arrêt propre).
+
+        Un lot vide ne fait aucune requête. Après un échec transitoire
+        épuisé (`retry_max`), les documents sont retirés du tampon et
+        rendus à l'appelant (`RETRYABLE`) — qui les retient et les
+        renvoie — pour éviter un double envoi s'il renvoie aussi.
+        """
+        logger.debug("ElasticsearchBulkOutput.flush | entrée")
+        await self._flush()
+        logger.debug("ElasticsearchBulkOutput.flush | sortie")
+
     @traced
-    async def flush(self) -> list[SendOutcome]:
+    async def _flush(self) -> list[SendOutcome]:
         """Envoie le tampon en un `_bulk` et renvoie le résultat de chaque document.
 
         Un lot vide ne fait aucune requête (`[]`). Après un échec
-        transitoire épuisé (`reessais_max`), les documents sont retirés du
+        transitoire épuisé (`retry_max`), les documents sont retirés du
         tampon et rendus à l'appelant (`RETRYABLE`) — qui les retient et
         les renvoie — pour éviter un double envoi s'il renvoie aussi.
         """
@@ -319,7 +397,7 @@ class ElasticsearchBulkOutput:
             return []
         pendings = self._pending
         self._pending = []
-        logger.debug("flush | {} document(s)", len(pendings))
+        logger.debug("_flush | {} document(s)", len(pendings))
         response = await self._envoyer_lot(pendings)
         if response is None:
             # Échec transitoire épuisé : rendu à l'appelant (docstring).
@@ -331,8 +409,8 @@ class ElasticsearchBulkOutput:
         """POSTe le NDJSON, avec retentes sur échec transitoire.
 
         Returns:
-            La réponse HTTP, ou None après `reessais_max` retentes
-            épuisées sur un échec transitoire (connexion, 429, 5xx…).
+            La réponse HTTP, ou None après `retry_max` retentes épuisées
+            sur un échec transitoire (connexion, 429, 5xx…).
         """
         params: dict[str, str] = {}
         pipelines = {p["pipeline"] for p in pendings if p["pipeline"]}
@@ -341,27 +419,27 @@ class ElasticsearchBulkOutput:
         essai = 0
         while True:
             try:
-                response = await self._client.post(
+                response = await self._client_http().post(
                     f"{self.chemin_bulk}/_bulk",
                     content=self._corps_ndjson(pendings),
                     params=params or None,
                 )
             except httpx.HTTPError as exc:
                 logger.warning(_("envoi _bulk échoué (réseau) erreur={error}"), error=exc)
-                if essai >= self._reessais_max:
+                if essai >= self._retry_max:
                     return None
                 essai += 1
-                await asyncio.sleep(self._reessai_delai * 2 ** (essai - 1))
+                await asyncio.sleep(self._retry_backoff * 2 ** (essai - 1))
                 continue
             if response.status_code in _STATUTS_PERMANENTS:
                 logger.warning(_("envoi _bulk refusé définitivement statut={statut}"), statut=response.status_code)
                 return response
             if response.status_code >= 500 or response.status_code in _STATUTS_TRANSITOIRES:
                 logger.warning(_("envoi _bulk échoué statut={statut}"), statut=response.status_code)
-                if essai >= self._reessais_max:
+                if essai >= self._retry_max:
                     return response
                 essai += 1
-                await asyncio.sleep(self._reessai_delai * 2 ** (essai - 1))
+                await asyncio.sleep(self._retry_backoff * 2 ** (essai - 1))
                 continue
             return response
 
@@ -375,7 +453,7 @@ class ElasticsearchBulkOutput:
         """
         if response.status_code in _STATUTS_PERMANENTS:
             return [await self._permanent(pending, f"statut {response.status_code}") for pending in pendings]
-        if not self.rapport_par_element:
+        if not self.capacites.accuse_par_evenement:
             logger.debug("_analyser_reponse | statut global seul")
             return [SendOutcome.INDEXED] * len(pendings)
         try:
@@ -411,7 +489,28 @@ class ElasticsearchBulkOutput:
         await self._dlq.write(pending["doc"], index=pending["index"], error=erreur)
         return SendOutcome.DEAD_LETTERED
 
-    @traced
+    async def open(self) -> None:
+        """Ouvre la sortie : le client HTTP est paresseux, rien à ouvrir ici (contrat `Output`)."""
+        logger.debug("ElasticsearchBulkOutput.open | entrée")
+        self._client_http()  # crée le client (et valide TLS/auth) sans requête
+        logger.debug("ElasticsearchBulkOutput.open | sortie")
+
     async def close(self) -> None:
-        """Ferme proprement le client HTTP."""
-        await self._client.aclose()
+        """Ferme proprement le client HTTP (idempotent)."""
+        logger.debug("ElasticsearchBulkOutput.close | entrée")
+        if self._client is not None:
+            await self._client.aclose()
+            self._client = None
+        logger.debug("ElasticsearchBulkOutput.close | sortie")
+
+    @traced
+    async def health(self) -> dict[str, Any]:
+        """Interroge le serveur (GET /) : sa version, ou lève l'erreur.
+
+        Utilisé par le contrôle de santé périodique d'un connecteur
+        (RsysLogstach #37) : `GET {hosts}` renvoie la version du
+        produit, comme `client.info()` de l'indexer historique.
+        """
+        response = await self._client_http().get("/")
+        response.raise_for_status()
+        return response.json()

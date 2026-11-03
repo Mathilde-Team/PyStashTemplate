@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-03 22:01+0000\n"
+"POT-Creation-Date: 2026-11-03 22:08+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -60,6 +60,26 @@ msgstr ""
 
 #: src/pystashtemplate/interpreter.py
 msgid "dissect : échec sur le champ {}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/__init__.py
+msgid "sortie « {} » déjà inscrite au registre"
+msgstr ""
+
+#: src/pystashtemplate/outputs/__init__.py
+msgid "sortie « {} » inconnue — sorties disponibles : {}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/base.py
+msgid "action « {} » non supportée par cette sortie (supportées : {})"
+msgstr ""
+
+#: src/pystashtemplate/outputs/elasticsearch_bulk.py
+msgid "options inconnues pour cette sortie : {}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/elasticsearch_bulk.py
+msgid "hosts est requis (ex. https://opensearch:9200)"
 msgstr ""
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py

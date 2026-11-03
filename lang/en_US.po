@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-03 22:01+0000\n"
+"POT-Creation-Date: 2026-11-03 22:08+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: deusyv\n"
 "Language-Team: English\n"
@@ -63,6 +63,18 @@ msgstr "json: a non-object JSON requires the target option"
 msgid "json ignoré : option source manquante"
 msgstr "json ignored: missing source option"
 
+#: src/pystashtemplate/outputs/__init__.py
+msgid "sortie « {} » déjà inscrite au registre"
+msgstr "output \"{}\" already registered"
+
+#: src/pystashtemplate/outputs/__init__.py
+msgid "sortie « {} » inconnue — sorties disponibles : {}"
+msgstr "unknown output \"{}\" — available outputs: {}"
+
+#: src/pystashtemplate/outputs/base.py
+msgid "action « {} » non supportée par cette sortie (supportées : {})"
+msgstr "action \"{}\" not supported by this output (supported: {})"
+
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
 #, python-brace-format
 msgid "envoi _bulk refusé définitivement statut={statut}"
@@ -87,6 +99,14 @@ msgstr "_bulk send failed status={statut}"
 #, python-brace-format
 msgid "envoi _bulk élément échoué statut={statut}"
 msgstr "_bulk send item failed status={statut}"
+
+#: src/pystashtemplate/outputs/elasticsearch_bulk.py
+msgid "hosts est requis (ex. https://opensearch:9200)"
+msgstr "hosts is required (e.g. https://opensearch:9200)"
+
+#: src/pystashtemplate/outputs/elasticsearch_bulk.py
+msgid "options inconnues pour cette sortie : {}"
+msgstr "unknown options for this output: {}"
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
 msgid "réponse _bulk : {} éléments attendus, {} reçus"
