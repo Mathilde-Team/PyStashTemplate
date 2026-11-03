@@ -44,7 +44,14 @@ from loguru import logger
 
 from pystashtemplate.enrichment import GeoIPLookup, TranslateDictionary
 from pystashtemplate.i18n import _
-from pystashtemplate.templates import _MISSING, assign_field, parse_field_path, remove_field_path, render_template, resolve_field
+from pystashtemplate.templates import (
+    _MISSING,
+    assign_field,
+    parse_field_path,
+    remove_field_path,
+    render_template,
+    resolve_field,
+)
 from pystashtemplate.tracing import traced
 from pystashtemplate.util import add_failure_tags
 

@@ -1,7 +1,7 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
 """Tests de `src/dnslookup.py` et du plugin `dns {}` natif des `.conf` (issue #121).
 
-Aucun vrai serveur DNS : `RSYSLOGSTACH_DNS=off` (conftest) coupe le réseau,
+Aucun vrai serveur DNS : `PYSTASHTEMPLATE_DNS=off` (conftest) coupe le réseau,
 les résolveurs sont des doubles ou des fichiers hosts temporaires, et le
 client dnspython est remplacé là où il est testé.
 """
@@ -247,7 +247,8 @@ class TestServeurDns:
             return [SimpleNamespace(to_text=lambda v=v: v) for v in reponse]
 
         monkeypatch.setattr(dns.resolver.Resolver, "resolve", resolve)
-        monkeypatch.delenv("RSYSLOGSTACH_DNS")
+        monkeypatch.delenv("RSYSLOGSTACH_DNS", raising=False)
+        monkeypatch.delenv("PYSTASHTEMPLATE_DNS", raising=False)
         return appels
 
     def test_a_puis_aaaa_et_ptr(self, monkeypatch) -> None:

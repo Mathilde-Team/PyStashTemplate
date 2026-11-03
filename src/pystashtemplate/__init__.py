@@ -9,4 +9,5 @@ connecteur rsyslog : omprog, indexer, dlq, metrics) en dépend ; d'autres
 outils (…beat) pourront faire de même. Prévu aussi comme service autonome
 asynchrone à l'écoute d'un port (sflow, snmp — voir la feuille de route).
 """
+
 from __future__ import annotations

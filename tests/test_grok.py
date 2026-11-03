@@ -7,7 +7,14 @@ import warnings
 
 import pytest
 
-from pystashtemplate.grok import BASE_PATTERNS, Bibliotheque, GrokFilter, convertir, lire_dossiers_de_motifs, traduire_oniguruma
+from pystashtemplate.grok import (
+    BASE_PATTERNS,
+    Bibliotheque,
+    GrokFilter,
+    convertir,
+    lire_dossiers_de_motifs,
+    traduire_oniguruma,
+)
 from pystashtemplate.interpreter import PipelineInterpreter
 
 LIGNE_SYSLOG = "Nov  3 12:00:01 sw1 sshd[123]: Accepted password for bob"

@@ -33,7 +33,9 @@ def _imports_of(module_name: str) -> set[str]:
     internal: set[str] = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.Import):
-            internal.update(alias.name.split(".")[1] for alias in node.names if alias.name.startswith("pystashtemplate."))
+            internal.update(
+                alias.name.split(".")[1] for alias in node.names if alias.name.startswith("pystashtemplate.")
+            )
         elif isinstance(node, ast.ImportFrom) and node.module:
             # `from pystashtemplate.X import ...` → X
             if node.module.startswith("pystashtemplate"):

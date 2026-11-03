@@ -17,7 +17,14 @@ from pathlib import Path
 import pytest
 from conftest import IP_INCONNUE, IP_STRASBOURG
 
-from pystashtemplate.filters import DropFilter, FilterPipeline, GeoipFilter, TranslateFilter, apply_mutate, convert_value
+from pystashtemplate.filters import (
+    DropFilter,
+    FilterPipeline,
+    GeoipFilter,
+    TranslateFilter,
+    apply_mutate,
+    convert_value,
+)
 
 
 class TestConvertValueDocumentationLogstash:

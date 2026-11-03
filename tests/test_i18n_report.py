@@ -105,7 +105,7 @@ def test_totaux_hors_langue_source(lang) -> None:
 
 def test_catalogue_manquant_ou_mo_casse(lang, capsys, monkeypatch, tmp_path) -> None:
     (lang / "LINGUAS").write_text("en_US\nfr_FR\nde_DE\n", encoding="utf-8")
-    (lang / "locale" / "fr_FR" / "LC_MESSAGES" / "rsyslogstach.mo").write_bytes(b"pas un mo")
+    (lang / "locale" / "fr_FR" / "LC_MESSAGES" / f"{report.DOMAIN}.mo").write_bytes(b"pas un mo")
     resume = tmp_path / "resume.md"
     monkeypatch.setenv("GITHUB_STEP_SUMMARY", str(resume))
     assert report.main(["--lang-dir", str(lang)]) == 2

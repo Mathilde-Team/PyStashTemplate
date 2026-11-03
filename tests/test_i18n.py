@@ -17,7 +17,6 @@ import os
 import re
 import shutil
 import string
-import subprocess
 import sys
 from pathlib import Path
 
@@ -100,26 +99,26 @@ class TestChargement:
     def test_anglais(self, monkeypatch, recharge) -> None:
         monkeypatch.setenv("LANGUAGE", "en_US")
         module = recharge()
-        assert module._("Arrêt du pont messages={count}") == "Bridge stopped messages={count}"
+        assert module._("json ignoré : option source manquante") == "json ignored: missing source option"
         assert module.ngettext("un", "plusieurs", 2) == "plusieurs"
 
     def test_variable_de_langue_courte(self, monkeypatch, recharge) -> None:
         # Valeur usuelle de LANG/LANGUAGE : le jeu de caractères est ignoré.
         monkeypatch.setenv("LANGUAGE", "en_US.UTF-8")
-        assert recharge()._("enrichissement") == "enrichment"
+        assert recharge()._("base geoip illisible : {} ({})") == "unreadable geoip database: {} ({})"
 
     def test_francais_langue_source(self, recharge) -> None:
         # fr_FR.po n'a aucune traduction : les msgid (français) sont rendus.
         module = recharge()
         assert isinstance(module.translation, gettext.GNUTranslations)
-        assert module._("enrichissement") == "enrichissement"
+        assert module._("json ignoré : option source manquante") == "json ignoré : option source manquante"
 
     def test_langue_sans_catalogue(self, monkeypatch, recharge) -> None:
         monkeypatch.setenv("LANGUAGE", "xx_XX")
         monkeypatch.setenv("LC_ALL", "C")
         module = recharge()
         assert type(module.translation) is gettext.NullTranslations
-        assert module._("enrichissement") == "enrichissement"
+        assert module._("json ignoré : option source manquante") == "json ignoré : option source manquante"
 
     def test_dossier_de_l_environnement(self, monkeypatch, recharge, tmp_path) -> None:
         # Catalogue « maison » placé hors du dépôt (installation sur mesure).
@@ -129,7 +128,7 @@ class TestChargement:
         monkeypatch.setenv(i18n.ENV_LOCALEDIR, str(tmp_path))
         monkeypatch.setenv("LANGUAGE", "de_DE")
         module = recharge()
-        assert module._("enrichissement") == "enrichment"
+        assert module._("base geoip illisible : {} ({})") == "unreadable geoip database: {} ({})"
 
 
 class TestCatalogues:
@@ -237,4 +236,3 @@ def test_detecteur_de_chaines_non_marquees() -> None:
     )
     marques = [(ligne, _est_marquee(noeud)) for ligne, noeud in _chaines_utilisateur(arbre)]
     assert marques == [(1, False), (2, True), (3, False), (3, False), (4, True)]
-

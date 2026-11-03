@@ -392,12 +392,12 @@ class TestDropNatif:
 
     @pytest.mark.parametrize(("tirage", "attendu_ecarte"), [(0.10, True), (0.49, True), (0.50, False), (0.99, False)])
     def test_percentage_ecarte_une_part_aleatoire(self, monkeypatch, tirage: float, attendu_ecarte: bool) -> None:
-        monkeypatch.setattr("interpreter.random.random", lambda: tirage)
+        monkeypatch.setattr("pystashtemplate.interpreter.random.random", lambda: tirage)
         _, actions = _appliquer("filter { drop { percentage => 50 } }", {"x": 1})
         assert (actions is None) is attendu_ecarte
 
     @pytest.mark.parametrize("valeur", ['"100"', "100", '"pas un nombre"'])
     def test_percentage_100_ou_invalide_ecarte_toujours(self, monkeypatch, valeur: str) -> None:
-        monkeypatch.setattr("interpreter.random.random", lambda: 0.999)
+        monkeypatch.setattr("pystashtemplate.interpreter.random.random", lambda: 0.999)
         _, actions = _appliquer(f"filter {{ drop {{ percentage => {valeur} }} }}", {"x": 1})
         assert actions is None

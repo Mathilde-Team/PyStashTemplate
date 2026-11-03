@@ -97,12 +97,15 @@ class TestRenderTemplate:
 
 def test_templates_has_no_dependency_on_fingerprint():
     """PATTERNS.md : templates est une feuille, il ne dépend que de tracing."""
-    tree = ast.parse((Path(__file__).resolve().parents[1] / "src" / "templates.py").read_text(encoding="utf-8"))
+    tree = ast.parse(
+        (Path(__file__).resolve().parents[1] / "src" / "pystashtemplate" / "templates.py").read_text(encoding="utf-8")
+    )
     imported = set()
     for node in ast.walk(tree):
         if isinstance(node, ast.ImportFrom) and node.module:
-            imported.add(node.module.split(".")[0])
+            # `from pystashtemplate.tracing import ...` → tracing
+            imported.add(node.module.split(".")[-1])
         elif isinstance(node, ast.Import):
-            imported.update(a.name.split(".")[0] for a in node.names)
-    local = {p.stem for p in (Path(__file__).resolve().parents[1] / "src").glob("*.py")}
+            imported.update(a.name.split(".")[-1] for a in node.names)
+    local = {p.stem for p in (Path(__file__).resolve().parents[1] / "src" / "pystashtemplate").glob("*.py")}
     assert imported & local == {"tracing"}

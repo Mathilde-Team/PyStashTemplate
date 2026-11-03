@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-03 12:53+0000\n"
+"POT-Creation-Date: 2026-11-03 16:17+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: deusyv\n"
 "Language-Team: English\n"
@@ -17,324 +17,270 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n != 1);\n"
 
-#: src/filters.py
+#: src/pystashtemplate/filters.py
 msgid "base geoip illisible : {} ({})"
 msgstr "unreadable geoip database: {} ({})"
 
-#: src/filters.py
+#: src/pystashtemplate/filters.py
 #, python-brace-format
 msgid "date : fuseau {name} devenu inconnu, UTC retenu erreur={error}"
 msgstr "date: timezone {name} no longer known, falling back to UTC error={error}"
 
-#: src/filters.py
+#: src/pystashtemplate/filters.py
 msgid "dictionnaire translate illisible : {} ({})"
 msgstr "unreadable translate dictionary: {} ({})"
 
-#: src/filters.py
+#: src/pystashtemplate/filters.py
 msgid "exception pendant l'application du filtre mutate, opérations restantes ignorées : {}"
 msgstr "exception while applying the mutate filter, remaining operations skipped: {}"
 
-#: src/indexer.py
-#, python-brace-format
-msgid "Indexation OpenSearch échouée définitivement erreur={error}"
-msgstr "OpenSearch indexing failed permanently error={error}"
-
-#: src/indexer.py
-#, python-brace-format
-msgid "Indexation OpenSearch échouée erreur={error}"
-msgstr "OpenSearch indexing failed error={error}"
-
 #
-#: src/interpreter.py
+#: src/pystashtemplate/interpreter.py
 msgid "dissect : conversion impossible de {} en {}"
 msgstr "dissect: cannot convert {} to {}"
 
-#: src/interpreter.py
+#: src/pystashtemplate/interpreter.py
 msgid "dissect : type {} inconnu pour convert_datatype"
 msgstr "dissect: unknown type {} for convert_datatype"
 
-#: src/interpreter.py
+#: src/pystashtemplate/interpreter.py
 msgid "dissect : échec sur le champ {}"
 msgstr "dissect: failure on field {}"
 
-#: src/interpreter.py
+#: src/pystashtemplate/interpreter.py
 msgid "fingerprint ignoré : {}"
 msgstr "fingerprint ignored: {}"
 
-#: src/interpreter.py
+#: src/pystashtemplate/interpreter.py
 msgid "json : analyse impossible du champ {} : {}"
 msgstr "json: cannot parse field {}: {}"
 
-#: src/interpreter.py
+#: src/pystashtemplate/interpreter.py
 msgid "json : un JSON non objet exige l'option target"
 msgstr "json: a non-object JSON requires the target option"
 
-#: src/interpreter.py
+#: src/pystashtemplate/interpreter.py
 msgid "json ignoré : option source manquante"
 msgstr "json ignored: missing source option"
 
-#: src/metrics.py
-#, python-brace-format
-msgid "Métriques Prometheus sur http://{addr}:{port}/metrics"
-msgstr "Prometheus metrics on http://{addr}:{port}/metrics"
-
-#: src/omprog.py
-msgid "Adresse d'écoute de /metrics (défaut : 127.0.0.1)"
-msgstr "Listen address for /metrics (default: 127.0.0.1)"
-
-#: src/omprog.py
-msgid "Algorithme de l'empreinte (défaut : sha256 ; murmur3 : entier 32 bits, non cryptographique)"
-msgstr "Fingerprint algorithm (default: sha256; murmur3: 32-bit integer, non-cryptographic)"
-
-#: src/omprog.py
-#, python-brace-format
-msgid "Arrêt du pont messages={count}"
-msgstr "Bridge stopped messages={count}"
-
-#: src/omprog.py
-msgid "Autorité de certification du cluster (option cacert de Logstash)"
-msgstr "Certificate authority of the cluster (Logstash cacert option)"
-
-#: src/omprog.py
-msgid "Base MaxMind GeoIP2 City (.mmdb)"
-msgstr "MaxMind GeoIP2 City database (.mmdb)"
-
-#: src/omprog.py
-msgid "CHAMPS"
-msgstr "FIELDS"
-
-#: src/omprog.py
-msgid "CHEMIN"
-msgstr "PATH"
-
-#: src/omprog.py
-msgid "CLÉ"
-msgstr "KEY"
-
-#: src/omprog.py
-msgid "Certificat client présenté au cluster, mTLS (option tls_certificate de Logstash)"
-msgstr "Client certificate presented to the cluster, mTLS (Logstash tls_certificate option)"
-
-#: src/omprog.py
-msgid "Champ clé du dictionnaire (défaut : hostname)"
-msgstr "Dictionary key field (default: hostname)"
-
-#: src/omprog.py
-msgid "Champ contenant l'IP (défaut : fromhost-ip)"
-msgstr "Field holding the IP address (default: fromhost-ip)"
-
-#: src/omprog.py
-msgid "Champ de sortie (défaut : enrichment)"
-msgstr "Output field (default: enrichment)"
-
-#: src/omprog.py
-msgid "Champ de sortie (défaut : geoip)"
-msgstr "Output field (default: geoip)"
-
-#: src/omprog.py
-msgid "Chaîne de filtres (format filters.example.json)"
-msgstr "Filter chain (filters.example.json format)"
-
-#: src/omprog.py
-msgid "Clé privée non chiffrée du certificat client (option tls_key de Logstash)"
-msgstr "Unencrypted private key of the client certificate (Logstash tls_key option)"
-
-#: src/omprog.py
-msgid "Crochets échappés dans les noms de champs, comme field_reference.escape_style (défaut : none)"
-msgstr "Escaped brackets in field names, like field_reference.escape_style (default: none)"
-
-#: src/omprog.py
-msgid "Dictionnaire statique (format enrich-dict.example.json)"
-msgstr "Static dictionary (enrich-dict.example.json format)"
-
-#: src/omprog.py
-msgid "Fichier DLQ des échecs permanents"
-msgstr "DLQ file for permanent failures"
-
-#: src/omprog.py
-msgid "Fichiers rotatés conservés au maximum"
-msgstr "Maximum number of rotated files kept"
-
-#: src/omprog.py
-msgid "GABARIT"
-msgstr "TEMPLATE"
-
-#: src/omprog.py
-#, python-brace-format
-msgid "Health check OpenSearch OK version={version}"
-msgstr "OpenSearch health check OK version={version}"
-
-#: src/omprog.py
-#, python-brace-format
-msgid "Health check OpenSearch échoué erreur={error}"
-msgstr "OpenSearch health check failed error={error}"
-
-#: src/omprog.py
-msgid "Health check périodique du cluster OpenSearch (0 = désactivé, défaut : 300)"
-msgstr "Periodic OpenSearch cluster health check (0 = disabled, default: 300)"
-
-#: src/omprog.py
-#, python-brace-format
-msgid "Index template installé nom={name}"
-msgstr "Index template installed name={name}"
-
-#: src/omprog.py
-msgid "Index template à installer au démarrage"
-msgstr "Index template to install at startup"
-
-#: src/omprog.py
-#, python-brace-format
-msgid "Message JSON invalide ignoré erreur={error}"
-msgstr "Invalid JSON message skipped error={error}"
-
-#: src/omprog.py
-msgid "Message JSON qui n'est pas un objet, ignoré"
-msgstr "JSON message that is not an object, skipped"
-
-#: src/omprog.py
-msgid "Mode HMAC de l'empreinte (issue #28) ; à défaut, variable d'environnement FINGERPRINT_KEY"
-msgstr "Fingerprint HMAC mode (issue #28); otherwise, FINGERPRINT_KEY environment variable"
-
-#: src/omprog.py
-#, python-brace-format
-msgid "Motif strftime de l'index quotidien (défaut : {pattern})"
-msgstr "strftime pattern of the daily index (default: {pattern})"
-
-#: src/omprog.py
-msgid "Ne pas compresser les fichiers rotatés"
-msgstr "Do not compress rotated files"
-
-#: src/omprog.py
-msgid "Ne pas vérifier les certificats TLS"
-msgstr "Do not verify TLS certificates"
-
-#: src/omprog.py
-msgid "Niveau sur stderr"
-msgstr "Log level on stderr"
-
-#: src/omprog.py
-#, python-brace-format
-msgid "Nom de l'index template (défaut : {name})"
-msgstr "Index template name (default: {name})"
-
-#: src/omprog.py
-msgid "Nœud OpenSearch, ex. https://localhost:9200 (option répétable ; défaut : https://localhost:9200)"
-msgstr "OpenSearch node, e.g. https://localhost:9200 (repeatable option; default: https://localhost:9200)"
-
-#: src/omprog.py
-msgid "OpenSearch"
-msgstr "OpenSearch"
-
-#: src/omprog.py
-msgid "Pipeline Logstash : un fichier .conf, ou un dossier dont les *.conf sont lus par ordre de nom"
-msgstr "Logstash pipeline: a .conf file, or a directory whose *.conf files are read in name order"
-
-#: src/omprog.py
-msgid "Pont rsyslog omprog -> OpenSearch, compatible schéma/filtres Logstash."
-msgstr "rsyslog omprog -> OpenSearch bridge, compatible with the Logstash schema and filters."
-
-#: src/omprog.py
-msgid "Port de l'endpoint /metrics (défaut : 0, désactivé)"
-msgstr "Port of the /metrics endpoint (default: 0, disabled)"
-
-#: src/omprog.py
-#, python-format, no-python-brace-format
-msgid "Rendu d'un %%{champ} absent dans le pipeline (défaut : keep)"
-msgstr "Rendering of a missing %%{field} in the pipeline (default: keep)"
-
-#: src/omprog.py
-#, python-format, no-python-brace-format
-msgid "Rendu d'un %%{champ} absent dans les filtres (défaut : keep)"
-msgstr "Rendering of a missing %%{field} in filters (default: keep)"
-
-#: src/omprog.py
-msgid "Rotation au-delà de cet âge (ex. 7d)"
-msgstr "Rotate beyond this age (e.g. 7d)"
-
-#: src/omprog.py
-msgid "Rotation au-delà de cette taille (ex. 100M)"
-msgstr "Rotate beyond this size (e.g. 100M)"
-
-#: src/omprog.py
-msgid "SECONDES"
-msgstr "SECONDS"
-
-#: src/omprog.py
-#, python-format
-msgid "_id déterministe, ex. %%{[event_id]}"
-msgstr "Deterministic _id, e.g. %%{[event_id]}"
-
-#: src/omprog.py
-msgid "_id par empreinte : champs séparés par des virgules, ou « * » pour le document entier"
-msgstr "Fingerprint _id: comma-separated fields, or \"*\" for the whole document"
-
-#: src/omprog.py
-msgid "dead letter queue (issue #27)"
-msgstr "dead letter queue (issue #27)"
-
-#: src/omprog.py
-msgid "enrichissement"
-msgstr "enrichment"
-
-#: src/omprog.py
-msgid "filtres et pipeline"
-msgstr "filters and pipeline"
-
-#: src/omprog.py
-msgid "métriques Prometheus (issue #35)"
-msgstr "Prometheus metrics (issue #35)"
-
-#: src/omprog.py
-msgid "Âge maximal d'un fichier rotaté"
-msgstr "Maximum age of a rotated file"
-
-#: src/omprog.py
-#, python-brace-format
-msgid "Échec inattendu du traitement d'un message erreur={error}"
-msgstr "Unexpected failure while processing a message error={error}"
-
 #
 #
-#: src/simples.py
+#: src/pystashtemplate/simples.py
 msgid "cidr : lecture impossible de {} : {}"
 msgstr "cidr: cannot read {}: {}"
 
 #
-#: src/simples.py
+#: src/pystashtemplate/simples.py
 msgid "cidr : réseau invalide ignoré : {}"
 msgstr "cidr: invalid network ignored: {}"
 
 #
-#: src/simples.py
+#: src/pystashtemplate/simples.py
 msgid "csv : analyse impossible du champ {} : {}"
 msgstr "csv: cannot parse field {}: {}"
 
 #
 #
-#: src/simples.py
+#: src/pystashtemplate/simples.py
 msgid "csv : conversion impossible de {} en {}"
 msgstr "csv: cannot convert {} to {}"
 
 #
-#: src/simples.py
+#: src/pystashtemplate/simples.py
 msgid "csv : type {} inconnu pour convert"
 msgstr "csv: unknown type {} for convert"
 
-#: src/simples.py
+#: src/pystashtemplate/simples.py
 msgid "syslog_pri : valeur invalide {}"
 msgstr "syslog_pri: invalid value {}"
 
-#: src/simples.py
+#: src/pystashtemplate/simples.py
 msgid "truncate ignoré : length_bytes doit être un entier positif"
 msgstr "truncate ignored: length_bytes must be a positive integer"
 
 #
 #
-#: src/simples.py
+#: src/pystashtemplate/simples.py
 msgid "urldecode : décodage impossible : {}"
 msgstr "urldecode: cannot decode: {}"
 
 #
-#: src/simples.py
+#: src/pystashtemplate/simples.py
 msgid "uuid ignoré : option target manquante"
 msgstr "uuid ignored: missing target option"
+
+#~ msgid "Adresse d'écoute de /metrics (défaut : 127.0.0.1)"
+#~ msgstr "Listen address for /metrics (default: 127.0.0.1)"
+
+#~ msgid "Algorithme de l'empreinte (défaut : sha256 ; murmur3 : entier 32 bits, non cryptographique)"
+#~ msgstr "Fingerprint algorithm (default: sha256; murmur3: 32-bit integer, non-cryptographic)"
+
+#, python-brace-format
+#~ msgid "Arrêt du pont messages={count}"
+#~ msgstr "Bridge stopped messages={count}"
+
+#~ msgid "Autorité de certification du cluster (option cacert de Logstash)"
+#~ msgstr "Certificate authority of the cluster (Logstash cacert option)"
+
+#~ msgid "Base MaxMind GeoIP2 City (.mmdb)"
+#~ msgstr "MaxMind GeoIP2 City database (.mmdb)"
+
+#~ msgid "CHAMPS"
+#~ msgstr "FIELDS"
+
+#~ msgid "CHEMIN"
+#~ msgstr "PATH"
+
+#~ msgid "CLÉ"
+#~ msgstr "KEY"
+
+#~ msgid "Certificat client présenté au cluster, mTLS (option tls_certificate de Logstash)"
+#~ msgstr "Client certificate presented to the cluster, mTLS (Logstash tls_certificate option)"
+
+#~ msgid "Champ clé du dictionnaire (défaut : hostname)"
+#~ msgstr "Dictionary key field (default: hostname)"
+
+#~ msgid "Champ contenant l'IP (défaut : fromhost-ip)"
+#~ msgstr "Field holding the IP address (default: fromhost-ip)"
+
+#~ msgid "Champ de sortie (défaut : enrichment)"
+#~ msgstr "Output field (default: enrichment)"
+
+#~ msgid "Champ de sortie (défaut : geoip)"
+#~ msgstr "Output field (default: geoip)"
+
+#~ msgid "Chaîne de filtres (format filters.example.json)"
+#~ msgstr "Filter chain (filters.example.json format)"
+
+#~ msgid "Clé privée non chiffrée du certificat client (option tls_key de Logstash)"
+#~ msgstr "Unencrypted private key of the client certificate (Logstash tls_key option)"
+
+#~ msgid "Crochets échappés dans les noms de champs, comme field_reference.escape_style (défaut : none)"
+#~ msgstr "Escaped brackets in field names, like field_reference.escape_style (default: none)"
+
+#~ msgid "Dictionnaire statique (format enrich-dict.example.json)"
+#~ msgstr "Static dictionary (enrich-dict.example.json format)"
+
+#~ msgid "Fichier DLQ des échecs permanents"
+#~ msgstr "DLQ file for permanent failures"
+
+#~ msgid "Fichiers rotatés conservés au maximum"
+#~ msgstr "Maximum number of rotated files kept"
+
+#~ msgid "GABARIT"
+#~ msgstr "TEMPLATE"
+
+#, python-brace-format
+#~ msgid "Health check OpenSearch OK version={version}"
+#~ msgstr "OpenSearch health check OK version={version}"
+
+#, python-brace-format
+#~ msgid "Health check OpenSearch échoué erreur={error}"
+#~ msgstr "OpenSearch health check failed error={error}"
+
+#~ msgid "Health check périodique du cluster OpenSearch (0 = désactivé, défaut : 300)"
+#~ msgstr "Periodic OpenSearch cluster health check (0 = disabled, default: 300)"
+
+#, python-brace-format
+#~ msgid "Index template installé nom={name}"
+#~ msgstr "Index template installed name={name}"
+
+#~ msgid "Index template à installer au démarrage"
+#~ msgstr "Index template to install at startup"
+
+#, python-brace-format
+#~ msgid "Indexation OpenSearch échouée définitivement erreur={error}"
+#~ msgstr "OpenSearch indexing failed permanently error={error}"
+
+#, python-brace-format
+#~ msgid "Indexation OpenSearch échouée erreur={error}"
+#~ msgstr "OpenSearch indexing failed error={error}"
+
+#, python-brace-format
+#~ msgid "Message JSON invalide ignoré erreur={error}"
+#~ msgstr "Invalid JSON message skipped error={error}"
+
+#~ msgid "Message JSON qui n'est pas un objet, ignoré"
+#~ msgstr "JSON message that is not an object, skipped"
+
+#~ msgid "Mode HMAC de l'empreinte (issue #28) ; à défaut, variable d'environnement FINGERPRINT_KEY"
+#~ msgstr "Fingerprint HMAC mode (issue #28); otherwise, FINGERPRINT_KEY environment variable"
+
+#, python-brace-format
+#~ msgid "Motif strftime de l'index quotidien (défaut : {pattern})"
+#~ msgstr "strftime pattern of the daily index (default: {pattern})"
+
+#, python-brace-format
+#~ msgid "Métriques Prometheus sur http://{addr}:{port}/metrics"
+#~ msgstr "Prometheus metrics on http://{addr}:{port}/metrics"
+
+#~ msgid "Ne pas compresser les fichiers rotatés"
+#~ msgstr "Do not compress rotated files"
+
+#~ msgid "Ne pas vérifier les certificats TLS"
+#~ msgstr "Do not verify TLS certificates"
+
+#~ msgid "Niveau sur stderr"
+#~ msgstr "Log level on stderr"
+
+#, python-brace-format
+#~ msgid "Nom de l'index template (défaut : {name})"
+#~ msgstr "Index template name (default: {name})"
+
+#~ msgid "Nœud OpenSearch, ex. https://localhost:9200 (option répétable ; défaut : https://localhost:9200)"
+#~ msgstr "OpenSearch node, e.g. https://localhost:9200 (repeatable option; default: https://localhost:9200)"
+
+#~ msgid "OpenSearch"
+#~ msgstr "OpenSearch"
+
+#~ msgid "Pipeline Logstash : un fichier .conf, ou un dossier dont les *.conf sont lus par ordre de nom"
+#~ msgstr "Logstash pipeline: a .conf file, or a directory whose *.conf files are read in name order"
+
+#~ msgid "Pont rsyslog omprog -> OpenSearch, compatible schéma/filtres Logstash."
+#~ msgstr "rsyslog omprog -> OpenSearch bridge, compatible with the Logstash schema and filters."
+
+#~ msgid "Port de l'endpoint /metrics (défaut : 0, désactivé)"
+#~ msgstr "Port of the /metrics endpoint (default: 0, disabled)"
+
+#, python-format, no-python-brace-format
+#~ msgid "Rendu d'un %%{champ} absent dans le pipeline (défaut : keep)"
+#~ msgstr "Rendering of a missing %%{field} in the pipeline (default: keep)"
+
+#, python-format, no-python-brace-format
+#~ msgid "Rendu d'un %%{champ} absent dans les filtres (défaut : keep)"
+#~ msgstr "Rendering of a missing %%{field} in filters (default: keep)"
+
+#~ msgid "Rotation au-delà de cet âge (ex. 7d)"
+#~ msgstr "Rotate beyond this age (e.g. 7d)"
+
+#~ msgid "Rotation au-delà de cette taille (ex. 100M)"
+#~ msgstr "Rotate beyond this size (e.g. 100M)"
+
+#~ msgid "SECONDES"
+#~ msgstr "SECONDS"
+
+#, python-format
+#~ msgid "_id déterministe, ex. %%{[event_id]}"
+#~ msgstr "Deterministic _id, e.g. %%{[event_id]}"
+
+#~ msgid "_id par empreinte : champs séparés par des virgules, ou « * » pour le document entier"
+#~ msgstr "Fingerprint _id: comma-separated fields, or \"*\" for the whole document"
+
+#~ msgid "dead letter queue (issue #27)"
+#~ msgstr "dead letter queue (issue #27)"
+
+#~ msgid "enrichissement"
+#~ msgstr "enrichment"
+
+#~ msgid "filtres et pipeline"
+#~ msgstr "filters and pipeline"
+
+#~ msgid "métriques Prometheus (issue #35)"
+#~ msgstr "Prometheus metrics (issue #35)"
+
+#~ msgid "Âge maximal d'un fichier rotaté"
+#~ msgstr "Maximum age of a rotated file"
+
+#, python-brace-format
+#~ msgid "Échec inattendu du traitement d'un message erreur={error}"
+#~ msgstr "Unexpected failure while processing a message error={error}"

@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 
-
 import pytest
 
 from pystashtemplate.interpreter import PipelineInterpreter
@@ -183,6 +182,3 @@ def test_ruby_split(text, terminator, expected):
 
 def test_apply_renvoie_none_si_split_remplace_l_original():
     assert PipelineInterpreter("filter { split { } }").apply({"message": "a\nb"}) is None
-
-
-

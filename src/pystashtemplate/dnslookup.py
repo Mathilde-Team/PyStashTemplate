@@ -183,7 +183,9 @@ class ServeurDns:
     @traced
     def _requete(self, nom: str, type_: str) -> list[str]:
         """Réponses d'une requête ; aucune si le nom n'existe pas ou sans réponse."""
-        if (os.environ.get(VARIABLE_DESACTIVATION) or os.environ.get(VARIABLE_DESACTIVATION_ANCIENNE, "")).strip().lower() == "off":
+        if (
+            os.environ.get(VARIABLE_DESACTIVATION) or os.environ.get(VARIABLE_DESACTIVATION_ANCIENNE, "")
+        ).strip().lower() == "off":
             logger.debug("dns : requêtes réseau coupées ({}=off)", VARIABLE_DESACTIVATION)
             return []
         try:
