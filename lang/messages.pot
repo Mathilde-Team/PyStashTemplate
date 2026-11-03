@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-03 22:08+0000\n"
+"POT-Creation-Date: 2026-11-03 22:12+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -18,14 +18,17 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 
 #: src/pystashtemplate/filters.py
+#, python-brace-format
 msgid "exception pendant l'application du filtre mutate, opérations restantes ignorées : {}"
 msgstr ""
 
 #: src/pystashtemplate/filters.py
+#, python-brace-format
 msgid "base geoip illisible : {} ({})"
 msgstr ""
 
 #: src/pystashtemplate/filters.py
+#, python-brace-format
 msgid "dictionnaire translate illisible : {} ({})"
 msgstr ""
 
@@ -35,14 +38,17 @@ msgid "date : fuseau {name} devenu inconnu, UTC retenu erreur={error}"
 msgstr ""
 
 #: src/pystashtemplate/interpreter.py
+#, python-brace-format
 msgid "dissect : type {} inconnu pour convert_datatype"
 msgstr ""
 
 #: src/pystashtemplate/interpreter.py
+#, python-brace-format
 msgid "dissect : conversion impossible de {} en {}"
 msgstr ""
 
 #: src/pystashtemplate/interpreter.py
+#, python-brace-format
 msgid "fingerprint ignoré : {}"
 msgstr ""
 
@@ -51,6 +57,7 @@ msgid "json ignoré : option source manquante"
 msgstr ""
 
 #: src/pystashtemplate/interpreter.py
+#, python-brace-format
 msgid "json : analyse impossible du champ {} : {}"
 msgstr ""
 
@@ -59,22 +66,27 @@ msgid "json : un JSON non objet exige l'option target"
 msgstr ""
 
 #: src/pystashtemplate/interpreter.py
+#, python-brace-format
 msgid "dissect : échec sur le champ {}"
 msgstr ""
 
 #: src/pystashtemplate/outputs/__init__.py
+#, python-brace-format
 msgid "sortie « {} » déjà inscrite au registre"
 msgstr ""
 
 #: src/pystashtemplate/outputs/__init__.py
+#, python-brace-format
 msgid "sortie « {} » inconnue — sorties disponibles : {}"
 msgstr ""
 
 #: src/pystashtemplate/outputs/base.py
+#, python-brace-format
 msgid "action « {} » non supportée par cette sortie (supportées : {})"
 msgstr ""
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
+#, python-brace-format
 msgid "options inconnues pour cette sortie : {}"
 msgstr ""
 
@@ -107,6 +119,7 @@ msgid "réponse _bulk illisible erreur={error}"
 msgstr ""
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
+#, python-brace-format
 msgid "réponse _bulk : {} éléments attendus, {} reçus"
 msgstr ""
 
@@ -120,27 +133,38 @@ msgstr ""
 msgid "envoi _bulk échoué définitivement erreur={error}"
 msgstr ""
 
+#: src/pystashtemplate/outputs/transport.py
+#, python-brace-format
+msgid "transport : échec réseau après {} essai(s)"
+msgstr ""
+
 #: src/pystashtemplate/simples.py
+#, python-brace-format
 msgid "csv : type {} inconnu pour convert"
 msgstr ""
 
 #: src/pystashtemplate/simples.py
+#, python-brace-format
 msgid "csv : analyse impossible du champ {} : {}"
 msgstr ""
 
 #: src/pystashtemplate/simples.py
+#, python-brace-format
 msgid "csv : conversion impossible de {} en {}"
 msgstr ""
 
 #: src/pystashtemplate/simples.py
+#, python-brace-format
 msgid "cidr : lecture impossible de {} : {}"
 msgstr ""
 
 #: src/pystashtemplate/simples.py
+#, python-brace-format
 msgid "cidr : réseau invalide ignoré : {}"
 msgstr ""
 
 #: src/pystashtemplate/simples.py
+#, python-brace-format
 msgid "urldecode : décodage impossible : {}"
 msgstr ""
 
@@ -149,6 +173,7 @@ msgid "uuid ignoré : option target manquante"
 msgstr ""
 
 #: src/pystashtemplate/simples.py
+#, python-brace-format
 msgid "syslog_pri : valeur invalide {}"
 msgstr ""
 
