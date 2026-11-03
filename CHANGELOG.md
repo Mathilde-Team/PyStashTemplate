@@ -25,6 +25,21 @@ le projet suit SemVer.
   (`src/pystashtemplate/**/*.py`) ; `test_no_cross_imports` et
   `test_packaging` étendus en conséquence (le graphe couvre
   `outputs/`, `dlq` est un module du socle, plus du connecteur).
+### Évolutions
+
+- `PipelineInterpreter.apply` et `apply_events` deviennent asynchrones
+  (`async def`, chantier full async #1, issue #34) : sémantique
+  inchangée, mais **changement d'API** — l'appelant doit désormais
+  `await` (ou `asyncio.run`) le résultat. Les filtres internes restent
+  synchrones pour l'instant (étapes suivantes #35–#38) ; RsysLogstach,
+  épinglé à `v0.1.0`, n'est pas concerné avant sa migration (#159).
+- Transport HTTP asynchrone commun des sorties (`outputs.transport`,
+  issue #5) : pool aiohttp keep-alive, TLS/mTLS, authentifications,
+  gzip, réessais 429/5xx avec `Retry-After`, `TransportErreur` sur
+  réseau épuisé.
+- Socle des sorties agnostiques (`outputs.base`, issue #4) : interface
+  `Output`, capacités déclarées, registre `REGISTRY`, sortie factice
+  `null`.
 
 ## [0.1.0] - 2026-11-03
 
