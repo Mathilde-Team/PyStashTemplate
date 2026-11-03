@@ -91,8 +91,11 @@ class TestCompilerSorties:
         message = str(excinfo.value)
         assert "« inexistant »" in message
         assert "null" in message  # les sorties disponibles sont nommées
+        assert "opensearch" in message  # (#12 : la sortie opensearch est inscrite)
         assert excinfo.value.plugin == "inexistant"
-        assert excinfo.value.disponibles == ["null"]
+        # Sorties inscrites au moment du test (les autres restent
+        # possibles : ce test ne verrouille que « null » et « opensearch »).
+        assert set(excinfo.value.disponibles) >= {"null", "opensearch"}
         interp.close()
 
     def test_erreur_transmise_en_valueerror(self) -> None:
