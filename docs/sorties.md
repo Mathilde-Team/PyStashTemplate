@@ -18,10 +18,13 @@ coupure réseau, arrêt propre).
 <!-- matrice-sorties:debut (générée par scripts/matrice_sorties.py, ne pas éditer) -->
 | Plugin | Actions | `_id` | Accusé par élément | Taille max. de requête | DLQ | Réessais | Banc en conteneur |
 |---|---|---|---|---|---|---|---|
+| `clickhouse` | `index` | non | non | — | oui | oui | oui |
 | `elasticsearch` | toutes | oui | oui | — | oui | oui | oui |
 | `file` | `index`, `create` | non | oui | — | oui | oui | non |
+| `loki` | `index` | non | non | — | oui | oui | oui |
 | `manticore` | toutes | oui | oui | — | oui | oui | oui |
 | `null` | toutes | oui | oui | — | non | oui | non |
+| `openobserve` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `opensearch` | toutes | oui | oui | — | oui | oui | oui |
 | `quickwit` | `create` | non | oui | 10 Mio | oui | oui | oui |
 | `siglens` | `index`, `create` | non | oui | — | oui | oui | oui |
@@ -208,6 +211,48 @@ Banc de conformité : `tests/test_integration_victorialogs.py`, workflow
 `conformite-victorialogs.yml` (VictoriaLogs v1.53.0 en conteneur) —
 modes `bulk` et `jsonline`, champs de flux et de date relus par LogsQL.
 
+## Sortie `openobserve` (issue #16)
+
+Sous-classe du client commun sur l'API compatible Elasticsearch
+d'OpenObserve : `POST /api/{organization}/_bulk` (port 5080 par défaut),
+le `_index` de chaque ligne étant le stream. Authentification basic
+(`user`/`password` via `${VAR}`).
+
+| Option propre | Rôle |
+|---|---|
+| `organization` | organisation, dans le chemin (défaut : `default`) |
+
+- **Actions `index` et `create`** ; `update`/`delete` refusées dès la
+  compilation (OpenObserve ignore `delete`, et génère ses identifiants :
+  `_id` ignoré avec un avertissement).
+- **Ordre des `items[]` non garanti** ([issue amont
+  #15716](https://github.com/openobserve/openobserve/issues/15716)) :
+  attribuer le N-ième élément au N-ième document pourrait déclarer
+  indexé un document refusé. Appariement prudent (crochet `_apparier`
+  du client commun) :
+  1. réponse sans champ `errors` (429, 5xx…) : règle commune ;
+  2. `errors: false` : tout le lot indexé, sans regarder l'ordre (couvre
+     `ZO_BULK_API_RESPONSE_ERRORS_ONLY`, qui omet les succès) ;
+  3. sinon, chaque échec est apparié par contenu (`originalRecord`) ;
+  4. les échecs sans contenu (`originalRecord` nul : OpenObserve 1.1.2
+     le perd pour les erreurs d'horodatage, et les liste **avant** les
+     éléments réussis — observé contre le vrai serveur) ne sont
+     attribués que s'il y en a autant que de documents non appariés, ou
+     si le lot n'a qu'un document ;
+  5. à défaut, chaque document non apparié est **renvoyé seul**, où
+     l'attribution est exacte : doublon possible pour ceux qui avaient
+     réussi, plutôt qu'une perte ou un rejeu sans fin du lot. Pour éviter
+     ces doublons, `batch_size => 1`.
+
+Santé : `health()` interroge `GET /healthz`.
+
+Banc de conformité contre OpenObserve v1.1.2 en conteneur
+(`.github/workflows/conformite-openobserve.yml`,
+`tests/test_integration_openobserve.py`) : lot indexé puis retrouvé par
+la recherche SQL ; un document trop ancien (au-delà de
+`ZO_INGEST_ALLOWED_UPTO`) part seul en DLQ après renvoi un par un, les
+autres documents indexés (en double).
+
 ## Sortie `manticore` (issue #17)
 
 API `/_bulk` compatible Elasticsearch de Manticore Search (port HTTP
@@ -316,6 +361,106 @@ Banc de conformité : `tests/test_integration_siglens.py`, workflow
 `conformite-siglens.yml` (SigLens 1.0.57 en conteneur) — lots `index`
 et `create`, `_id` ignoré, ligne illisible seule en DLQ, relus par l'API
 de recherche (`POST /api/search` du port 5122).
+
+## Sortie `clickhouse` (issue #23)
+
+Interface HTTP de ClickHouse (port 8123 par défaut) :
+`POST /?query=INSERT%20INTO%20<base>.<table>%20FORMAT%20JSONEachRow`,
+le corps est le lot en JSON Each Row (une ligne JSON par document).
+
+```
+output {
+  clickhouse {
+    hosts => ["http://clickhouse:8123"]
+    table => "logs"
+    database => "rsyslog"
+    async_insert => true
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `table` | Table cible — **requise**, elle doit exister (ClickHouse ne la crée pas) |
+| `database` | Base de la table (`default` par défaut) |
+| `async_insert` | Insertions asynchrones côté serveur (recommandé pour les petits lots ; désactivé par défaut) |
+| `champs_inconnus` | Champ sans colonne : `ignorer` (défaut, `input_format_skip_unknown_fields=1`) ou `erreur` |
+
+Particularités :
+
+- **schéma de table colonne par colonne** : le document est envoyé tel
+  quel, ClickHouse fait la correspondance champ → colonne (les colonnes
+  manquantes prennent leur défaut) ; un champ sans colonne est écarté
+  ou fait échouer le lot (`champs_inconnus => "erreur"` : aucun
+  document n'est isolé, le lot entier part en DLQ) ;
+- **insertions seules** : `index` est la seule action (les options
+  `index`, `action`, `pipeline`, `routing`, `doc_as_upsert` de la
+  famille `_bulk` sont refusées à la compilation) ; `_id` refusé ;
+- **accusé global** : l'INSERT est atomique, la décision se prend sur
+  le statut HTTP global (`accuse_par_evenement=False`) : 2xx = lot
+  ingéré ; 404 (table ou base absente), 400 = permanent (DLQ si
+  configurée) ; réseau, 429, 5xx = transitoire ;
+- l'authentification passe par les options communes (`user`,
+  `password`, `ssl`, `cacert`…) ; les en-têtes HTTP additionnels
+  (ex. `X-ClickHouse-Key`) passent par `headers`.
+
+Santé : `health()` interroge `GET /ping` (ClickHouse répond `Ok.`).
+
+Banc de conformité contre ClickHouse 26.3.62 en conteneur
+(`.github/workflows/conformite-clickhouse.yml`,
+`tests/test_integration_clickhouse.py`) : documents relus colonne par
+colonne, champ sans colonne écarté, `async_insert` visible à la
+lecture, table absente jamais comptée comme indexée. Fixture du banc
+commun (#9) en plus.
+
+## Sortie `loki` (issue #21)
+
+API push de Grafana Loki (port 3100 par défaut), modèle **par labels** :
+`POST /loki/api/v1/push` en JSON (`Content-Type: application/json`), le
+protocole accepté aussi par VictoriaLogs, GreptimeDB, OpenObserve, SigLens
+et Alloy.
+
+```
+output {
+  loki {
+    hosts => ["http://loki:3100"]
+    labels => { "job" => "rsyslog" "host" => "%{host}" }
+    tenant_id => "${LOKI_TENANT}"
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `labels` | Dictionnaire label → valeur (gabarit sprintf `%{host}`), faible cardinalité ; `{}` par défaut |
+| `tenant_id` | Locataire multi-tenant (en-tête `X-Scope-OrgID`) ; absent par défaut |
+
+Particularités :
+
+- **labels par flux** : la valeur de chaque label est rendue contre
+  chaque document (gabarit sprintf) ; un label rendu vide est écarté
+  (Loki refuse les valeurs vides) ; les documents sont regroupés en un
+  flux par jeu de labels ;
+- **ligne de log** : le document entier part en ligne (JSON, sans
+  perte) ; l'horodatage vient du champ `@timestamp` du document (ISO
+  8601), l'heure d'envoi sinon, en nanosecondes ; les lignes d'un même
+  flux sont triées par horodatage ;
+- **insertions seules** : `index` est la seule action acceptée (les
+  options `index`, `pipeline`, `routing`, `doc_as_upsert` de la famille
+  `_bulk` sont refusées à la compilation) ; `_id` refusé ;
+- **accusé global** : Loki répond `204 No Content` sans détail par
+  élément (`accuse_par_evenement=False`) : 2xx = lot ingéré ; 400 =
+  permanent (DLQ si configurée) ; réseau, 429, 5xx = transitoire,
+  retenté puis rendu à l'appelant (ou DLQ avec `dlq_transitoires`) ;
+- **multi-tenant** : `tenant_id` devient l'en-tête `X-Scope-OrgID`.
+
+Santé : `health()` interroge `GET /ready` (200 quand Loki accepte des
+écritures).
+
+Banc de conformité contre Grafana Loki 3.7.9 en conteneur
+(`.github/workflows/conformite-loki.yml`, `tests/test_integration_loki.py`) :
+documents retrouvés par LogQL avec leurs labels de flux, horodatage du
+document respecté. Fixture du banc commun (#9) en plus.
 
 ## Sorties `file` et `stdout` (issue #32)
 
