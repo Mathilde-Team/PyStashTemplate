@@ -22,6 +22,7 @@ coupure réseau, arrêt propre).
 | `doris` | `index` | non | non | — | oui | oui | oui |
 | `elasticsearch` | toutes | oui | oui | — | oui | oui | oui |
 | `file` | `index`, `create` | non | oui | — | oui | oui | non |
+| `fluent_forward` | `index` | non | non | — | oui | oui | oui |
 | `greptimedb` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `http` | `index` | non | non | — | oui | oui | oui |
 | `kafka` | `index` | non | non | — | oui | oui | oui |
@@ -664,6 +665,70 @@ Banc de conformité contre Redpanda en conteneur
 (`.github/workflows/conformite-kafka.yml`,
 `tests/test_integration_kafka.py`) : messages relus par un
 consommateur `aiokafka`, sujet, clé et valeur vérifiés.
+
+## Sortie `fluent_forward` (issue #31)
+
+Client du **protocole forward v1** de Fluentd et Fluent Bit (TCP,
+24224 par défaut, messages MessagePack), pour relayer vers un pipeline
+Fluentd / Fluent Bit existant — comme `out_forward` de Fluentd.
+
+```
+output {
+  fluent_forward {
+    host => "fluentbit"
+    port => 24224
+    tag => "rsyslog.%{app}"
+    require_ack => true
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `host` / `port` | Serveur forward (`localhost`:`24224` par défaut) |
+| `tag` | Étiquette des évènements, gabarit sprintf — **requise** |
+| `mode` | `forward` (défaut : `[tag, [[temps, doc], …], option]`) ou `packed_forward` (entrées concaténées dans un binaire) |
+| `require_ack` | Ajoute un `chunk` à chaque message et attend `{"ack": chunk}` (au moins une fois) |
+| `ack_response_timeout` | Secondes d'attente de l'accusé (190 par défaut, comme Fluentd) |
+| `time_key` | Champ du temps de l'évènement (`@timestamp` par défaut : ISO 8601, `datetime` ou nombre) |
+| `time_as_integer` | Temps en secondes entières au lieu d'`EventTime` (anciens Fluentd) |
+| `shared_key` | Clé partagée : poignée de main HELO/PING/PONG (avec `user`/`password` si le serveur authentifie) |
+| `self_hostname` | Nom annoncé dans le PING (nom d'hôte local par défaut) |
+| `tls` | Chiffre la connexion (options communes `ssl`, `cacert`, `ssl_certificate`, `ssl_key`) |
+| `connect_timeout` | Secondes d'attente de la connexion et de la poignée de main (10 par défaut) |
+
+L'option commune `compression => true` envoie le binaire compressé en
+gzip (`CompressedPackedForward`, implique `packed_forward`).
+
+Particularités :
+
+- **un message par étiquette** : un lot est regroupé par étiquette
+  rendue, dans l'ordre d'arrivée ; une connexion TCP est réutilisée
+  d'un lot à l'autre ;
+- **temps exact** : `EventTime` (extension MessagePack 0, secondes et
+  nanosecondes) calculé sans passer par un flottant — à la microseconde
+  près pour une date ISO 8601 ;
+- **tout échec est transitoire** : le protocole ne rejette pas un
+  évènement pour son contenu ; connexion refusée, coupure, accusé
+  absent ou faux, poignée de main refusée → retentes exponentielles
+  (`retry_max`/`retry_backoff`) des seuls messages non acquittés, sur
+  une connexion neuve, puis lot rendu à l'appelant (`RETRYABLE`) ou en
+  DLQ avec `dlq_transitoires` (#7). Sans `require_ack`, un message
+  écrit est réputé livré ;
+- **clé partagée** : Fluent Bit **ferme la connexion** sur une clé
+  fausse (pas de PONG refusé) et attend un sel de type *str*
+  MessagePack ; un mauvais mot de passe rend un PONG refusé
+  (« username/password mismatch ») ;
+- **insertions seules** : `index`, `_id` refusé ;
+- **santé** : `health()` ouvre la connexion (poignée de main comprise)
+  — le protocole n'a pas de requête de santé.
+
+Banc de conformité contre Fluent Bit 5.1.5 en conteneur
+(`.github/workflows/conformite-fluent_forward.yml`,
+`tests/test_integration_fluent_forward.py`) : entrées `forward` ouverte
+et authentifiée, évènements relus dans les fichiers de la sortie `file`
+(étiquette, temps en nanosecondes, document), modes Forward,
+PackedForward et gzip, clé partagée, mot de passe refusé.
 
 ## Sortie `syslog` (issue #30)
 
