@@ -124,6 +124,7 @@ from pystashtemplate.outputs.otlp import OtlpOutput  # noqa: E402
 from pystashtemplate.outputs.parseable import ParseableOutput  # noqa: E402
 from pystashtemplate.outputs.quickwit import QuickwitOutput  # noqa: E402
 from pystashtemplate.outputs.siglens import SigLensOutput  # noqa: E402
+from pystashtemplate.outputs.splunk_hec import SplunkHecOutput  # noqa: E402
 from pystashtemplate.outputs.stdout import StdoutOutput  # noqa: E402
 from pystashtemplate.outputs.syslog import SyslogOutput  # noqa: E402
 from pystashtemplate.outputs.victorialogs import VictoriaLogsOutput  # noqa: E402
@@ -153,6 +154,7 @@ __all__ = [
     "REGISTRY",
     "SigLensOutput",
     "SortieInconnueError",
+    "SplunkHecOutput",
     "StdoutOutput",
     "VictoriaLogsOutput",
     "ZincSearchOutput",

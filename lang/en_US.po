@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 20:23+0000\n"
+"POT-Creation-Date: 2026-11-04 20:26+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: deusyv\n"
 "Language-Team: English\n"
@@ -23,14 +23,17 @@ msgid "ligne DLQ illisible fichier={chemin} ligne={numero} erreur={error}"
 msgstr "unreadable DLQ line file={chemin} line={numero} error={error}"
 
 #: src/pystashtemplate/dlq.py
+#, python-brace-format
 msgid "{}:{} : entrée DLQ sans objet « document »"
 msgstr "{}:{}: DLQ entry without a \"document\" object"
 
 #: src/pystashtemplate/dlq.py
+#, python-brace-format
 msgid "{}:{} : ligne DLQ illisible ({})"
 msgstr "{}:{}: unreadable DLQ line ({})"
 
 #: src/pystashtemplate/filters.py
+#, python-brace-format
 msgid "base geoip illisible : {} ({})"
 msgstr "unreadable geoip database: {} ({})"
 
@@ -40,30 +43,37 @@ msgid "date : fuseau {name} devenu inconnu, UTC retenu erreur={error}"
 msgstr "date: timezone {name} no longer known, falling back to UTC error={error}"
 
 #: src/pystashtemplate/filters.py
+#, python-brace-format
 msgid "dictionnaire translate illisible : {} ({})"
 msgstr "unreadable translate dictionary: {} ({})"
 
 #: src/pystashtemplate/filters.py
+#, python-brace-format
 msgid "exception pendant l'application du filtre mutate, opérations restantes ignorées : {}"
 msgstr "exception while applying the mutate filter, remaining operations skipped: {}"
 
 #: src/pystashtemplate/interpreter.py
+#, python-brace-format
 msgid "dissect : conversion impossible de {} en {}"
 msgstr "dissect: cannot convert {} to {}"
 
 #: src/pystashtemplate/interpreter.py
+#, python-brace-format
 msgid "dissect : type {} inconnu pour convert_datatype"
 msgstr "dissect: unknown type {} for convert_datatype"
 
 #: src/pystashtemplate/interpreter.py
+#, python-brace-format
 msgid "dissect : échec sur le champ {}"
 msgstr "dissect: failure on field {}"
 
 #: src/pystashtemplate/interpreter.py
+#, python-brace-format
 msgid "fingerprint ignoré : {}"
 msgstr "fingerprint ignored: {}"
 
 #: src/pystashtemplate/interpreter.py
+#, python-brace-format
 msgid "json : analyse impossible du champ {} : {}"
 msgstr "json: cannot parse field {}: {}"
 
@@ -76,14 +86,17 @@ msgid "json ignoré : option source manquante"
 msgstr "json ignored: missing source option"
 
 #: src/pystashtemplate/outputs/__init__.py
+#, python-brace-format
 msgid "sortie « {} » déjà inscrite au registre"
-msgstr "output \"{}\": option \"{}\" is required"
+msgstr "output \"{}\" already registered"
 
 #: src/pystashtemplate/outputs/__init__.py
+#, python-brace-format
 msgid "sortie « {} » inconnue — sorties disponibles : {}"
-msgstr "unknown option \"{}\" for output \"{}\" (valid options: {})"
+msgstr "unknown output \"{}\" — available outputs: {}"
 
 #: src/pystashtemplate/outputs/base.py
+#, python-brace-format
 msgid "action « {} » non supportée par cette sortie (supportées : {})"
 msgstr "action \"{}\" not supported by this output (supported: {})"
 
@@ -97,6 +110,7 @@ msgid "doris : label_prefix {prefixe!r} invalide (lettres, chiffres, - et _, 95 
 msgstr "doris: invalid label_prefix {prefixe!r} (letters, digits, - and _, at most 95)"
 
 #: src/pystashtemplate/outputs/doris.py
+#, python-brace-format
 msgid "doris : lot de {} documents refusé, renvoi un par un"
 msgstr "doris: batch of {} documents rejected, replaying one by one"
 
@@ -131,6 +145,7 @@ msgid "réponse Stream Load illisible erreur={error}"
 msgstr "unreadable Stream Load response error={error}"
 
 #: src/pystashtemplate/outputs/elasticsearch.py
+#, python-brace-format
 msgid "sortie elasticsearch : data_stream n'accepte que l'action create ({})"
 msgstr "elasticsearch output: data_stream only accepts the create action ({})"
 
@@ -139,6 +154,7 @@ msgid "sortie elasticsearch : data_stream_type/dataset/namespace exigent data_st
 msgstr "elasticsearch output: data_stream_type/dataset/namespace require data_stream => true"
 
 #: src/pystashtemplate/outputs/elasticsearch.py
+#, python-brace-format
 msgid "sortie elasticsearch : une seule authentification parmi user/password, api_key et token ({})"
 msgstr "elasticsearch output: only one authentication among user/password, api_key and token ({})"
 
@@ -182,6 +198,7 @@ msgid "lot en échec transitoire mis en DLQ documents={nombre}"
 msgstr "batch with transient failure sent to the DLQ documents={nombre}"
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
+#, python-brace-format
 msgid "réponse _bulk : {} éléments attendus, {} reçus"
 msgstr "_bulk response: {} items expected, {} received"
 
@@ -200,6 +217,7 @@ msgid "sortie file : option « path » manquante (chemin du fichier de sortie)"
 msgstr "file output: missing « path » option (output file path)"
 
 #: src/pystashtemplate/outputs/greptimedb.py
+#, python-brace-format
 msgid "greptimedb : lot de {} documents rejeté, renvoi un par un"
 msgstr "greptimedb: batch of {} documents rejected, replaying one by one"
 
@@ -214,6 +232,7 @@ msgid "réponse greptimedb sans raison lisible erreur={error}"
 msgstr "greptimedb response without readable reason error={error}"
 
 #: src/pystashtemplate/outputs/http_generique.py
+#, python-brace-format
 msgid "sortie http : url complète attendue (ex. http://recepteur:8080/logs), reçu : {}"
 msgstr "http output: full url expected (e.g. http://receiver:8080/logs), got: {}"
 
@@ -245,6 +264,7 @@ msgid "sortie kafka : user est requis avec SASL"
 msgstr "kafka output: user is required with SASL"
 
 #: src/pystashtemplate/outputs/loki.py
+#, python-brace-format
 msgid "@timestamp {} illisible, heure d'envoi utilisée"
 msgstr "unreadable @timestamp {}, send time used instead"
 
@@ -253,10 +273,12 @@ msgid "arrêt demandé mais le lotisseur n'a jamais démarré"
 msgstr "shutdown requested but the lotisseur was never started"
 
 #: src/pystashtemplate/outputs/lotisseur.py
+#, python-brace-format
 msgid "arrêt du lotisseur forcé après {}s : des événements peuvent être perdus"
 msgstr "lotisseur forced shutdown after {}s: events may be lost"
 
 #: src/pystashtemplate/outputs/lotisseur.py
+#, python-brace-format
 msgid "envoi du lot annulé (arrêt forcé) : {} document(s) perdus"
 msgstr "batch send cancelled (forced shutdown): {} document(s) lost"
 
@@ -265,22 +287,27 @@ msgid "lotisseur arrêté : plus aucun document accepté"
 msgstr "lotisseur stopped: no more documents accepted"
 
 #: src/pystashtemplate/outputs/lotisseur.py
+#, python-brace-format
 msgid "option batch_bytes du lotisseur : {} (doit être strictement positif)"
 msgstr "lotisseur batch_bytes option: {} (must be strictly positive)"
 
 #: src/pystashtemplate/outputs/lotisseur.py
+#, python-brace-format
 msgid "option {} du lotisseur : {} (doit être strictement positif)"
 msgstr "lotisseur option {}: {} (must be strictly positive)"
 
 #: src/pystashtemplate/outputs/lotisseur.py
+#, python-brace-format
 msgid "échec de l'envoi du lot ({} document(s))"
 msgstr "batch send failed ({} document(s))"
 
 #: src/pystashtemplate/outputs/manticore.py
+#, python-brace-format
 msgid "manticore : {} create en doublon (document déjà présent)"
 msgstr "manticore: {} duplicate create (document already present)"
 
 #: src/pystashtemplate/outputs/manticore.py
+#, python-brace-format
 msgid "manticore : {} create précédant un doublon rendus à l'appelant"
 msgstr "manticore: {} create preceding a duplicate returned to the caller"
 
@@ -294,6 +321,7 @@ msgid "matrice des sorties : marqueurs introuvables debut={debut} fin={fin}"
 msgstr "output matrix: markers not found start={debut} end={fin}"
 
 #: src/pystashtemplate/outputs/metriques.py
+#, python-brace-format
 msgid "issue de métrique inconnue : {} (attendu : {})"
 msgstr "unknown metric outcome: {} (expected: {})"
 
@@ -303,6 +331,7 @@ msgid "métriques : issue inconnue {issue}"
 msgstr "metrics: unknown outcome {issue}"
 
 #: src/pystashtemplate/outputs/openobserve.py
+#, python-brace-format
 msgid "réponse openobserve : {} échec(s) sans contenu pour {} document(s), renvoi un par un"
 msgstr "openobserve response: {} failure(s) without content for {} document(s), resending one by one"
 
@@ -335,6 +364,7 @@ msgid "sortie otlp : cible {cible} inconnue pour {champ}"
 msgstr "otlp output: unknown target {cible} for {champ}"
 
 #: src/pystashtemplate/outputs/otlp.py
+#, python-brace-format
 msgid "sortie otlp : cible « {} » inconnue pour le champ « {} » (attendu : {})"
 msgstr "otlp output: unknown target \"{}\" for field \"{}\" (expected: {})"
 
@@ -382,6 +412,7 @@ msgid "sortie parseable : stream est requis (jeu de données Parseable)"
 msgstr "parseable output: stream is required (Parseable dataset)"
 
 #: src/pystashtemplate/outputs/parseable.py
+#, python-brace-format
 msgid "sortie parseable : étiquette {} refusée"
 msgstr "parseable output: label {} refused"
 
@@ -396,6 +427,7 @@ msgid "sortie quickwit : refresh {valeur} inconnu"
 msgstr "quickwit output: unknown refresh {valeur}"
 
 #: src/pystashtemplate/outputs/quickwit.py
+#, python-brace-format
 msgid "sortie quickwit : refresh {} inconnu (attendu : {})"
 msgstr "quickwit output: unknown refresh {} (expected: {})"
 
@@ -409,6 +441,7 @@ msgid "rejeu DLQ : la sortie doit avoir batch_size à 1"
 msgstr "DLQ replay: the output must have batch_size set to 1"
 
 #: src/pystashtemplate/outputs/rejeu.py
+#, python-brace-format
 msgid "rejeu DLQ : {} existe déjà, il serait écrasé"
 msgstr "DLQ replay: {} already exists, it would be overwritten"
 
@@ -423,22 +456,27 @@ msgid "réponse _bulk {produit} non relue erreur={error}"
 msgstr "_bulk response from {produit} not parsed error={error}"
 
 #: src/pystashtemplate/outputs/schema.py
+#, python-brace-format
 msgid "option « {} » inconnue pour la sortie « {} » (options valides : {})"
 msgstr "unknown option \"{}\" for output \"{}\" (valid options: {})"
 
 #: src/pystashtemplate/outputs/schema.py
+#, python-brace-format
 msgid "sortie « {} » : l'option « {} » est requise"
 msgstr "output \"{}\": option \"{}\" is required"
 
 #: src/pystashtemplate/outputs/schema.py
+#, python-brace-format
 msgid "sortie « {} » : option « {} » — la valeur doit être au moins {} (reçu : {})"
 msgstr "output \"{}\": option \"{}\" — the value must be at least {} (got: {})"
 
 #: src/pystashtemplate/outputs/schema.py
+#, python-brace-format
 msgid "sortie « {} » : option « {} » — type {} attendu (reçu : {})"
 msgstr "output \"{}\": option \"{}\" — expected type {} (got: {})"
 
 #: src/pystashtemplate/outputs/schema.py
+#, python-brace-format
 msgid "sortie « {} » : option « {} » — valeurs valides : {} (reçu : {})"
 msgstr "output \"{}\": option \"{}\" — valid values: {} (got: {})"
 
@@ -446,6 +484,36 @@ msgstr "output \"{}\": option \"{}\" — valid values: {} (got: {})"
 #, python-brace-format
 msgid "sortie siglens : action {action} refusée (index, create seules)"
 msgstr "siglens output: action {action} refused (index, create only)"
+
+#: src/pystashtemplate/outputs/splunk_hec.py
+msgid "sortie splunk_hec : authentification basique refusée"
+msgstr "splunk_hec output: basic authentication refused"
+
+#: src/pystashtemplate/outputs/splunk_hec.py
+msgid "sortie splunk_hec : fields doit être une liste de noms de champs"
+msgstr "splunk_hec output: fields must be a list of field names"
+
+#: src/pystashtemplate/outputs/splunk_hec.py
+#, python-brace-format
+msgid "sortie splunk_hec : fields invalide {}"
+msgstr "splunk_hec output: invalid fields {}"
+
+#: src/pystashtemplate/outputs/splunk_hec.py
+#, python-brace-format
+msgid "sortie splunk_hec : horodatage {} illisible, heure du serveur utilisée"
+msgstr "splunk_hec output: unreadable timestamp {}, server time used"
+
+#: src/pystashtemplate/outputs/splunk_hec.py
+msgid "sortie splunk_hec : jeton vide"
+msgstr "splunk_hec output: empty token"
+
+#: src/pystashtemplate/outputs/splunk_hec.py
+msgid "sortie splunk_hec : token est requis (jeton HEC)"
+msgstr "splunk_hec output: token is required (HEC token)"
+
+#: src/pystashtemplate/outputs/splunk_hec.py
+msgid "sortie splunk_hec : user/password remplaceraient le jeton HEC, utiliser token seul"
+msgstr "splunk_hec output: user/password would replace the HEC token, use token only"
 
 #: src/pystashtemplate/outputs/syslog.py
 #, python-brace-format
@@ -467,46 +535,57 @@ msgid "sortie syslog : aucun envoi"
 msgstr "syslog output: no send"
 
 #: src/pystashtemplate/outputs/syslog.py
+#, python-brace-format
 msgid "sortie syslog : facilité « {} » inconnue (mots-clés RFC 5424)"
 msgstr "syslog output: unknown facility « {} » (RFC 5424 keywords)"
 
 #: src/pystashtemplate/outputs/syslog.py
+#, python-brace-format
 msgid "sortie syslog : sévérité « {} » inconnue (mots-clés RFC 5424)"
 msgstr "syslog output: unknown severity « {} » (RFC 5424 keywords)"
 
 #: src/pystashtemplate/outputs/transport.py
+#, python-brace-format
 msgid "transport : échec réseau après {} essai(s)"
 msgstr "transport: network failure after {} attempt(s)"
 
 #: src/pystashtemplate/outputs/victorialogs.py
+#, python-brace-format
 msgid "sortie victorialogs : liste de champs attendue, reçu {}"
 msgstr "victorialogs output: list of fields expected, got {}"
 
 #: src/pystashtemplate/outputs/victorialogs.py
+#, python-brace-format
 msgid "sortie victorialogs : mode {} inconnu (bulk ou jsonline)"
 msgstr "victorialogs output: unknown mode {} (bulk or jsonline)"
 
 #: src/pystashtemplate/simples.py
+#, python-brace-format
 msgid "cidr : lecture impossible de {} : {}"
 msgstr "cidr: cannot read {}: {}"
 
 #: src/pystashtemplate/simples.py
+#, python-brace-format
 msgid "cidr : réseau invalide ignoré : {}"
 msgstr "cidr: invalid network ignored: {}"
 
 #: src/pystashtemplate/simples.py
+#, python-brace-format
 msgid "csv : analyse impossible du champ {} : {}"
 msgstr "csv: cannot parse field {}: {}"
 
 #: src/pystashtemplate/simples.py
+#, python-brace-format
 msgid "csv : conversion impossible de {} en {}"
 msgstr "csv: cannot convert {} to {}"
 
 #: src/pystashtemplate/simples.py
+#, python-brace-format
 msgid "csv : type {} inconnu pour convert"
 msgstr "csv: unknown type {} for convert"
 
 #: src/pystashtemplate/simples.py
+#, python-brace-format
 msgid "syslog_pri : valeur invalide {}"
 msgstr "syslog_pri: invalid value {}"
 
@@ -515,6 +594,7 @@ msgid "truncate ignoré : length_bytes doit être un entier positif"
 msgstr "truncate ignored: length_bytes must be a positive integer"
 
 #: src/pystashtemplate/simples.py
+#, python-brace-format
 msgid "urldecode : décodage impossible : {}"
 msgstr "urldecode: cannot decode: {}"
 
