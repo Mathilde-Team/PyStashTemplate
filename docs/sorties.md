@@ -22,6 +22,7 @@ coupure réseau, arrêt propre).
 | `file` | `index`, `create` | non | oui | — | oui | non | non |
 | `null` | toutes | oui | oui | — | non | non | non |
 | `opensearch` | toutes | oui | oui | — | oui | oui | oui |
+| `quickwit` | `create` | non | non | 10 Mio | oui | oui | oui |
 | `stdout` | `index`, `create` | non | oui | — | non | non | non |
 | `victorialogs` | `index`, `create` | non | non | — | oui | oui | oui |
 <!-- matrice-sorties:fin -->
@@ -161,6 +162,33 @@ par le produit (`_id` refusé par la sortie). `health()` lit
 Banc de conformité : `tests/test_integration_victorialogs.py`, workflow
 `conformite-victorialogs.yml` (VictoriaLogs v1.53.0 en conteneur) —
 modes `bulk` et `jsonline`, champs de flux et de date relus par LogsQL.
+
+## Sortie `quickwit` (issue #15)
+
+Sous-classe du client commun sur l'API compatible Elasticsearch de
+Quickwit : `POST /api/v1/_elastic/_bulk` (port 7280 par défaut).
+
+- **`create` seule** : c'est l'action par défaut ; toute autre action
+  (`index`, `update`, `delete`) est refusée dès la compilation du
+  pipeline (message traduit) et par `envoyer`.
+- **Pas de `_id`** : ignoré avec un avertissement.
+- **Statut HTTP global** : Quickwit ne rapporte que
+  `num_docs_for_processing`, sans erreur par élément (elles ne figurent
+  que dans son journal). 2xx = lot accepté ; 400/404 (index absent…) =
+  permanent, DLQ si configurée ; réseau, 429, 5xx = transitoire.
+- **Requête ≤ 10 Mio** (limite de Quickwit, déclarée dans les capacités).
+- L'index doit exister : Quickwit ne le crée pas à l'ingestion.
+
+| Option propre | Rôle |
+|---|---|
+| `refresh` | `true` (commit forcé), `wait_for` (attend le prochain commit), `false` ; absent par défaut |
+
+Santé : `health()` interroge `GET /api/v1/version`.
+
+Banc de conformité contre Quickwit 0.9.3 en conteneur
+(`.github/workflows/conformite-quickwit.yml`,
+`tests/test_integration_quickwit.py`) : lot `create` indexé puis
+retrouvé par la recherche, `_id` ignoré, index absent parti en DLQ.
 
 ## Sorties `file` et `stdout` (issue #32)
 

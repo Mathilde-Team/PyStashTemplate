@@ -31,6 +31,7 @@ from pystashtemplate.outputs import REGISTRY
 from pystashtemplate.outputs.elasticsearch import ElasticsearchOutput
 from pystashtemplate.outputs.elasticsearch_bulk import ElasticsearchBulkOutput
 from pystashtemplate.outputs.opensearch import OpenSearchOutput
+from pystashtemplate.outputs.quickwit import QuickwitOutput
 from pystashtemplate.outputs.victorialogs import VictoriaLogsOutput
 
 
@@ -71,6 +72,7 @@ FIXTURES: list[FixtureSortie] = [
     FixtureSortie(OpenSearchOutput),
     FixtureSortie(ElasticsearchOutput),
     FixtureSortie(ElasticsearchOutput, {"data_stream": True}),
+    FixtureSortie(QuickwitOutput),
     FixtureSortie(VictoriaLogsOutput),
     FixtureSortie(VictoriaLogsOutput, {"mode": "jsonline"}, compter=_lignes_json),
 ]
