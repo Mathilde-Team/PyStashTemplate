@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 18:00+0000\n"
+"POT-Creation-Date: 2026-11-04 18:04+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -139,12 +139,12 @@ msgid "réponse _bulk illisible erreur={error}"
 msgstr ""
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
-msgid "réponse _bulk : {} éléments attendus, {} reçus"
+#, python-brace-format
+msgid "envoi _bulk élément échoué statut={statut}"
 msgstr ""
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
-#, python-brace-format
-msgid "envoi _bulk élément échoué statut={statut}"
+msgid "réponse _bulk : {} éléments attendus, {} reçus"
 msgstr ""
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
@@ -208,6 +208,18 @@ msgstr ""
 
 #: src/pystashtemplate/outputs/metriques.py
 msgid "issue de métrique inconnue : {} (attendu : {})"
+msgstr ""
+
+#: src/pystashtemplate/outputs/openobserve.py
+msgid "sortie openobserve : organisation vide"
+msgstr ""
+
+#: src/pystashtemplate/outputs/openobserve.py
+msgid "sortie openobserve : option « organization » vide"
+msgstr ""
+
+#: src/pystashtemplate/outputs/openobserve.py
+msgid "réponse openobserve : {} échec(s) sans contenu pour {} document(s), renvoi un par un"
 msgstr ""
 
 #: src/pystashtemplate/outputs/quickwit.py
