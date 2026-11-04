@@ -45,6 +45,7 @@ jobs:
             entree:
               type: http_server
               address: 0.0.0.0:8080
+              path: /logs
               decoding:
                 codec: json
           sinks:
