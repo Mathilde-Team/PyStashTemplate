@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 20:16+0000\n"
+"POT-Creation-Date: 2026-11-04 20:23+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -85,6 +85,49 @@ msgstr ""
 
 #: src/pystashtemplate/outputs/base.py
 msgid "action « {} » non supportée par cette sortie (supportées : {})"
+msgstr ""
+
+#: src/pystashtemplate/outputs/doris.py
+#, python-brace-format
+msgid "doris : label {label} déjà pris (état {etat}), lot rendu à l'appelant"
+msgstr ""
+
+#: src/pystashtemplate/outputs/doris.py
+msgid "doris : label_prefix {prefixe!r} invalide (lettres, chiffres, - et _, 95 au plus)"
+msgstr ""
+
+#: src/pystashtemplate/outputs/doris.py
+msgid "doris : lot de {} documents refusé, renvoi un par un"
+msgstr ""
+
+#: src/pystashtemplate/outputs/doris.py
+#, python-brace-format
+msgid "doris : lot déjà chargé (label {label}), compté comme indexé"
+msgstr ""
+
+#: src/pystashtemplate/outputs/doris.py
+#, python-brace-format
+msgid "doris : max_filter_ratio {ratio} hors de [0, 1]"
+msgstr ""
+
+#: src/pystashtemplate/outputs/doris.py
+#, python-brace-format
+msgid "doris : redirection vers {cible} non suivie"
+msgstr ""
+
+#: src/pystashtemplate/outputs/doris.py
+#, python-brace-format
+msgid "doris : statut Stream Load inattendu {statut}, lot rendu à l'appelant"
+msgstr ""
+
+#: src/pystashtemplate/outputs/doris.py
+#, python-brace-format
+msgid "doris : {nombre} ligne(s) écartée(s) par le serveur, détail : {url}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/doris.py
+#, python-brace-format
+msgid "réponse Stream Load illisible erreur={error}"
 msgstr ""
 
 #: src/pystashtemplate/outputs/elasticsearch.py
