@@ -84,7 +84,7 @@ from pystashtemplate.outputs import Capacites, enregistrer
 from pystashtemplate.outputs.elasticsearch_bulk import ElasticsearchBulkOutput, SendOutcome
 from pystashtemplate.outputs.schema import OptionSpec
 from pystashtemplate.templates import compile_template, render
-from pystashtemplate.tracing import atraced, traced
+from pystashtemplate.tracing import atraced, masquer_identifiants, traced
 
 __all__ = ["GelfOutput", "decouper_udp", "message_gelf"]
 
@@ -384,7 +384,7 @@ class GelfOutput(ElasticsearchBulkOutput):
         self._compression = bool(options.get("compression", False))
         url = urlsplit(self._hosts if "://" in self._hosts else f"{self._mode}://{self._hosts}")
         if not url.hostname:
-            logger.warning(_("sortie gelf : hôte absent de hosts {}"), self._hosts)
+            logger.warning(_("sortie gelf : hôte absent de hosts {}"), masquer_identifiants(self._hosts))
             raise ValueError(_("sortie gelf : hosts doit nommer un hôte (ex. http://graylog:12201)"))
         self._hote = url.hostname
         self._port = url.port or _PORT_DEFAUT

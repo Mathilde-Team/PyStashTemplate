@@ -5,6 +5,24 @@ le projet suit SemVer.
 
 ## [Non publié]
 
+### Tests
+
+- Couverture des sorties `victorialogs` (#14) et `http` (#24) remontée à
+  100 % (audit du 04/11 : 94 % et 97 %) : santé `http` en 5xx et en 4xx,
+  aide `_liste_virgules` ; garde-fou de `mode` redondant avec le schéma
+  commun retiré de `VictoriaLogsOutput`.
+
+### Sécurité
+
+- Identifiants écrits dans l'URL masqués dans les journaux (#5, audit du
+  04/11) : avec `hosts => "http://user:secret@hote"`, le mot de passe
+  sortait en clair dans le DEBUG de sortie en exception des décorateurs
+  de traçage (les messages httpx citent l'URL) et dans le DEBUG de
+  signature de la sortie `doris`. Nouvelle fonction
+  `tracing.masquer_identifiants` (`http://***@hote`), appliquée par
+  `@traced`/`@atraced`, `doris` et `gelf` ; test de non-fuite sur toutes
+  les sorties HTTP du registre (`tests/test_fuites_identifiants.py`).
+
 ### Documentation
 
 - `docs/sorties.md` complété (audit du 04/11) : pages des sorties
