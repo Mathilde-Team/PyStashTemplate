@@ -139,10 +139,6 @@ msgid "lot en échec transitoire mis en DLQ documents={nombre}"
 msgstr ""
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
-msgid "options inconnues pour cette sortie : {}"
-msgstr ""
-
-#: src/pystashtemplate/outputs/elasticsearch_bulk.py
 msgid "réponse _bulk : {} éléments attendus, {} reçus"
 msgstr ""
 
@@ -154,10 +150,6 @@ msgstr ""
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
 msgid "sortie : _id refusé par le produit, ignoré"
-msgstr ""
-
-#: src/pystashtemplate/outputs/fichier.py src/pystashtemplate/outputs/stdout.py
-msgid "codec {} inconnu (codecs disponibles : json_lines, rubydebug)"
 msgstr ""
 
 #: src/pystashtemplate/outputs/fichier.py
@@ -265,6 +257,26 @@ msgstr ""
 #: src/pystashtemplate/outputs/rejeu.py
 #, python-brace-format
 msgid "rejeu DLQ terminé rejouées={rejouees} conservées={conservees}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/schema.py
+msgid "option « {} » inconnue pour la sortie « {} » (options valides : {})"
+msgstr ""
+
+#: src/pystashtemplate/outputs/schema.py
+msgid "sortie « {} » : l'option « {} » est requise"
+msgstr ""
+
+#: src/pystashtemplate/outputs/schema.py
+msgid "sortie « {} » : option « {} » — la valeur doit être au moins {} (reçu : {})"
+msgstr ""
+
+#: src/pystashtemplate/outputs/schema.py
+msgid "sortie « {} » : option « {} » — type {} attendu (reçu : {})"
+msgstr ""
+
+#: src/pystashtemplate/outputs/schema.py
+msgid "sortie « {} » : option « {} » — valeurs valides : {} (reçu : {})"
 msgstr ""
 
 #: src/pystashtemplate/outputs/transport.py

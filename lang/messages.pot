@@ -100,10 +100,6 @@ msgid "sortie elasticsearch : data_stream_type/dataset/namespace exigent data_st
 msgstr ""
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
-msgid "options inconnues pour cette sortie : {}"
-msgstr ""
-
-#: src/pystashtemplate/outputs/elasticsearch_bulk.py
 msgid "hosts est requis (ex. https://opensearch:9200)"
 msgstr ""
 
@@ -158,10 +154,6 @@ msgstr ""
 
 #: src/pystashtemplate/outputs/fichier.py
 msgid "sortie file : option « path » manquante (chemin du fichier de sortie)"
-msgstr ""
-
-#: src/pystashtemplate/outputs/fichier.py src/pystashtemplate/outputs/stdout.py
-msgid "codec {} inconnu (codecs disponibles : json_lines, rubydebug)"
 msgstr ""
 
 #: src/pystashtemplate/outputs/lotisseur.py
@@ -265,6 +257,26 @@ msgstr ""
 #: src/pystashtemplate/outputs/rejeu.py
 #, python-brace-format
 msgid "rejeu DLQ terminé rejouées={rejouees} conservées={conservees}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/schema.py
+msgid "option « {} » inconnue pour la sortie « {} » (options valides : {})"
+msgstr ""
+
+#: src/pystashtemplate/outputs/schema.py
+msgid "sortie « {} » : l'option « {} » est requise"
+msgstr ""
+
+#: src/pystashtemplate/outputs/schema.py
+msgid "sortie « {} » : option « {} » — type {} attendu (reçu : {})"
+msgstr ""
+
+#: src/pystashtemplate/outputs/schema.py
+msgid "sortie « {} » : option « {} » — la valeur doit être au moins {} (reçu : {})"
+msgstr ""
+
+#: src/pystashtemplate/outputs/schema.py
+msgid "sortie « {} » : option « {} » — valeurs valides : {} (reçu : {})"
 msgstr ""
 
 #: src/pystashtemplate/outputs/transport.py

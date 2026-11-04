@@ -66,6 +66,7 @@ from pystashtemplate.dlq import LocalDeadLetterQueue
 from pystashtemplate.i18n import _
 from pystashtemplate.outputs import Capacites, enregistrer
 from pystashtemplate.outputs.elasticsearch_bulk import ElasticsearchBulkOutput, SendOutcome
+from pystashtemplate.outputs.schema import OptionSpec
 from pystashtemplate.tracing import atraced, traced
 
 ORGANISATION_PAR_DEFAUT = "default"
@@ -107,7 +108,12 @@ class OpenObserveOutput(ElasticsearchBulkOutput):
         accuse_par_evenement=True,
         taille_max_requete=None,
     )
-    OPTIONS_CONNUES: ClassVar[frozenset[str]] = ElasticsearchBulkOutput.OPTIONS_CONNUES | frozenset({"organization"})
+    OPTIONS_PROPRES: ClassVar[dict[str, OptionSpec]] = dict(
+        ElasticsearchBulkOutput.OPTIONS_PROPRES,
+        organization=OptionSpec(
+            "organization", (str,), ORGANISATION_PAR_DEFAUT, description="Organisation OpenObserve, dans le chemin"
+        ),
+    )
 
     @traced
     def __init__(

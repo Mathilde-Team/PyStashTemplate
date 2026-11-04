@@ -19,13 +19,13 @@ coupure réseau, arrêt propre).
 | Plugin | Actions | `_id` | Accusé par élément | Taille max. de requête | DLQ | Réessais | Banc en conteneur |
 |---|---|---|---|---|---|---|---|
 | `elasticsearch` | toutes | oui | oui | — | oui | oui | oui |
-| `file` | `index`, `create` | non | oui | — | oui | non | non |
+| `file` | `index`, `create` | non | oui | — | oui | oui | non |
 | `manticore` | toutes | oui | oui | — | oui | oui | oui |
-| `null` | toutes | oui | oui | — | non | non | non |
+| `null` | toutes | oui | oui | — | non | oui | non |
 | `openobserve` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `opensearch` | toutes | oui | oui | — | oui | oui | oui |
 | `quickwit` | `create` | non | oui | 10 Mio | oui | oui | oui |
-| `stdout` | `index`, `create` | non | oui | — | non | non | non |
+| `stdout` | `index`, `create` | non | oui | — | non | oui | non |
 | `victorialogs` | `index`, `create` | non | non | — | oui | oui | oui |
 <!-- matrice-sorties:fin -->
 
@@ -34,6 +34,49 @@ La famille « API _bulk Elasticsearch » (issue #11) partage le client
 plus qu'une sous-classe de quelques lignes (valeurs par défaut et
 capacités). Les autres familles (Loki, ClickHouse, HEC, OTLP…) sont
 des sous-issues du chantier #2.
+
+## Schéma de configuration commun (issue #8)
+
+Objectif : **seule la configuration du `output{}` diffère légèrement d'un
+système à l'autre.** Les options communes à toutes les sorties sont
+déclarées une seule fois (`pystashtemplate.outputs.schema`), validées
+**à la compilation** du pipeline — option inconnue (faute de frappe),
+type inattendu ou valeur hors bornes échouent franchement, avec un
+message traduit nommant le plugin — avant toute connexion. Les noms
+d'options reprennent ceux du plugin Logstash correspondant quand il
+existe, pour qu'un `.conf` Logstash fonctionne sans retouche ; `${VAR}`
+y est résolu par l'interpréteur.
+
+### Options communes
+
+| Option | Type | Défaut | Rôle |
+|---|---|---|---|
+| `hosts` | str ou liste | — | URL(s) du ou des nœuds cibles |
+| `user` | str | — | utilisateur de l'authentification basique |
+| `password` | str | — | mot de passe de l'authentification basique |
+| `ssl` | bool | `true` | vérifier le certificat TLS du serveur |
+| `cacert` | str | — | autorité de certification (PEM) du serveur |
+| `ssl_certificate` | str | — | certificat client TLS (mTLS) |
+| `ssl_key` | str | — | clé privée du certificat client |
+| `compression` | bool | `false` | compresser les requêtes |
+| `batch_size` | int ≥ 1 | `1` | documents tamponnés avant envoi |
+| `batch_bytes` | int ≥ 1 | `10485760` | taille maximale d'un lot en octets |
+| `flush_interval` | nombre ≥ 0 | `1.0` | secondes entre deux poussées du tampon |
+| `max_concurrency` | int ≥ 1 | `4` | envois parallèles au maximum |
+| `retry_max` | int ≥ 0 | `0` | réessais avant échec définitif |
+| `retry_backoff` | nombre ≥ 0 | `1.0` | secondes initiales d'attente entre réessais |
+| `dlq_path` | str | — | fichier de la DLQ locale (échecs définitifs) |
+
+Une sortie qui n'utilise pas une option commune l'ignore : le même
+pipeline peut basculer d'OpenSearch à VictoriaLogs en changeant **le
+seul nom du plugin et l'URL**. Chaque sortie ajoute ensuite ses
+options propres (schéma déclaré par classe, `OPTIONS_PROPRES`), validées
+aux mêmes instants : `opensearch` (`index`, `action`, `pipeline`,
+`routing`, `doc_as_upsert`, `timeout`, `headers`, `id`,
+`dlq_transitoires`), `elasticsearch` (en plus : `api_key`, `token`,
+`data_stream` et ses composants), `victorialogs` (en plus : `mode`,
+`stream_fields`, `msg_field`, `time_field`), `file` (`path`, requis ;
+`codec`), `stdout` (`codec`).
 
 ## Sortie `opensearch` (issue #12)
 
