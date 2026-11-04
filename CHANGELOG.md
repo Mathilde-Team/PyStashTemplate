@@ -14,6 +14,12 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- Sortie `manticore` (issue #17) : `/_bulk` compatible Elasticsearch,
+  accusé par élément ; `create` en doublon (HTTP 409 + élément 400 avant
+  29.9.0, élément 409 depuis) compté indexé et non envoyé en DLQ ; les
+  `create` annulés par Manticore avant un doublon sont rendus à
+  l'appelant. Banc de conformité contre Manticore 29.9.0 en conteneur.
+
 - Banc commun de conformité des sorties (issue #9) : une même suite
   (lot simple, erreur partielle, 429, coupure réseau, arrêt propre)
   rejouée sans réseau contre chaque sortie HTTP par un faux serveur

@@ -20,6 +20,7 @@ coupure réseau, arrêt propre).
 |---|---|---|---|---|---|---|---|
 | `elasticsearch` | toutes | oui | oui | — | oui | oui | oui |
 | `file` | `index`, `create` | non | oui | — | oui | non | non |
+| `manticore` | toutes | oui | oui | — | oui | oui | oui |
 | `null` | toutes | oui | oui | — | non | non | non |
 | `opensearch` | toutes | oui | oui | — | oui | oui | oui |
 | `stdout` | `index`, `create` | non | oui | — | non | non | non |
@@ -161,6 +162,46 @@ par le produit (`_id` refusé par la sortie). `health()` lit
 Banc de conformité : `tests/test_integration_victorialogs.py`, workflow
 `conformite-victorialogs.yml` (VictoriaLogs v1.53.0 en conteneur) —
 modes `bulk` et `jsonline`, champs de flux et de date relus par LogsQL.
+
+## Sortie `manticore` (issue #17)
+
+API `/_bulk` compatible Elasticsearch de Manticore Search (port HTTP
+9308 par défaut), accusé de réception élément par élément (`items[]`).
+
+```
+output {
+  manticore {
+    hosts => ["http://manticore:9308"]
+    index => "logs"
+  }
+}
+```
+
+Particularités (issue amont
+[#4884](https://github.com/manticoresoftware/manticoresearch/issues/4884),
+observées contre Manticore 29.9.0) :
+
+- `create` en doublon : avant 29.9.0, HTTP 409 pour toute la requête et
+  élément en 400 (« duplicate id ») ; depuis, HTTP 200 et élément en
+  409. Les deux formes sont un **doublon** : document déjà présent,
+  compté indexé (comme la sortie `elasticsearch` de Logstash avec un
+  conflit 409), jamais envoyé en DLQ comme une erreur de mapping ;
+- perte silencieuse : dans une suite de `create` consécutifs vers la
+  même table, un doublon annule les documents qui le précèdent alors
+  qu'ils sont rapportés `201`. La sortie les rend à l'appelant
+  (`RETRYABLE`) pour renvoi — idempotent avec un `document_id` (au pire
+  un nouveau doublon, compté indexé). Sans `_id`, préférer `index` ;
+- `_id` non numérique haché par Manticore en entier 64 bits ;
+- la table doit exister (ou le module Buddy la créer) : une table absente
+  ou une colonne inconnue est une erreur d'élément 400, permanente (DLQ
+  si configurée).
+
+`health()` lit `GET /` (réponse de type Elasticsearch). Aucune option
+propre.
+
+Banc de conformité : `tests/test_integration_manticore.py`, workflow
+`conformite-manticore.yml` (Manticore 29.9.0 en conteneur) — lot
+indexé, doublon `create` et renvoi convergent, relus par SQL.
 
 ## Sorties `file` et `stdout` (issue #32)
 

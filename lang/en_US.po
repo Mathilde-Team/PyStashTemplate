@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 17:16+0000\n"
+"POT-Creation-Date: 2026-11-04 17:46+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: deusyv\n"
 "Language-Team: English\n"
@@ -148,6 +148,7 @@ msgid "réponse _bulk : {} éléments attendus, {} reçus"
 msgstr "_bulk response: {} items expected, {} received"
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
+#: src/pystashtemplate/outputs/manticore.py
 #, python-brace-format
 msgid "réponse _bulk illisible erreur={error}"
 msgstr "unreadable _bulk response error={error}"
@@ -191,6 +192,14 @@ msgstr "lotisseur option {}: {} (must be strictly positive)"
 #: src/pystashtemplate/outputs/lotisseur.py
 msgid "échec de l'envoi du lot ({} document(s))"
 msgstr "batch send failed ({} document(s))"
+
+#: src/pystashtemplate/outputs/manticore.py
+msgid "manticore : {} create en doublon (document déjà présent)"
+msgstr "manticore: {} duplicate create (document already present)"
+
+#: src/pystashtemplate/outputs/manticore.py
+msgid "manticore : {} create précédant un doublon rendus à l'appelant"
+msgstr "manticore: {} create preceding a duplicate returned to the caller"
 
 #: src/pystashtemplate/outputs/matrice.py
 msgid "marqueurs de la matrice des sorties absents ou dans le désordre"
