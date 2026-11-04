@@ -7,6 +7,14 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- Sortie `http` générique (issue #24) : `POST`/`PUT` vers une URL
+  libre (options de la sortie `http` de Logstash : `url`, `http_method`,
+  `format`, `headers`), formats `ndjson`/`json_batch`/`json` (un
+  événement par requête), accusé sur le statut HTTP global, verbe
+  d'envoi paramétrable dans le client commun. Banc de conformité contre
+  Vector 0.59.0 en conteneur (`conformite-http.yml`) et fixture du
+  banc commun.
+
 - Sortie `clickhouse` (issue #23) : interface HTTP
   (`POST /?query=INSERT … FORMAT JSONEachRow`, corps JSON Each Row),
   correspondance champ → colonne côté serveur, `table` requise,

@@ -21,6 +21,7 @@ coupure réseau, arrêt propre).
 | `clickhouse` | `index` | non | non | — | oui | oui | oui |
 | `elasticsearch` | toutes | oui | oui | — | oui | oui | oui |
 | `file` | `index`, `create` | non | oui | — | oui | oui | non |
+| `http` | `index` | non | non | — | oui | oui | oui |
 | `loki` | `index` | non | non | — | oui | oui | oui |
 | `manticore` | toutes | oui | oui | — | oui | oui | oui |
 | `null` | toutes | oui | oui | — | non | oui | non |
@@ -373,6 +374,52 @@ Banc de conformité contre ClickHouse 26.3.62 en conteneur
 colonne, champ sans colonne écarté, `async_insert` visible à la
 lecture, table absente jamais comptée comme indexée. Fixture du banc
 commun (#9) en plus.
+
+## Sortie `http` générique (issue #24)
+
+Repli pour **tout récepteur HTTP** — Vector (source `http_server`),
+entrée `http` de Logstash, Fluent Bit, webhooks… — sans client dédié :
+`POST` (ou `PUT`) vers une URL libre, options reprises de la sortie
+`http` de Logstash.
+
+```
+output {
+  http {
+    url => "http://vector:8080/logs"
+    http_method => "post"
+    format => "json_batch"
+    headers => { "Authorization" => "Bearer ${TOKEN}" }
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `url` | URL libre du récepteur (schéma, hôte, chemin) — **requise**, prime sur `hosts` |
+| `http_method` | `post` (défaut) ou `put` |
+| `format` | `ndjson` (défaut : une ligne JSON par document), `json_batch` (tableau du lot), `json` (**un événement par requête**, lot retaillé à 1) |
+
+Particularités :
+
+- `url` est découpée : l'hôte alimente le client commun (options
+  communes `user`/`password`/`ssl_*`/`headers`…), le chemin (et la
+  requête d'URL) sert à chaque envoi ;
+- **accusé global** : un récepteur générique n'accuse pas réception
+  élément par élément (`accuse_par_evenement=False`) : 2xx = lot
+  accepté ; 400/404 = permanent (DLQ si configurée) ; réseau, 429, 5xx
+  = transitoire — un lot rejeté part en entier ;
+- **insertions seules** : `index`, `_id` refusé, options de la famille
+  `_bulk` (`index`/`action`/`pipeline`/`routing`/`doc_as_upsert`)
+  refusées à la compilation ;
+- **santé** : `health()` sonde le récepteur (`GET` sur le chemin
+  d'`url`) — toute réponse inférieure à 5xx prouve la joignabilité (un
+  récepteur générique n'a pas de protocole de santé standard).
+
+Banc de conformité contre Vector 0.59.0 en conteneur (source
+`http_server`, `.github/workflows/conformite-http.yml`,
+`tests/test_integration_http.py`) : événements relus dans les journaux
+du sink `console`, les trois formats vérifiés. Fixture du banc commun
+(#9) en plus.
 
 ## Sortie `loki` (issue #21)
 

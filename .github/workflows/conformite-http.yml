@@ -1,0 +1,77 @@
+# Banc de conformité HTTP générique (issue #24) : la sortie `http`
+# contre un vrai récepteur — Vector (source `http_server`), en conteneur
+# éphémère. Les événements ressortent par le sink `console` : le banc
+# les relit dans les journaux du conteneur. Complète les tests
+# unitaires (faux serveur `httpx.MockTransport`) et la fixture du banc
+# commun (#9).
+#
+# Runner hébergé GitHub (ubuntu-latest, autorisé par la MISSION) : Docker
+# y est garanti, contrairement aux runners maison.
+name: Banc de conformité HTTP générique
+
+"on":
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conformite:
+    name: "Sortie http contre un vrai récepteur (Vector)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v7
+
+      - name: Installation de uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Installation de Python
+        run: uv python install
+
+      - name: Installation des dépendances
+        run: uv sync --extra dev
+
+      - name: Vector éphémère
+        run: |
+          cat > /tmp/vector.yaml <<'YAML'
+          sources:
+            entree:
+              type: http_server
+              address: 0.0.0.0:8080
+              decoding:
+                codec: json
+          sinks:
+            console:
+              type: console
+              inputs: [entree]
+              encoding:
+                codec: json
+          YAML
+          docker run -d --name vector -p 8080:8080 \
+            -v /tmp/vector.yaml:/etc/vector/vector.yaml:ro \
+            timberio/vector:0.59.0-debian --config /etc/vector/vector.yaml
+          for i in $(seq 1 60); do
+            if curl -sf -o /dev/null -w '%{http_code}' http://localhost:8080/ | rg -q "^[1-5]"; then
+              echo "Vector prêt"; exit 0
+            fi
+            sleep 1
+          done
+          docker logs vector
+          echo "::error::Vector n'a pas démarré" && exit 1
+
+      - name: Banc de conformité
+        env:
+          PYSTASHTEMPLATE_HTTP_URL: http://localhost:8080/logs
+          PYSTASHTEMPLATE_VECTOR_CONTAINER: vector
+        run: uv run pytest tests/test_integration_http.py -v
+
+      - name: Nettoyage du conteneur
+        if: always()
+        run: docker rm -f vector || true

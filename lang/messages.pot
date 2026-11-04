@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 18:16+0000\n"
+"POT-Creation-Date: 2026-11-04 18:32+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -154,6 +154,10 @@ msgstr ""
 
 #: src/pystashtemplate/outputs/fichier.py
 msgid "sortie file : option « path » manquante (chemin du fichier de sortie)"
+msgstr ""
+
+#: src/pystashtemplate/outputs/http_generique.py
+msgid "sortie http : url complète attendue (ex. http://recepteur:8080/logs), reçu : {}"
 msgstr ""
 
 #: src/pystashtemplate/outputs/loki.py
