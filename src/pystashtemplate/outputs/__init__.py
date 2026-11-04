@@ -110,8 +110,10 @@ class SortieInconnueError(ValueError):
 # avant que ce module ne soit chargé.
 from pystashtemplate.outputs.elasticsearch import ElasticsearchOutput  # noqa: E402
 from pystashtemplate.outputs.fichier import FileOutput  # noqa: E402
+from pystashtemplate.outputs.manticore import ManticoreOutput  # noqa: E402
 from pystashtemplate.outputs.null import NullOutput  # noqa: E402
 from pystashtemplate.outputs.opensearch import OpenSearchOutput  # noqa: E402
+from pystashtemplate.outputs.quickwit import QuickwitOutput  # noqa: E402
 from pystashtemplate.outputs.stdout import StdoutOutput  # noqa: E402
 from pystashtemplate.outputs.victorialogs import VictoriaLogsOutput  # noqa: E402
 from pystashtemplate.outputs.zincsearch import ZincSearchOutput  # noqa: E402
@@ -122,9 +124,11 @@ __all__ = [
     "Document",
     "ElasticsearchOutput",
     "FileOutput",
+    "ManticoreOutput",
     "NullOutput",
     "OpenSearchOutput",
     "Output",
+    "QuickwitOutput",
     "REGISTRY",
     "SortieInconnueError",
     "StdoutOutput",

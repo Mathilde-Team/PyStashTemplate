@@ -1,0 +1,56 @@
+# Banc de conformité Manticore (issue #17) : la sortie `manticore`
+# contre un vrai Manticore Search en conteneur éphémère (`/_bulk`),
+# doublons `create` et renvoi, relecture par SQL. Complète les tests unitaires
+# (faux serveur `httpx.MockTransport`).
+#
+# Runner hébergé GitHub (ubuntu-latest, autorisé par la MISSION) : Docker
+# y est garanti, contrairement aux runners maison.
+name: Banc de conformité Manticore
+
+"on":
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conformite:
+    name: "Sortie manticore contre un vrai Manticore"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v7
+
+      - name: Installation de uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Installation de Python
+        run: uv python install
+
+      - name: Installation des dépendances
+        run: uv sync --extra dev
+
+      - name: Manticore éphémère
+        run: |
+          docker run -d --name manticore -p 9308:9308 manticoresearch/manticore:29.9.0
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:9308/ >/dev/null; then echo "Manticore prêt"; exit 0; fi
+            sleep 1
+          done
+          docker logs manticore
+          echo "::error::Manticore n'a pas démarré" && exit 1
+
+      - name: Banc de conformité
+        env:
+          PYSTASHTEMPLATE_MANTICORE_URL: http://localhost:9308
+        run: uv run pytest tests/test_integration_manticore.py -v
+
+      - name: Nettoyage du conteneur
+        if: always()
+        run: docker rm -f manticore || true

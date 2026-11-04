@@ -30,8 +30,10 @@ from pystashtemplate.dlq import LocalDeadLetterQueue
 from pystashtemplate.outputs import REGISTRY
 from pystashtemplate.outputs.elasticsearch import ElasticsearchOutput
 from pystashtemplate.outputs.elasticsearch_bulk import ElasticsearchBulkOutput
+from pystashtemplate.outputs.manticore import ManticoreOutput
 from pystashtemplate.outputs.metriques import CompteursSortie
 from pystashtemplate.outputs.opensearch import OpenSearchOutput
+from pystashtemplate.outputs.quickwit import QuickwitOutput
 from pystashtemplate.outputs.victorialogs import VictoriaLogsOutput
 from pystashtemplate.outputs.zincsearch import ZincSearchOutput
 
@@ -73,6 +75,8 @@ FIXTURES: list[FixtureSortie] = [
     FixtureSortie(OpenSearchOutput),
     FixtureSortie(ElasticsearchOutput),
     FixtureSortie(ElasticsearchOutput, {"data_stream": True}),
+    FixtureSortie(QuickwitOutput),
+    FixtureSortie(ManticoreOutput),
     FixtureSortie(VictoriaLogsOutput),
     FixtureSortie(VictoriaLogsOutput, {"mode": "jsonline"}, compter=_lignes_json),
     FixtureSortie(ZincSearchOutput),

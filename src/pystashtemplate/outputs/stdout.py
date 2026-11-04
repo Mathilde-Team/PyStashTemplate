@@ -20,9 +20,9 @@ from typing import IO, Any, ClassVar, Mapping
 
 from loguru import logger
 
-from pystashtemplate.i18n import _
 from pystashtemplate.outputs import Capacites, Output, enregistrer
 from pystashtemplate.outputs.codecs import CODECS
+from pystashtemplate.outputs.schema import OptionSpec
 from pystashtemplate.tracing import atraced, traced
 
 __all__ = ["StdoutOutput"]
@@ -41,6 +41,18 @@ class StdoutOutput(Output):
         taille_max_requete=None,
     )
 
+    # Option propre, en plus des communes du schéma (issue #8) :
+    # `codec` énuméré, validé à la compilation.
+    OPTIONS_PROPRES: ClassVar[dict[str, OptionSpec]] = {
+        "codec": OptionSpec(
+            "codec",
+            (str,),
+            "rubydebug",
+            valeurs=tuple(CODECS),
+            description="Encodage d'un document par ligne (rubydebug par défaut)",
+        ),
+    }
+
     @traced
     def __init__(
         self,
@@ -57,10 +69,8 @@ class StdoutOutput(Output):
                 par défaut ``sys.stdout``.
         """
         super().__init__(options)
+        # Codec validé par le schéma (énumération, OPTIONS_PROPRES).
         codec = str(options.get("codec", "rubydebug"))
-        if codec not in CODECS:
-            logger.debug("__init__ : codec {} inconnu", codec)
-            raise ValueError(_("codec {} inconnu (codecs disponibles : json_lines, rubydebug)").format(codec))
         self._encoder = CODECS[codec]
         self._flux = flux or sys.stdout
 

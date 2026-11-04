@@ -19,10 +19,12 @@ coupure réseau, arrêt propre).
 | Plugin | Actions | `_id` | Accusé par élément | Taille max. de requête | DLQ | Réessais | Banc en conteneur |
 |---|---|---|---|---|---|---|---|
 | `elasticsearch` | toutes | oui | oui | — | oui | oui | oui |
-| `file` | `index`, `create` | non | oui | — | oui | non | non |
-| `null` | toutes | oui | oui | — | non | non | non |
+| `file` | `index`, `create` | non | oui | — | oui | oui | non |
+| `manticore` | toutes | oui | oui | — | oui | oui | oui |
+| `null` | toutes | oui | oui | — | non | oui | non |
 | `opensearch` | toutes | oui | oui | — | oui | oui | oui |
-| `stdout` | `index`, `create` | non | oui | — | non | non | non |
+| `quickwit` | `create` | non | oui | 10 Mio | oui | oui | oui |
+| `stdout` | `index`, `create` | non | oui | — | non | oui | non |
 | `victorialogs` | `index`, `create` | non | non | — | oui | oui | oui |
 | `zincsearch` | `index`, `create`, `delete` | oui | non | — | oui | oui | oui |
 <!-- matrice-sorties:fin -->
@@ -32,6 +34,49 @@ La famille « API _bulk Elasticsearch » (issue #11) partage le client
 plus qu'une sous-classe de quelques lignes (valeurs par défaut et
 capacités). Les autres familles (Loki, ClickHouse, HEC, OTLP…) sont
 des sous-issues du chantier #2.
+
+## Schéma de configuration commun (issue #8)
+
+Objectif : **seule la configuration du `output{}` diffère légèrement d'un
+système à l'autre.** Les options communes à toutes les sorties sont
+déclarées une seule fois (`pystashtemplate.outputs.schema`), validées
+**à la compilation** du pipeline — option inconnue (faute de frappe),
+type inattendu ou valeur hors bornes échouent franchement, avec un
+message traduit nommant le plugin — avant toute connexion. Les noms
+d'options reprennent ceux du plugin Logstash correspondant quand il
+existe, pour qu'un `.conf` Logstash fonctionne sans retouche ; `${VAR}`
+y est résolu par l'interpréteur.
+
+### Options communes
+
+| Option | Type | Défaut | Rôle |
+|---|---|---|---|
+| `hosts` | str ou liste | — | URL(s) du ou des nœuds cibles |
+| `user` | str | — | utilisateur de l'authentification basique |
+| `password` | str | — | mot de passe de l'authentification basique |
+| `ssl` | bool | `true` | vérifier le certificat TLS du serveur |
+| `cacert` | str | — | autorité de certification (PEM) du serveur |
+| `ssl_certificate` | str | — | certificat client TLS (mTLS) |
+| `ssl_key` | str | — | clé privée du certificat client |
+| `compression` | bool | `false` | compresser les requêtes |
+| `batch_size` | int ≥ 1 | `1` | documents tamponnés avant envoi |
+| `batch_bytes` | int ≥ 1 | `10485760` | taille maximale d'un lot en octets |
+| `flush_interval` | nombre ≥ 0 | `1.0` | secondes entre deux poussées du tampon |
+| `max_concurrency` | int ≥ 1 | `4` | envois parallèles au maximum |
+| `retry_max` | int ≥ 0 | `0` | réessais avant échec définitif |
+| `retry_backoff` | nombre ≥ 0 | `1.0` | secondes initiales d'attente entre réessais |
+| `dlq_path` | str | — | fichier de la DLQ locale (échecs définitifs) |
+
+Une sortie qui n'utilise pas une option commune l'ignore : le même
+pipeline peut basculer d'OpenSearch à VictoriaLogs en changeant **le
+seul nom du plugin et l'URL**. Chaque sortie ajoute ensuite ses
+options propres (schéma déclaré par classe, `OPTIONS_PROPRES`), validées
+aux mêmes instants : `opensearch` (`index`, `action`, `pipeline`,
+`routing`, `doc_as_upsert`, `timeout`, `headers`, `id`,
+`dlq_transitoires`), `elasticsearch` (en plus : `api_key`, `token`,
+`data_stream` et ses composants), `victorialogs` (en plus : `mode`,
+`stream_fields`, `msg_field`, `time_field`), `file` (`path`, requis ;
+`codec`), `stdout` (`codec`).
 
 ## Sortie `opensearch` (issue #12)
 
@@ -199,6 +244,77 @@ Banc de conformité : `tests/test_integration_zincsearch.py`, workflow
 `conformite-zincsearch.yml` (ZincSearch 0.4.10 en conteneur) — lot
 indexé, remplacement par `_id` et `delete`, relus par l'API de
 recherche.
+
+## Sortie `manticore` (issue #17)
+
+API `/_bulk` compatible Elasticsearch de Manticore Search (port HTTP
+9308 par défaut), accusé de réception élément par élément (`items[]`).
+
+```
+output {
+  manticore {
+    hosts => ["http://manticore:9308"]
+    index => "logs"
+  }
+}
+```
+
+Particularités (issue amont
+[#4884](https://github.com/manticoresoftware/manticoresearch/issues/4884),
+observées contre Manticore 29.9.0) :
+
+- `create` en doublon : avant 29.9.0, HTTP 409 pour toute la requête et
+  élément en 400 (« duplicate id ») ; depuis, HTTP 200 et élément en
+  409. Les deux formes sont un **doublon** : document déjà présent,
+  compté indexé (comme la sortie `elasticsearch` de Logstash avec un
+  conflit 409), jamais envoyé en DLQ comme une erreur de mapping ;
+- perte silencieuse : dans une suite de `create` consécutifs vers la
+  même table, un doublon annule les documents qui le précèdent alors
+  qu'ils sont rapportés `201`. La sortie les rend à l'appelant
+  (`RETRYABLE`) pour renvoi — idempotent avec un `document_id` (au pire
+  un nouveau doublon, compté indexé). Sans `_id`, préférer `index` ;
+- `_id` non numérique haché par Manticore en entier 64 bits ;
+- la table doit exister (ou le module Buddy la créer) : une table absente
+  ou une colonne inconnue est une erreur d'élément 400, permanente (DLQ
+  si configurée).
+
+`health()` lit `GET /` (réponse de type Elasticsearch). Aucune option
+propre.
+
+Banc de conformité : `tests/test_integration_manticore.py`, workflow
+`conformite-manticore.yml` (Manticore 29.9.0 en conteneur) — lot
+indexé, doublon `create` et renvoi convergent, relus par SQL.
+
+## Sortie `quickwit` (issue #15)
+
+Sous-classe du client commun sur l'API compatible Elasticsearch de
+Quickwit : `POST /api/v1/_elastic/_bulk` (port 7280 par défaut).
+
+- **`create` seule** : c'est l'action par défaut ; toute autre action
+  (`index`, `update`, `delete`) est refusée dès la compilation du
+  pipeline (message traduit) et par `envoyer`.
+- **Pas de `_id`** : ignoré avec un avertissement.
+- **Accusé par élément** : la réponse porte un `items[]` (201, 404
+  index absent, 400 document illisible…), mais chaque élément est
+  rapporté sous la clé `index` même pour un `create` ; la sortie le
+  relit sous l'action envoyée. Erreur d'élément 400/404 = permanente,
+  DLQ si configurée ; réseau, 429, 5xx = transitoire.
+- **Requête ≤ 10 Mio** (limite de Quickwit, déclarée dans les capacités).
+- L'index doit exister : Quickwit ne le crée pas à l'ingestion.
+
+| Option propre | Rôle |
+|---|---|
+| `refresh` | `true` (commit forcé), `wait_for` (attend le prochain commit), `false` ; absent par défaut |
+
+Avec `refresh => "true"` ou `"wait_for"`, la requête attend le commit
+(2 à 5 s observées) : sans `timeout` explicite, le délai passe à 30 s.
+
+Santé : `health()` interroge `GET /api/v1/version`.
+
+Banc de conformité contre Quickwit 0.9.3 en conteneur
+(`.github/workflows/conformite-quickwit.yml`,
+`tests/test_integration_quickwit.py`) : lot `create` indexé puis
+retrouvé par la recherche, `_id` ignoré, index absent parti en DLQ.
 
 ## Sorties `file` et `stdout` (issue #32)
 

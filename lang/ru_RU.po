@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 17:21+0000\n"
+"POT-Creation-Date: 2026-11-04 18:00+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -139,24 +139,17 @@ msgid "lot en échec transitoire mis en DLQ documents={nombre}"
 msgstr ""
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
-msgid "options inconnues pour cette sortie : {}"
-msgstr ""
-
-#: src/pystashtemplate/outputs/elasticsearch_bulk.py
 msgid "réponse _bulk : {} éléments attendus, {} reçus"
 msgstr ""
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
+#: src/pystashtemplate/outputs/manticore.py
 #, python-brace-format
 msgid "réponse _bulk illisible erreur={error}"
 msgstr ""
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
 msgid "sortie : _id refusé par le produit, ignoré"
-msgstr ""
-
-#: src/pystashtemplate/outputs/fichier.py src/pystashtemplate/outputs/stdout.py
-msgid "codec {} inconnu (codecs disponibles : json_lines, rubydebug)"
 msgstr ""
 
 #: src/pystashtemplate/outputs/fichier.py
@@ -191,6 +184,14 @@ msgstr ""
 msgid "échec de l'envoi du lot ({} document(s))"
 msgstr ""
 
+#: src/pystashtemplate/outputs/manticore.py
+msgid "manticore : {} create en doublon (document déjà présent)"
+msgstr ""
+
+#: src/pystashtemplate/outputs/manticore.py
+msgid "manticore : {} create précédant un doublon rendus à l'appelant"
+msgstr ""
+
 #: src/pystashtemplate/outputs/matrice.py
 msgid "marqueurs de la matrice des sorties absents ou dans le désordre"
 msgstr ""
@@ -209,6 +210,25 @@ msgstr ""
 msgid "métriques : issue inconnue {issue}"
 msgstr ""
 
+#: src/pystashtemplate/outputs/quickwit.py
+#, python-brace-format
+msgid "réponse _bulk quickwit non normalisée erreur={error}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/quickwit.py
+#, python-brace-format
+msgid "sortie quickwit : action {action} refusée (create seule)"
+msgstr ""
+
+#: src/pystashtemplate/outputs/quickwit.py
+#, python-brace-format
+msgid "sortie quickwit : refresh {valeur} inconnu"
+msgstr ""
+
+#: src/pystashtemplate/outputs/quickwit.py
+msgid "sortie quickwit : refresh {} inconnu (attendu : {})"
+msgstr ""
+
 #: src/pystashtemplate/outputs/rejeu.py
 #, python-brace-format
 msgid "rejeu DLQ : document conservé erreur={error}"
@@ -225,6 +245,26 @@ msgstr ""
 #: src/pystashtemplate/outputs/rejeu.py
 #, python-brace-format
 msgid "rejeu DLQ terminé rejouées={rejouees} conservées={conservees}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/schema.py
+msgid "option « {} » inconnue pour la sortie « {} » (options valides : {})"
+msgstr ""
+
+#: src/pystashtemplate/outputs/schema.py
+msgid "sortie « {} » : l'option « {} » est requise"
+msgstr ""
+
+#: src/pystashtemplate/outputs/schema.py
+msgid "sortie « {} » : option « {} » — la valeur doit être au moins {} (reçu : {})"
+msgstr ""
+
+#: src/pystashtemplate/outputs/schema.py
+msgid "sortie « {} » : option « {} » — type {} attendu (reçu : {})"
+msgstr ""
+
+#: src/pystashtemplate/outputs/schema.py
+msgid "sortie « {} » : option « {} » — valeurs valides : {} (reçu : {})"
 msgstr ""
 
 #: src/pystashtemplate/outputs/transport.py

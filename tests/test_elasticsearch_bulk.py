@@ -527,17 +527,20 @@ def test_dlq_construite_depuis_dlq_path() -> None:
 
 
 def test_batch_size_invalide_refuse() -> None:
-    with pytest.raises(ValueError, match="positifs"):
+    # Schéma commun (#8) : borne minimale validée à l'instanciation.
+    with pytest.raises(ValueError, match="au moins 1"):
         sortie(FauxServeur([]), batch_size=0)
 
 
 def test_retry_negatif_refuse() -> None:
-    with pytest.raises(ValueError, match="positifs"):
+    # Schéma commun (#8) : borne minimale validée à l'instanciation.
+    with pytest.raises(ValueError, match="au moins 0"):
         sortie(FauxServeur([]), retry_max=-1)
 
 
 def test_option_inconnue_refusee() -> None:
-    with pytest.raises(ValueError, match="options inconnues"):
+    # Schéma commun (#8) : option inconnue = faute de frappe, échec franc.
+    with pytest.raises(ValueError, match="option « option_tres_etrange » inconnue"):
         sortie(FauxServeur([]), option_tres_etrange=1)
 
 
