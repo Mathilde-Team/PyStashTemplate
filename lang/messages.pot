@@ -156,6 +156,20 @@ msgstr ""
 msgid "sortie file : option « path » manquante (chemin du fichier de sortie)"
 msgstr ""
 
+#: src/pystashtemplate/outputs/greptimedb.py
+#, python-brace-format
+msgid "réponse greptimedb sans raison lisible erreur={error}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/greptimedb.py
+msgid "greptimedb : lot de {} documents rejeté, renvoi un par un"
+msgstr ""
+
+#: src/pystashtemplate/outputs/greptimedb.py
+#, python-brace-format
+msgid "réponse _bulk greptimedb non normalisée erreur={error}"
+msgstr ""
+
 #: src/pystashtemplate/outputs/loki.py
 msgid "@timestamp {} illisible, heure d'envoi utilisée"
 msgstr ""

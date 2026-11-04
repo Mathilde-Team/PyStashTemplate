@@ -21,6 +21,7 @@ coupure réseau, arrêt propre).
 | `clickhouse` | `index` | non | non | — | oui | oui | oui |
 | `elasticsearch` | toutes | oui | oui | — | oui | oui | oui |
 | `file` | `index`, `create` | non | oui | — | oui | oui | non |
+| `greptimedb` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `loki` | `index` | non | non | — | oui | oui | oui |
 | `manticore` | toutes | oui | oui | — | oui | oui | oui |
 | `null` | toutes | oui | oui | — | non | oui | non |
@@ -30,6 +31,7 @@ coupure réseau, arrêt propre).
 | `siglens` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `stdout` | `index`, `create` | non | oui | — | non | oui | non |
 | `victorialogs` | `index`, `create` | non | non | — | oui | oui | oui |
+| `zincsearch` | `index`, `create`, `delete` | oui | non | — | oui | oui | oui |
 <!-- matrice-sorties:fin -->
 
 La famille « API _bulk Elasticsearch » (issue #11) partage le client
@@ -211,6 +213,43 @@ Banc de conformité : `tests/test_integration_victorialogs.py`, workflow
 `conformite-victorialogs.yml` (VictoriaLogs v1.53.0 en conteneur) —
 modes `bulk` et `jsonline`, champs de flux et de date relus par LogsQL.
 
+## Sortie `zincsearch` (issue #18)
+
+API `_bulk` native de ZincSearch (port 4080 par défaut) :
+`POST /api/_bulk`, authentification basic.
+
+```
+output {
+  zincsearch {
+    hosts => ["http://zincsearch:4080"]
+    index => "logs"
+    user => "${ZINC_USER}"
+    password => "${ZINC_PASSWORD}"
+  }
+}
+```
+
+Compatibilité Elasticsearch partielle (lue dans le code de ZincSearch
+0.4.10) :
+
+- actions `index`, `create` et `delete` ; `update` est refusée à la
+  compilation, car ZincSearch enregistre la ligne de données comme
+  document complet (pas de mise à jour partielle `{"doc": …}`) ;
+- `_id` transmis : un `index`/`create` avec le même `_id` remplace le
+  document ;
+- statut HTTP global seul : la réponse ne porte que `record_count`.
+  Une erreur arrête le lot en HTTP 500 — les documents précédents sont
+  déjà indexés ; le lot est retenté puis rendu à l'appelant. Sans
+  `document_id`, un réessai peut donc créer des doublons. Une ligne JSON
+  illisible est ignorée sans erreur par le serveur.
+
+`health()` lit `GET /version`. Aucune option propre.
+
+Banc de conformité : `tests/test_integration_zincsearch.py`, workflow
+`conformite-zincsearch.yml` (ZincSearch 0.4.10 en conteneur) — lot
+indexé, remplacement par `_id` et `delete`, relus par l'API de
+recherche.
+
 ## Sortie `openobserve` (issue #16)
 
 Sous-classe du client commun sur l'API compatible Elasticsearch
@@ -361,6 +400,44 @@ Banc de conformité : `tests/test_integration_siglens.py`, workflow
 `conformite-siglens.yml` (SigLens 1.0.57 en conteneur) — lots `index`
 et `create`, `_id` ignoré, ligne illisible seule en DLQ, relus par l'API
 de recherche (`POST /api/search` du port 5122).
+
+## Sortie `greptimedb` (issue #19)
+
+API d'ingestion compatible Elasticsearch de GreptimeDB (port HTTP 4000
+par défaut) : `POST /v1/elasticsearch/_bulk`, le `_index` de chaque ligne
+étant la table (créée à la première écriture).
+
+```
+output {
+  greptimedb {
+    hosts => ["http://greptimedb:4000"]
+    index => "logs"
+  }
+}
+```
+
+Particularités, observées contre GreptimeDB 1.3.0 :
+
+- **insertions seules** : `index` (défaut) et `create` ; `update` et
+  `delete` refusées dès la compilation ; `_id` ignoré avec un
+  avertissement (non stocké) ;
+- **éléments sous `create`** : chaque élément de `items[]` est rapporté
+  sous `create`, même pour un `index` ; la sortie le relit sous l'action
+  envoyée (sinon une erreur d'élément serait comptée indexée) ;
+- **lot atomique** : une ligne invalide fait rejeter tout le lot en
+  HTTP 400, sans rien écrire. La sortie renvoie alors chaque document
+  seul — sans doublon possible — : seul le document fautif est refusé
+  (DLQ si configurée), avec la raison donnée par le serveur ;
+- **perte silencieuse sur conflit de type** : un document dont un champ
+  contredit le type déjà connu de la colonne n'est pas écrit, alors que
+  le serveur répond `201` ; indétectable dans la réponse. Garder des
+  types stables par champ (`mutate { convert => … }`).
+
+`health()` lit `GET /health` (`{}`). Aucune option propre.
+
+Banc de conformité : `tests/test_integration_greptimedb.py`, workflow
+`conformite-greptimedb.yml` (GreptimeDB 1.3.0 standalone en conteneur) —
+lot relu par SQL, lot rejeté dont seul le document fautif part en DLQ.
 
 ## Sortie `clickhouse` (issue #23)
 
