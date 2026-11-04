@@ -36,6 +36,7 @@ from pystashtemplate.outputs.manticore import ManticoreOutput
 from pystashtemplate.outputs.metriques import CompteursSortie
 from pystashtemplate.outputs.openobserve import OpenObserveOutput
 from pystashtemplate.outputs.opensearch import OpenSearchOutput
+from pystashtemplate.outputs.parseable import ParseableOutput
 from pystashtemplate.outputs.quickwit import QuickwitOutput
 from pystashtemplate.outputs.victorialogs import VictoriaLogsOutput
 from pystashtemplate.outputs.zincsearch import ZincSearchOutput
@@ -49,6 +50,11 @@ def _paires_ndjson(corps: bytes) -> int:
 def _lignes_json(corps: bytes) -> int:
     """Documents d'un corps JSON Lines : une ligne par document."""
     return len(corps.decode("utf-8").splitlines())
+
+
+def _tableau_json(corps: bytes) -> int:
+    """Documents d'un corps tableau JSON (Parseable) : un élément par document."""
+    return len(json.loads(corps))
 
 
 def _lignes_push_loki(corps: bytes) -> int:
@@ -92,6 +98,7 @@ FIXTURES: list[FixtureSortie] = [
     FixtureSortie(ZincSearchOutput),
     FixtureSortie(LokiOutput, {"labels": {"host": "%{host}"}}, compter=_lignes_push_loki),
     FixtureSortie(ClickHouseOutput, {"table": "logs"}, compter=_lignes_json),
+    FixtureSortie(ParseableOutput, {"stream": "banc"}, compter=_tableau_json),
 ]
 
 

@@ -1,0 +1,82 @@
+# Banc de conformité Parseable (issue #25) : la sortie `parseable` contre
+# un vrai Parseable en conteneur éphémère, tableau JSON vers
+# `/api/v1/ingest` (`X-P-Stream`), relecture par l'API SQL
+# (`/api/v1/query`). Complète les tests unitaires (faux serveur
+# `httpx.MockTransport`) et la fixture du banc commun (#9).
+#
+# Parseable 3.x n'est publié qu'en binaire (Docker Hub s'arrête à
+# v2.8.0) : le binaire officiel de la version figée, vérifié par son
+# empreinte (checksum.txt de la release), tourne dans un conteneur
+# Debian éphémère.
+#
+# Runner hébergé GitHub (ubuntu-latest, autorisé par la MISSION) : Docker
+# y est garanti, contrairement aux runners maison.
+name: Banc de conformité Parseable
+
+"on":
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  PARSEABLE_VERSION: v3.2.6
+  PARSEABLE_SHA1: 69fdbd7966baaa45af23e4cd8d6edd81f05324e6
+
+jobs:
+  conformite:
+    name: "Sortie parseable contre un vrai Parseable"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v7
+
+      - name: Installation de uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Installation de Python
+        run: uv python install
+
+      - name: Installation des dépendances
+        run: uv sync --extra dev
+
+      - name: Parseable éphémère
+        run: |
+          mkdir -p "$RUNNER_TEMP/parseable"
+          curl -fsSL -o "$RUNNER_TEMP/parseable/parseable" \
+            "https://github.com/parseablehq/parseable/releases/download/${PARSEABLE_VERSION}/Parseable_OSS_x86_64-unknown-linux-gnu"
+          echo "${PARSEABLE_SHA1}  $RUNNER_TEMP/parseable/parseable" | sha1sum -c -
+          chmod +x "$RUNNER_TEMP/parseable/parseable"
+          docker run -d --name parseable -p 8000:8000 \
+            -v "$RUNNER_TEMP/parseable:/opt/parseable:ro" \
+            -e P_USERNAME=banc -e P_PASSWORD=BancConformite1 \
+            -e P_FS_DIR=/tmp/data -e P_STAGING_DIR=/tmp/staging \
+            -e P_CHECK_UPDATE=false -e P_SEND_ANONYMOUS_USAGE_DATA=false \
+            debian:stable-slim /opt/parseable/parseable local-store
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8000/api/v1/readiness >/dev/null; then echo "Parseable prêt"; exit 0; fi
+            sleep 1
+          done
+          docker logs parseable
+          echo "::error::Parseable n'a pas démarré" && exit 1
+
+      - name: Banc de conformité
+        env:
+          PYSTASHTEMPLATE_PARSEABLE_URL: http://localhost:8000
+          PYSTASHTEMPLATE_PARSEABLE_USER: banc
+          PYSTASHTEMPLATE_PARSEABLE_PASSWORD: BancConformite1
+        run: uv run pytest tests/test_integration_parseable.py -v
+
+      - name: Journal de Parseable
+        if: failure()
+        run: docker logs parseable || true
+
+      - name: Nettoyage du conteneur
+        if: always()
+        run: docker rm -f parseable || true

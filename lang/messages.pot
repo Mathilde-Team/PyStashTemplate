@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 18:16+0000\n"
+"POT-Creation-Date: 2026-11-04 18:38+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -224,6 +224,22 @@ msgstr ""
 
 #: src/pystashtemplate/outputs/openobserve.py
 msgid "réponse openobserve : {} échec(s) sans contenu pour {} document(s), renvoi un par un"
+msgstr ""
+
+#: src/pystashtemplate/outputs/parseable.py
+msgid "sortie parseable : option stream manquante"
+msgstr ""
+
+#: src/pystashtemplate/outputs/parseable.py
+msgid "sortie parseable : stream est requis (jeu de données Parseable)"
+msgstr ""
+
+#: src/pystashtemplate/outputs/parseable.py
+msgid "sortie parseable : étiquette {} refusée"
+msgstr ""
+
+#: src/pystashtemplate/outputs/parseable.py
+msgid "sortie parseable : nom d'étiquette invalide {!r} (lettres, chiffres, _ et -)"
 msgstr ""
 
 #: src/pystashtemplate/outputs/quickwit.py

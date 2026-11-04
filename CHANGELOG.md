@@ -7,6 +7,13 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- Sortie `parseable` (issue #25) : tableau JSON vers `/api/v1/ingest`,
+  jeu de données en `X-P-Stream` (créé à la volée), `api_key`
+  (`X-API-Key`), `tenant_id` (`X-P-Tenant-ID`), `tags` (`X-P-Tag-*`),
+  statut HTTP global (401/403 rendus à l'appelant), lot vide jamais
+  envoyé (panique de Parseable 3.2.6), santé `readiness` + `about`.
+  Banc de conformité contre Parseable 3.2.6.
+
 - Sortie `clickhouse` (issue #23) : interface HTTP
   (`POST /?query=INSERT … FORMAT JSONEachRow`, corps JSON Each Row),
   correspondance champ → colonne côté serveur, `table` requise,
