@@ -7,6 +7,12 @@ le projet suit SemVer.
 
 ### Documentation
 
+- README largement repris (#117, suite de #115) : architecture, démarrage
+  rapide (filtres JSON, enrichissement, pipelines `.conf`, plusieurs
+  événements, `${VAR}`, échappement, DNS), indexation/DLQ/métriques/connexion,
+  internationalisation complète, tests et qualité, licences des
+  dépendances — contenu générique venu du README de RsysLogstach
+  (Mathilde-Team/RsysLogstach#174).
 - README remis à jour pour la v0.3.0 (issue #115) : installation à
   version figée, 25 sorties livrées par famille, service autonome et
   sFlow, SNMP confié à Mathilde-Team/asnmp (#47), références d'issues
