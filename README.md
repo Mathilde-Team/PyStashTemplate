@@ -139,15 +139,17 @@ async with TransportHTTP(essais_max=5, delai_initial=0.5) as transport:
 
 ```python
 from pystashtemplate.interpreter import PipelineInterpreter
-from pystashtemplate.service import EntreeHttp, EntreeSyslogTcp, Service
+from pystashtemplate.service import EntreeHttp, EntreeSflow, EntreeSyslogTcp, Service
 
 service = Service(PipelineInterpreter("filter { } output { null {} }"))
-await service.demarrer([EntreeSyslogTcp("0.0.0.0", 514), EntreeHttp("0.0.0.0", 8080)])
+await service.demarrer([EntreeSyslogTcp("0.0.0.0", 514), EntreeHttp("0.0.0.0", 8080), EntreeSflow("0.0.0.0", 6343)])
 await service.arreter()  # arrêt propre : écoutes fermées, file vidée, sorties poussées
 ```
 
 - **entrées** : `EntreeSyslogTcp` (cadrage RFC 6587 octet-counting ou
-  LF), `EntreeSyslogUdp`, `EntreeHttp` (`POST` JSON ou NDJSON) ;
+  LF), `EntreeSyslogUdp`, `EntreeHttp` (`POST` JSON ou NDJSON),
+  `EntreeSflow` (datagrammes sFlow v5 — RFC 3176 : chaque échantillon
+  de flux ou de compteurs devient un document) ;
   l'analyse RFC 5424/3164 produit les champs `message`, `host`,
   `facility`, `severity`, `appname`… ;
 - **contre-pression** : file bornée (`file_max`) entre réception et
@@ -165,7 +167,6 @@ et compile les `.mo`. La locale se force par `$LANGUAGE` ou
 
 ## Feuille de route
 
-- Entrée sflow du service autonome (#39) : sous-issue dédiée
 - Fonctions SNMP : un prochain dépôt livrera un client SNMP ultra rapide
   (décision #111)
 
