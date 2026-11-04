@@ -31,6 +31,7 @@ from pystashtemplate.outputs import REGISTRY
 from pystashtemplate.outputs.clickhouse import ClickHouseOutput
 from pystashtemplate.outputs.elasticsearch import ElasticsearchOutput
 from pystashtemplate.outputs.elasticsearch_bulk import ElasticsearchBulkOutput
+from pystashtemplate.outputs.gelf import GelfOutput
 from pystashtemplate.outputs.greptimedb import GreptimeDbOutput
 from pystashtemplate.outputs.http_generique import HttpOutput
 from pystashtemplate.outputs.loki import LokiOutput
@@ -113,6 +114,7 @@ FIXTURES: list[FixtureSortie] = [
     FixtureSortie(ClickHouseOutput, {"table": "logs"}, compter=_lignes_json),
     FixtureSortie(HttpOutput, {"url": "http://faux:9200/logs"}, compter=_lignes_json),
     FixtureSortie(ParseableOutput, {"stream": "banc"}, compter=_tableau_json),
+    FixtureSortie(GelfOutput, compter=_lignes_json),
 ]
 
 

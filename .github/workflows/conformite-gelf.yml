@@ -1,0 +1,122 @@
+# Banc de conformité Graylog GELF (issue #26) : la sortie `gelf` contre un
+# vrai Graylog en conteneurs éphémères (Graylog + MongoDB + OpenSearch),
+# par ses trois transports : entrée GELF HTTP en réception par lot
+# (`enable_bulk_receiving`), entrées GELF TCP et UDP, créées par l'API
+# REST. Les messages sont relus dans les index `graylog_*` d'OpenSearch.
+# Complète les tests unitaires (faux serveurs) et la fixture du banc
+# commun (#9).
+#
+# Runner hébergé GitHub (ubuntu-latest, autorisé par la MISSION) : Docker
+# y est garanti, contrairement aux runners maison.
+name: Banc de conformité GELF
+
+"on":
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  GRAYLOG_IMAGE: graylog/graylog:7.0.16
+  MONGO_IMAGE: mongo:7.0
+  OPENSEARCH_IMAGE: opensearchproject/opensearch:2.19.7
+
+jobs:
+  conformite:
+    name: "Sortie gelf contre un vrai Graylog"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v7
+
+      - name: Installation de uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Installation de Python
+        run: uv python install
+
+      - name: Installation des dépendances
+        run: uv sync --extra dev
+
+      - name: Graylog éphémère
+        run: |
+          docker network create banc
+          docker run -d --name mongo --network banc "$MONGO_IMAGE"
+          docker run -d --name opensearch --network banc -p 9200:9200 \
+            -e discovery.type=single-node \
+            -e DISABLE_SECURITY_PLUGIN=true -e DISABLE_INSTALL_DEMO_CONFIG=true \
+            -e action.auto_create_index=false \
+            -e "OPENSEARCH_JAVA_OPTS=-Xms512m -Xmx512m" \
+            "$OPENSEARCH_IMAGE"
+          for i in $(seq 1 90); do
+            if curl -sf http://localhost:9200/_cluster/health >/dev/null; then echo "OpenSearch prêt"; break; fi
+            sleep 2
+          done
+          # Mot de passe admin du banc : « admin » (empreinte SHA-256).
+          docker run -d --name graylog --network banc \
+            -p 9000:9000 -p 12201:12201/tcp -p 12202:12202/tcp -p 12203:12203/udp \
+            -e GRAYLOG_PASSWORD_SECRET=BancDeConformiteGelfPyStash \
+            -e GRAYLOG_ROOT_PASSWORD_SHA2=8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918 \
+            -e GRAYLOG_HTTP_BIND_ADDRESS=0.0.0.0:9000 \
+            -e GRAYLOG_HTTP_EXTERNAL_URI=http://localhost:9000/ \
+            -e GRAYLOG_ELASTICSEARCH_HOSTS=http://opensearch:9200 \
+            -e GRAYLOG_MONGODB_URI=mongodb://mongo:27017/graylog \
+            -e GRAYLOG_SERVER_JAVA_OPTS="-Xms1g -Xmx1g" \
+            "$GRAYLOG_IMAGE"
+          for i in $(seq 1 120); do
+            if curl -sf -u admin:admin http://localhost:9000/api/system/lbstatus | grep -q ALIVE; then
+              echo "Graylog prêt"; exit 0
+            fi
+            sleep 2
+          done
+          docker logs graylog
+          echo "::error::Graylog n'a pas démarré" && exit 1
+
+      - name: Entrées GELF HTTP, TCP et UDP
+        run: |
+          entree() {
+            curl -sf -u admin:admin -H "X-Requested-By: banc" -H "Content-Type: application/json" \
+              -X POST http://localhost:9000/api/system/inputs -d "$1"
+            echo
+          }
+          entree '{"title":"banc http","type":"org.graylog2.inputs.gelf.http.GELFHttpInput","global":true,
+            "configuration":{"bind_address":"0.0.0.0","port":12201,"enable_bulk_receiving":true,
+            "enable_cors":true,"decompress_size_limit":8388608,"max_chunk_size":65536,"idle_writer_timeout":60,
+            "recv_buffer_size":1048576,"number_worker_threads":2,"tls_enable":false,"tcp_keepalive":false}}'
+          entree '{"title":"banc tcp","type":"org.graylog2.inputs.gelf.tcp.GELFTCPInput","global":true,
+            "configuration":{"bind_address":"0.0.0.0","port":12202,"use_null_delimiter":true,
+            "decompress_size_limit":8388608,"max_message_size":2097152,"recv_buffer_size":1048576,
+            "number_worker_threads":2,"tls_enable":false,"tcp_keepalive":false}}'
+          entree '{"title":"banc udp","type":"org.graylog2.inputs.gelf.udp.GELFUDPInput","global":true,
+            "configuration":{"bind_address":"0.0.0.0","port":12203,"decompress_size_limit":8388608,
+            "recv_buffer_size":262144,"number_worker_threads":2}}'
+          for port in 12201 12202; do
+            for i in $(seq 1 60); do
+              if (exec 3<>"/dev/tcp/127.0.0.1/$port") 2>/dev/null; then echo "entrée $port ouverte"; break; fi
+              sleep 1
+            done
+          done
+          sleep 5
+          curl -sf -u admin:admin http://localhost:9000/api/system/inputstates
+
+      - name: Banc de conformité
+        env:
+          PYSTASHTEMPLATE_GELF_HOST: 127.0.0.1
+          PYSTASHTEMPLATE_GELF_OPENSEARCH: http://localhost:9200
+        run: uv run pytest tests/test_integration_gelf.py -v
+
+      - name: Journal de Graylog
+        if: failure()
+        run: |
+          docker logs graylog 2>&1 | tail -300 || true
+          curl -s http://localhost:9200/_cat/indices || true
+
+      - name: Nettoyage des conteneurs
+        if: always()
+        run: docker rm -f graylog opensearch mongo || true

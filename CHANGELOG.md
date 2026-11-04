@@ -7,6 +7,13 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- Sortie `gelf` (issue #26) : messages Graylog GELF 1.1 (options du
+  plugin `gelf` de Logstash : `sender`, `short_message`,
+  `full_message`, `level`, `custom_fields`, `ship_metadata`,
+  `ship_tags`), transports HTTP (`/gelf`, NDJSON en réception par lot),
+  TCP (octet nul, TLS/mTLS) et UDP (gzip, morceaux GELF, `chunksize`),
+  champs additionnels aplatis, retentes et DLQ du socle. Banc de
+  conformité contre Graylog 7.0 en conteneurs (`conformite-gelf.yml`).
 - Sortie `kafka` (issue #29) : producteur asynchrone `aiokafka` vers
   Apache Kafka et compatibles, options du plugin `kafka` de Logstash
   (`bootstrap_servers`/`topic_id` requis, `message_key`, `codec`,
