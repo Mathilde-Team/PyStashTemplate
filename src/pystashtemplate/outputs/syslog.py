@@ -491,7 +491,7 @@ class _TransportReseau:
         self._udp: Any = None
         logger.debug("_TransportReseau.__init__ | sortie")
 
-    @traced
+    @atraced
     async def ouvrir_udp(self) -> Any:
         """Ouvre un socket UDP vers la destination."""
         transport, _ = await asyncio.get_event_loop().create_datagram_endpoint(
@@ -500,7 +500,7 @@ class _TransportReseau:
         )
         return transport
 
-    @traced
+    @atraced
     async def ecrire(self, trames: list[bytes]) -> None:
         """Écrit les trames : datagrammes UDP, ou flux TCP reconnecté."""
         if self._protocole == "udp":
@@ -521,7 +521,7 @@ class _TransportReseau:
             self._writer.write(trame)
         await self._writer.drain()
 
-    @traced
+    @atraced
     async def fermer(self) -> None:
         """Ferme la connexion TCP ouverte."""
         if self._writer is not None:

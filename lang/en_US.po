@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 21:47+0000\n"
+"POT-Creation-Date: 2026-11-04 22:26+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: deusyv\n"
 "Language-Team: English\n"
@@ -92,11 +92,11 @@ msgstr "Prometheus metrics on http://{addr}:{port}/metrics"
 
 #: src/pystashtemplate/outputs/__init__.py
 msgid "sortie « {} » déjà inscrite au registre"
-msgstr "output \"{}\": option \"{}\" is required"
+msgstr "output \"{}\" already registered"
 
 #: src/pystashtemplate/outputs/__init__.py
 msgid "sortie « {} » inconnue — sorties disponibles : {}"
-msgstr "unknown option \"{}\" for output \"{}\" (valid options: {})"
+msgstr "unknown output \"{}\" — available outputs: {}"
 
 #: src/pystashtemplate/outputs/base.py
 msgid "action « {} » non supportée par cette sortie (supportées : {})"
@@ -381,6 +381,10 @@ msgstr "kafka output: user is required with SASL"
 msgid "@timestamp {} illisible, heure d'envoi utilisée"
 msgstr "unreadable @timestamp {}, send time used instead"
 
+#: src/pystashtemplate/outputs/loki.py
+msgid "sortie loki : label {} sur le champ {} à forte cardinalité (un flux par valeur)"
+msgstr "loki output: label {} uses high-cardinality field {} (one stream per value)"
+
 #: src/pystashtemplate/outputs/lotisseur.py
 msgid "arrêt demandé mais le lotisseur n'a jamais démarré"
 msgstr "shutdown requested but the lotisseur was never started"
@@ -643,10 +647,6 @@ msgstr "transport: network failure after {} attempt(s)"
 msgid "sortie victorialogs : liste de champs attendue, reçu {}"
 msgstr "victorialogs output: list of fields expected, got {}"
 
-#: src/pystashtemplate/outputs/victorialogs.py
-msgid "sortie victorialogs : mode {} inconnu (bulk ou jsonline)"
-msgstr "victorialogs output: unknown mode {} (bulk or jsonline)"
-
 #: src/pystashtemplate/service.py
 #, python-brace-format
 msgid "entrée sflow : datagramme perdu erreur={error}"
@@ -867,6 +867,9 @@ msgstr "uuid ignored: missing target option"
 
 #~ msgid "options inconnues pour cette sortie : {}"
 #~ msgstr "unknown options for this output: {}"
+
+#~ msgid "sortie victorialogs : mode {} inconnu (bulk ou jsonline)"
+#~ msgstr "victorialogs output: unknown mode {} (bulk or jsonline)"
 
 #~ msgid "Âge maximal d'un fichier rotaté"
 #~ msgstr "Maximum age of a rotated file"

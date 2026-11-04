@@ -5,8 +5,40 @@ le projet suit SemVer.
 
 ## [Non publié]
 
+### Corrections
+
+- Traçage asynchrone (#37, audit du 04/11) : les fonctions `async def`
+  arrivées après la v0.2.0 (`indexer.py`, `service.py`,
+  `outputs/syslog.py`) portaient `@traced`, qui journalise la sortie
+  avant l'`await`, ou aucun décorateur. Elles passent à `@atraced` ; un
+  test (`tests/test_tracing.py::TestRegleAtraced`) fait désormais
+  respecter la règle sur tout `src/` (seules exceptions : méthodes
+  abstraites, signatures de Protocol, générateurs asynchrones).
+
+### Tests
+
+- Couverture des sorties `victorialogs` (#14) et `http` (#24) remontée à
+  100 % (audit du 04/11 : 94 % et 97 %) : santé `http` en 5xx et en 4xx,
+  aide `_liste_virgules` ; garde-fou de `mode` redondant avec le schéma
+  commun retiré de `VictoriaLogsOutput`.
+
+### Sécurité
+
+- Identifiants écrits dans l'URL masqués dans les journaux (#5, audit du
+  04/11) : avec `hosts => "http://user:secret@hote"`, le mot de passe
+  sortait en clair dans le DEBUG de sortie en exception des décorateurs
+  de traçage (les messages httpx citent l'URL) et dans le DEBUG de
+  signature de la sortie `doris`. Nouvelle fonction
+  `tracing.masquer_identifiants` (`http://***@hote`), appliquée par
+  `@traced`/`@atraced`, `doris` et `gelf` ; test de non-fuite sur toutes
+  les sorties HTTP du registre (`tests/test_fuites_identifiants.py`).
+
 ### Documentation
 
+- Gabarits d'exemple ajoutés aux sections `openobserve` (#16),
+  `quickwit` (#15) et `stdout` (#32) de `docs/sorties.md` (audit du
+  04/11). Nouveau garde-fou `tests/test_docs_sorties.py` : chaque sortie
+  du registre doit avoir sa section et un gabarit `output { … }`.
 - README largement repris (#117, suite de #115) : architecture, démarrage
   rapide (filtres JSON, enrichissement, pipelines `.conf`, plusieurs
   événements, `${VAR}`, échappement, DNS), indexation/DLQ/métriques/connexion,

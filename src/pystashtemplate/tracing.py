@@ -29,12 +29,29 @@ modules de `src/` reste acyclique.
 from __future__ import annotations
 
 import functools
+import re
 from typing import Any, Callable, Coroutine, TypeVar
 
 from loguru import logger
 
 F = TypeVar("F", bound=Callable)
 A = TypeVar("A", bound=Callable[..., Coroutine[Any, Any, Any]])
+
+
+# Identifiants d'une URL (`schéma://utilisateur:secret@hôte`) : partie
+# avant `@` de l'autorité, jusqu'au premier `/`, espace ou guillemet.
+_IDENTIFIANTS_URL = re.compile(r"(?i)\b([a-z][a-z0-9+.\-]*://)[^\s/@'\"<>]+@")
+
+
+def masquer_identifiants(texte: object) -> str:
+    """Texte de `texte` où les identifiants d'URL sont remplacés par `***`.
+
+    `http://user:secret@hote:9200/x` devient `http://***@hote:9200/x` :
+    un message d'exception (httpx cite l'URL de la requête) ou une URL
+    journalisée ne laisse ainsi jamais passer un mot de passe écrit dans
+    `hosts` (#5).
+    """
+    return _IDENTIFIANTS_URL.sub(r"\1***@", str(texte))
 
 
 def traced(func: F) -> F:
@@ -69,7 +86,9 @@ def traced(func: F) -> F:
         try:
             result = func(*args, **kwargs)
         except BaseException as exc:
-            logger.debug("{} | sortie (exception {}) : {}", func.__qualname__, type(exc).__name__, exc)
+            logger.debug(
+                "{} | sortie (exception {}) : {}", func.__qualname__, type(exc).__name__, masquer_identifiants(exc)
+            )
             raise
         logger.debug("{} | sortie", func.__qualname__)
         return result
@@ -105,7 +124,9 @@ def atraced(func: A) -> A:
         try:
             result = await func(*args, **kwargs)
         except BaseException as exc:
-            logger.debug("{} | sortie (exception {}) : {}", func.__qualname__, type(exc).__name__, exc)
+            logger.debug(
+                "{} | sortie (exception {}) : {}", func.__qualname__, type(exc).__name__, masquer_identifiants(exc)
+            )
             raise
         logger.debug("{} | sortie", func.__qualname__)
         return result
