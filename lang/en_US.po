@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 17:58+0000\n"
+"POT-Creation-Date: 2026-11-04 18:04+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: deusyv\n"
 "Language-Team: English\n"
@@ -146,7 +146,7 @@ msgstr "unknown options for this output: {}"
 msgid "réponse _bulk : {} éléments attendus, {} reçus"
 msgstr "_bulk response: {} items expected, {} received"
 
-#: src/pystashtemplate/outputs/elasticsearch_bulk.py
+#: src/pystashtemplate/outputs/elasticsearch_bulk.py src/pystashtemplate/outputs/manticore.py
 #, python-brace-format
 msgid "réponse _bulk illisible erreur={error}"
 msgstr "unreadable _bulk response error={error}"
@@ -191,6 +191,14 @@ msgstr "lotisseur option {}: {} (must be strictly positive)"
 msgid "échec de l'envoi du lot ({} document(s))"
 msgstr "batch send failed ({} document(s))"
 
+#: src/pystashtemplate/outputs/manticore.py
+msgid "manticore : {} create en doublon (document déjà présent)"
+msgstr "manticore: {} duplicate create (document already present)"
+
+#: src/pystashtemplate/outputs/manticore.py
+msgid "manticore : {} create précédant un doublon rendus à l'appelant"
+msgstr "manticore: {} create preceding a duplicate returned to the caller"
+
 #: src/pystashtemplate/outputs/matrice.py
 msgid "marqueurs de la matrice des sorties absents ou dans le désordre"
 msgstr "output matrix markers missing or out of order"
@@ -220,6 +228,25 @@ msgstr "openobserve output: empty \"organization\" option"
 #: src/pystashtemplate/outputs/openobserve.py
 msgid "sortie openobserve : organisation vide"
 msgstr "openobserve output: empty organization"
+
+#: src/pystashtemplate/outputs/quickwit.py
+#, python-brace-format
+msgid "réponse _bulk quickwit non normalisée erreur={error}"
+msgstr "quickwit _bulk response not normalised error={error}"
+
+#: src/pystashtemplate/outputs/quickwit.py
+#, python-brace-format
+msgid "sortie quickwit : action {action} refusée (create seule)"
+msgstr "quickwit output: action {action} refused (create only)"
+
+#: src/pystashtemplate/outputs/quickwit.py
+#, python-brace-format
+msgid "sortie quickwit : refresh {valeur} inconnu"
+msgstr "quickwit output: unknown refresh {valeur}"
+
+#: src/pystashtemplate/outputs/quickwit.py
+msgid "sortie quickwit : refresh {} inconnu (attendu : {})"
+msgstr "quickwit output: unknown refresh {} (expected: {})"
 
 #: src/pystashtemplate/outputs/rejeu.py
 #, python-brace-format

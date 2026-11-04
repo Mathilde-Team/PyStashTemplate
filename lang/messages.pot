@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 17:58+0000\n"
+"POT-Creation-Date: 2026-11-04 18:04+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -137,6 +137,7 @@ msgid "envoi _bulk : statut global {statut}, lot rendu à l'appelant"
 msgstr ""
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
+#: src/pystashtemplate/outputs/manticore.py
 #, python-brace-format
 msgid "réponse _bulk illisible erreur={error}"
 msgstr ""
@@ -191,6 +192,14 @@ msgstr ""
 msgid "échec de l'envoi du lot ({} document(s))"
 msgstr ""
 
+#: src/pystashtemplate/outputs/manticore.py
+msgid "manticore : {} create en doublon (document déjà présent)"
+msgstr ""
+
+#: src/pystashtemplate/outputs/manticore.py
+msgid "manticore : {} create précédant un doublon rendus à l'appelant"
+msgstr ""
+
 #: src/pystashtemplate/outputs/matrice.py
 #, python-brace-format
 msgid "matrice des sorties : marqueurs introuvables debut={debut} fin={fin}"
@@ -219,6 +228,25 @@ msgstr ""
 
 #: src/pystashtemplate/outputs/openobserve.py
 msgid "réponse openobserve : {} échec(s) sans contenu pour {} document(s), renvoi un par un"
+msgstr ""
+
+#: src/pystashtemplate/outputs/quickwit.py
+#, python-brace-format
+msgid "sortie quickwit : action {action} refusée (create seule)"
+msgstr ""
+
+#: src/pystashtemplate/outputs/quickwit.py
+#, python-brace-format
+msgid "sortie quickwit : refresh {valeur} inconnu"
+msgstr ""
+
+#: src/pystashtemplate/outputs/quickwit.py
+msgid "sortie quickwit : refresh {} inconnu (attendu : {})"
+msgstr ""
+
+#: src/pystashtemplate/outputs/quickwit.py
+#, python-brace-format
+msgid "réponse _bulk quickwit non normalisée erreur={error}"
 msgstr ""
 
 #: src/pystashtemplate/outputs/rejeu.py

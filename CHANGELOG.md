@@ -24,6 +24,20 @@ le projet suit SemVer.
   `_apparier` du client commun. Banc de conformité contre OpenObserve
   v1.1.2 en conteneur et fixture du banc commun.
 
+- Sortie `manticore` (issue #17) : `/_bulk` compatible Elasticsearch,
+  accusé par élément ; `create` en doublon (HTTP 409 + élément 400 avant
+  29.9.0, élément 409 depuis) compté indexé et non envoyé en DLQ ; les
+  `create` annulés par Manticore avant un doublon sont rendus à
+  l'appelant. Banc de conformité contre Manticore 29.9.0 en conteneur.
+
+- Sortie `quickwit` (issue #15) : sous-classe du client _bulk commun
+  (`/api/v1/_elastic/_bulk`), action `create` seule (défaut, toute autre
+  refusée dès la compilation), `_id` ignoré, accusé par élément (relu sous
+  l'action envoyée : Quickwit répond sous la clé `index`), requête
+  ≤ 10 Mio, option `refresh` (délai porté à 30 s), santé `/api/v1/version`. Banc de
+  conformité contre Quickwit 0.9.3 en conteneur
+  (`conformite-quickwit.yml`) et fixture du banc commun.
+
 - Métriques des sorties (issue #10) : protocole `ObservateurSortie`
   porté par chaque sortie (nul par défaut), prévenu des documents par
   issue (`indexed`, `dead_lettered`, `retryable`, `rejected`), des

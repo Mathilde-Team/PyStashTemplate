@@ -20,9 +20,11 @@ coupure réseau, arrêt propre).
 |---|---|---|---|---|---|---|---|
 | `elasticsearch` | toutes | oui | oui | — | oui | oui | oui |
 | `file` | `index`, `create` | non | oui | — | oui | non | non |
+| `manticore` | toutes | oui | oui | — | oui | oui | oui |
 | `null` | toutes | oui | oui | — | non | non | non |
 | `openobserve` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `opensearch` | toutes | oui | oui | — | oui | oui | oui |
+| `quickwit` | `create` | non | oui | 10 Mio | oui | oui | oui |
 | `stdout` | `index`, `create` | non | oui | — | non | non | non |
 | `victorialogs` | `index`, `create` | non | non | — | oui | oui | oui |
 <!-- matrice-sorties:fin -->
@@ -204,6 +206,77 @@ Banc de conformité contre OpenObserve v1.1.2 en conteneur
 la recherche SQL ; un document trop ancien (au-delà de
 `ZO_INGEST_ALLOWED_UPTO`) part seul en DLQ après renvoi un par un, les
 autres documents indexés (en double).
+
+## Sortie `manticore` (issue #17)
+
+API `/_bulk` compatible Elasticsearch de Manticore Search (port HTTP
+9308 par défaut), accusé de réception élément par élément (`items[]`).
+
+```
+output {
+  manticore {
+    hosts => ["http://manticore:9308"]
+    index => "logs"
+  }
+}
+```
+
+Particularités (issue amont
+[#4884](https://github.com/manticoresoftware/manticoresearch/issues/4884),
+observées contre Manticore 29.9.0) :
+
+- `create` en doublon : avant 29.9.0, HTTP 409 pour toute la requête et
+  élément en 400 (« duplicate id ») ; depuis, HTTP 200 et élément en
+  409. Les deux formes sont un **doublon** : document déjà présent,
+  compté indexé (comme la sortie `elasticsearch` de Logstash avec un
+  conflit 409), jamais envoyé en DLQ comme une erreur de mapping ;
+- perte silencieuse : dans une suite de `create` consécutifs vers la
+  même table, un doublon annule les documents qui le précèdent alors
+  qu'ils sont rapportés `201`. La sortie les rend à l'appelant
+  (`RETRYABLE`) pour renvoi — idempotent avec un `document_id` (au pire
+  un nouveau doublon, compté indexé). Sans `_id`, préférer `index` ;
+- `_id` non numérique haché par Manticore en entier 64 bits ;
+- la table doit exister (ou le module Buddy la créer) : une table absente
+  ou une colonne inconnue est une erreur d'élément 400, permanente (DLQ
+  si configurée).
+
+`health()` lit `GET /` (réponse de type Elasticsearch). Aucune option
+propre.
+
+Banc de conformité : `tests/test_integration_manticore.py`, workflow
+`conformite-manticore.yml` (Manticore 29.9.0 en conteneur) — lot
+indexé, doublon `create` et renvoi convergent, relus par SQL.
+
+## Sortie `quickwit` (issue #15)
+
+Sous-classe du client commun sur l'API compatible Elasticsearch de
+Quickwit : `POST /api/v1/_elastic/_bulk` (port 7280 par défaut).
+
+- **`create` seule** : c'est l'action par défaut ; toute autre action
+  (`index`, `update`, `delete`) est refusée dès la compilation du
+  pipeline (message traduit) et par `envoyer`.
+- **Pas de `_id`** : ignoré avec un avertissement.
+- **Accusé par élément** : la réponse porte un `items[]` (201, 404
+  index absent, 400 document illisible…), mais chaque élément est
+  rapporté sous la clé `index` même pour un `create` ; la sortie le
+  relit sous l'action envoyée. Erreur d'élément 400/404 = permanente,
+  DLQ si configurée ; réseau, 429, 5xx = transitoire.
+- **Requête ≤ 10 Mio** (limite de Quickwit, déclarée dans les capacités).
+- L'index doit exister : Quickwit ne le crée pas à l'ingestion.
+
+| Option propre | Rôle |
+|---|---|
+| `refresh` | `true` (commit forcé), `wait_for` (attend le prochain commit), `false` ; absent par défaut |
+
+Avec `refresh => "true"` ou `"wait_for"`, la requête attend le commit
+(2 à 5 s observées) : sans `timeout` explicite, le délai passe à 30 s.
+
+Santé : `health()` interroge `GET /api/v1/version`.
+
+Banc de conformité contre Quickwit 0.9.3 en conteneur
+(`.github/workflows/conformite-quickwit.yml`,
+`tests/test_integration_quickwit.py`) : lot `create` indexé puis
+retrouvé par la recherche, `_id` ignoré, index absent parti en DLQ.
 
 ## Sorties `file` et `stdout` (issue #32)
 
