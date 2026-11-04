@@ -9,6 +9,7 @@ une sortie inconnue échoue dès la compilation, avant toute connexion.
 
 | Plugin | Produit | Actions | `_id` | Accusé par élément |
 |---|---|---|---|---|
+| `elasticsearch` | Elasticsearch | toutes (`create` seule en data stream) | oui | oui (`items[]`) |
 | `opensearch` | OpenSearch | toutes | oui | oui (`items[]`) |
 | `file` | fichier local (NDJSON) | `index`, `create` | non | oui |
 | `stdout` | sortie standard | `index`, `create` | non | oui |
@@ -68,6 +69,44 @@ output {
 Les options rendues par document (`index` sprintf, `document_id`)
 passent par l'API `envoyer()` du client — c'est celle qu'utilise le
 connecteur (#160).
+
+## Sortie `elasticsearch` (issue #13)
+
+Le client commun, comme `opensearch` : chemin `_bulk` natif, les quatre
+actions, `_id` accepté, erreurs analysées élément par élément
+(`items[]`). Les autres options sont celles de `opensearch` ci-dessus.
+
+```
+output {
+  elasticsearch {
+    hosts   => ["https://elasticsearch:9200"]
+    index   => "logs-%Y.%m.%d"
+    api_key => "${ES_API_KEY}"
+    cacert  => "/etc/ssl/certs/elasticsearch-ca.pem"
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `api_key` | en-tête `Authorization: ApiKey …` ; forme encodée (champ `encoded` d'Elasticsearch) ou `id:api_key` (comme Logstash, encodée en base64 par la sortie) |
+| `token` | en-tête `Authorization: Bearer …` (jeton de service, OAuth/OIDC) |
+| `data_stream` | écrit dans un data stream : action `create` imposée |
+| `data_stream_type`, `data_stream_dataset`, `data_stream_namespace` | nom du flux sans `index` : `<type>-<dataset>-<namespace>`, `logs-generic-default` par défaut |
+
+- Une seule authentification : `user`/`password`, `api_key` et `token`
+  s'excluent (erreur dès la configuration). Les secrets passent par
+  `${VAR}` et ne sont jamais journalisés.
+- Data stream : Elasticsearch n'accepte que `create`. L'action `index`
+  (défaut) devient `create` ; `update` et `delete` sont refusées avant
+  tout envoi (configuration ou `envoyer`). Les options de nommage sans
+  `data_stream => true` sont une erreur.
+
+Banc de conformité : `tests/test_integration_elasticsearch.py`, workflow
+`conformite-elasticsearch.yml` (Elasticsearch 9.5.5 en conteneur,
+sécurité active) — indexation, `_id` déterministe, clé d'API créée puis
+utilisée sous ses deux formes, data stream créé par le modèle intégré
+`logs-*-*`, rejet de mapping parti en DLQ.
 
 ## Sorties `file` et `stdout` (issue #32)
 

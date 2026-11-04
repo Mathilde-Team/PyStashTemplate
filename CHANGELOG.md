@@ -7,6 +7,14 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- Sortie `elasticsearch` (issue #13) : sous-classe du client _bulk
+  commun, authentification par clé d'API (`api_key`, forme encodée ou
+  `id:api_key`) ou jeton porteur (`token`), exclusives entre elles et
+  avec `user`/`password` ; data streams (`data_stream`, action `create`
+  imposée, nommage `type-dataset-namespace` comme Logstash). Banc de
+  conformité contre Elasticsearch 9.5.5 en conteneur
+  (`conformite-elasticsearch.yml`). Documentée dans `docs/sorties.md`.
+
 - DLQ générique des sorties (issue #7) : chaque entrée porte le nom de la
   sortie (`@dlq_output`, option `id` sinon nom du plugin) et la raison
   (`@dlq_reason` : `permanent` ou `transitoire_epuise`), champs ajoutés au
