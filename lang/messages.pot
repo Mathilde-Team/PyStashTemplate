@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 20:53+0000\n"
+"POT-Creation-Date: 2026-11-04 20:58+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -240,6 +240,41 @@ msgstr ""
 #: src/pystashtemplate/outputs/fluent_forward.py
 #, python-brace-format
 msgid "lot fluent_forward en échec transitoire mis en DLQ documents={nombre}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/gelf.py
+msgid "gelf : @timestamp illisible, champ timestamp omis : {}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/gelf.py
+msgid "sortie gelf : message de {} octets trop gros pour UDP ({} morceaux, {} au plus)"
+msgstr ""
+
+#: src/pystashtemplate/outputs/gelf.py
+msgid "sortie gelf : hôte absent de hosts {}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/gelf.py
+msgid "sortie gelf : hosts doit nommer un hôte (ex. http://graylog:12201)"
+msgstr ""
+
+#: src/pystashtemplate/outputs/gelf.py
+msgid "gelf : fermeture de la connexion tcp en erreur : {}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/gelf.py
+#, python-brace-format
+msgid "envoi gelf {transport} refusé erreur={error}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/gelf.py
+#, python-brace-format
+msgid "envoi gelf {transport} échoué erreur={error}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/gelf.py
+#, python-brace-format
+msgid "envoi gelf : réessais épuisés documents={nombre} erreur={error}"
 msgstr ""
 
 #: src/pystashtemplate/outputs/greptimedb.py

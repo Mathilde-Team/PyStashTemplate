@@ -15,6 +15,13 @@ le projet suit SemVer.
   (contre-pression : le récepteur TCP cesse de lire, en UDP les
   datagrammes sont perdus), arrêt propre qui vide la file et pousse les
   sorties. sFlow attend sa sous-issue dédiée.
+- Sortie `gelf` (issue #26) : messages Graylog GELF 1.1 (options du
+  plugin `gelf` de Logstash : `sender`, `short_message`,
+  `full_message`, `level`, `custom_fields`, `ship_metadata`,
+  `ship_tags`), transports HTTP (`/gelf`, NDJSON en réception par lot),
+  TCP (octet nul, TLS/mTLS) et UDP (gzip, morceaux GELF, `chunksize`),
+  champs additionnels aplatis, retentes et DLQ du socle. Banc de
+  conformité contre Graylog 7.0 en conteneurs (`conformite-gelf.yml`).
 - Sortie `fluent_forward` (issue #31) : client asynchrone du protocole
   forward v1 de Fluentd / Fluent Bit (MessagePack sur TCP), modes
   `forward` et `packed_forward` (gzip avec `compression`), étiquette

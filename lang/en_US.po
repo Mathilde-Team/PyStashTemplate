@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 20:53+0000\n"
+"POT-Creation-Date: 2026-11-04 20:58+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: deusyv\n"
 "Language-Team: English\n"
@@ -241,6 +241,41 @@ msgstr "fluent_forward output: connection closed by the server"
 #: src/pystashtemplate/outputs/fluent_forward.py
 msgid "sortie fluent_forward : empreinte du serveur invalide"
 msgstr "fluent_forward output: invalid server fingerprint"
+
+#: src/pystashtemplate/outputs/gelf.py
+#, python-brace-format
+msgid "envoi gelf : réessais épuisés documents={nombre} erreur={error}"
+msgstr "gelf send: retries exhausted documents={nombre} error={error}"
+
+#: src/pystashtemplate/outputs/gelf.py
+#, python-brace-format
+msgid "envoi gelf {transport} refusé erreur={error}"
+msgstr "gelf {transport} send refused error={error}"
+
+#: src/pystashtemplate/outputs/gelf.py
+#, python-brace-format
+msgid "envoi gelf {transport} échoué erreur={error}"
+msgstr "gelf {transport} send failed error={error}"
+
+#: src/pystashtemplate/outputs/gelf.py
+msgid "gelf : @timestamp illisible, champ timestamp omis : {}"
+msgstr "gelf: unreadable @timestamp, timestamp field omitted: {}"
+
+#: src/pystashtemplate/outputs/gelf.py
+msgid "gelf : fermeture de la connexion tcp en erreur : {}"
+msgstr "gelf: error closing the tcp connection: {}"
+
+#: src/pystashtemplate/outputs/gelf.py
+msgid "sortie gelf : hosts doit nommer un hôte (ex. http://graylog:12201)"
+msgstr "gelf output: hosts must name a host (e.g. http://graylog:12201)"
+
+#: src/pystashtemplate/outputs/gelf.py
+msgid "sortie gelf : hôte absent de hosts {}"
+msgstr "gelf output: host missing from hosts {}"
+
+#: src/pystashtemplate/outputs/gelf.py
+msgid "sortie gelf : message de {} octets trop gros pour UDP ({} morceaux, {} au plus)"
+msgstr "gelf output: {} bytes message too large for UDP ({} chunks, {} at most)"
 
 #: src/pystashtemplate/outputs/greptimedb.py
 msgid "greptimedb : lot de {} documents rejeté, renvoi un par un"
