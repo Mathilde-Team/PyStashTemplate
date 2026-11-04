@@ -71,7 +71,7 @@ from pystashtemplate.i18n import _
 from pystashtemplate.outputs import Capacites, enregistrer
 from pystashtemplate.outputs.elasticsearch_bulk import ElasticsearchBulkOutput, SendOutcome
 from pystashtemplate.outputs.schema import OptionSpec
-from pystashtemplate.tracing import atraced, traced
+from pystashtemplate.tracing import atraced, masquer_identifiants, traced
 
 # Doris : lettres, chiffres, `-` et `_`, 128 caractères au plus ; le
 # préfixe en laisse 33 au suffixe (`_` + 32 chiffres hexadécimaux).
@@ -110,7 +110,9 @@ class AuthStreamLoad(httpx.Auth):
 
     def _signer(self, request: httpx.Request) -> httpx.Request:
         """Ajoute l'en-tête `Authorization` quand des identifiants sont configurés."""
-        logger.debug("AuthStreamLoad._signer | {} {}", request.method, request.url.copy_with(query=None))
+        logger.debug(
+            "AuthStreamLoad._signer | {} {}", request.method, masquer_identifiants(request.url.copy_with(query=None))
+        )
         if self._en_tete is not None:
             request.headers["Authorization"] = self._en_tete
         logger.debug("AuthStreamLoad._signer | sortie (authentifiée={})", self._en_tete is not None)
