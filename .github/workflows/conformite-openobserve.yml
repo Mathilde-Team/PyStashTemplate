@@ -40,7 +40,7 @@ jobs:
       - name: OpenObserve éphémère
         run: |
           docker run -d --name openobserve -p 5080:5080 \
-            -e ZO_ROOT_USER_EMAIL=banc@example.com -e ZO_ROOT_USER_PASSWORD=BancConformite1 \
+            -e ZO_ROOT_USER_EMAIL=banc@example.com -e "ZO_ROOT_USER_PASSWORD=BancConformite1!" \
             -e ZO_DATA_DIR=/data openobserve/openobserve:v1.1.2
           for i in $(seq 1 60); do
             if curl -sf http://localhost:5080/healthz >/dev/null; then echo "OpenObserve prêt"; exit 0; fi
@@ -53,7 +53,7 @@ jobs:
         env:
           PYSTASHTEMPLATE_OPENOBSERVE_URL: http://localhost:5080
           PYSTASHTEMPLATE_OPENOBSERVE_USER: banc@example.com
-          PYSTASHTEMPLATE_OPENOBSERVE_PASSWORD: BancConformite1
+          PYSTASHTEMPLATE_OPENOBSERVE_PASSWORD: "BancConformite1!"
         run: uv run pytest tests/test_integration_openobserve.py -v
 
       - name: Nettoyage du conteneur
