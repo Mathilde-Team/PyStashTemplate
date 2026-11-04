@@ -30,7 +30,7 @@ from typing import IO, Any, ClassVar, Mapping
 from loguru import logger
 
 from pystashtemplate import templates
-from pystashtemplate.dlq import LocalDeadLetterQueue
+from pystashtemplate.dlq import REASON_PERMANENT, LocalDeadLetterQueue
 from pystashtemplate.i18n import _
 from pystashtemplate.outputs import Capacites, Output, enregistrer
 from pystashtemplate.outputs.codecs import CODECS
@@ -126,7 +126,13 @@ class FileOutput(Output):
                 logger.warning("échec d'écriture sur {} : {}", chemin_rendu, erreur)
                 if self._dlq is None:
                     raise
-                await self._dlq.write(dict(document), index=chemin_rendu, error=str(erreur))
+                await self._dlq.write(
+                    dict(document),
+                    index=chemin_rendu,
+                    error=str(erreur),
+                    output=self.nom,
+                    reason=REASON_PERMANENT,
+                )
 
     @atraced
     async def flush(self) -> None:

@@ -62,6 +62,8 @@ output {
 | `batch_size` | documents par requête `_bulk` | — |
 | `retry_max`, `retry_backoff` | retentes d'un lot transitoire | — |
 | `dlq_path` | DLQ locale des échecs permanents | DLQ (format identique) |
+| `dlq_transitoires` | DLQ aussi pour un lot transitoire aux réessais épuisés (faux par défaut) | — (rsyslog retient) |
+| `id` | nom de la sortie, inscrit dans la DLQ (`@dlq_output`) | — |
 
 Les options rendues par document (`index` sprintf, `document_id`)
 passent par l'API `envoyer()` du client — c'est celle qu'utilise le
@@ -108,6 +110,52 @@ l'appelant.
 connecteur). `codec` : `rubydebug` par défaut (comme le plugin
 Logstash) ou `json_lines`. `flush()` vide la sortie ; `close()` ne
 ferme pas la sortie standard.
+
+## Dead letter queue et rejeu (issue #7)
+
+Toute sortie qui a une DLQ (`dlq_path`) y écrit une ligne JSON par
+document refusé :
+
+```json
+{"@dlq_timestamp": "2026-11-04T16:00:00+00:00", "@dlq_index": "logs-2026.11.04",
+ "@dlq_error": "...", "@dlq_output": "opensearch", "@dlq_reason": "permanent",
+ "document": {...}}
+```
+
+- `@dlq_output` : option `id` du bloc `output{}`, sinon nom du plugin ;
+- `@dlq_reason` : `permanent` (4xx, mapping, écriture impossible) ou
+  `transitoire_epuise` (réseau, 429, 5xx après `retry_max` réessais,
+  avec `dlq_transitoires => true`) ;
+- ces deux champs s'ajoutent au format historique de RsysLogstach : une
+  ancienne DLQ se relit et se rejoue sans conversion.
+
+Par défaut, un échec transitoire épuisé reste rendu à l'appelant
+(`RETRYABLE`) — c'est ce qu'attend rsyslog, qui retient le message.
+`dlq_transitoires` sert aux appelants qui ne retiennent rien. Un échec
+transitoire d'un seul élément de la réponse `_bulk` n'est jamais retenté
+individuellement : il reste `RETRYABLE`.
+
+Rejeu, une fois la cause corrigée :
+
+```python
+import asyncio
+from pystashtemplate.outputs.opensearch import OpenSearchOutput
+from pystashtemplate.outputs.rejeu import rejouer_dlq
+
+sortie = OpenSearchOutput({"hosts": "https://localhost:9200"})  # batch_size 1, sans dlq_path
+rapport = asyncio.run(rejouer_dlq("/var/lib/dlq/opensearch.jsonl", sortie))
+print(rapport.rejouees, rapport.conservees, rapport.erreurs)
+```
+
+Chaque document repart vers son index d'origine (`@dlq_index`). Les
+entrées refusées restent dans le fichier, au format d'origine
+(remplacement atomique) ; le fichier est supprimé quand tout est
+rejoué. Un fichier rotaté `.gz` se rejoue aussi (le reste est réécrit à
+côté, non compressé ; refusé si ce fichier existe déjà). Ne rejouez
+pas le fichier courant d'une DLQ encore alimentée : faites-le tourner
+(`LocalDeadLetterQueue.rotate()`) et rejouez le fichier rotaté. Les sorties sans résultat par document (`file`,
+`stdout`, `null`) sont rejouées par `send()` : accepté si aucune
+exception n'est levée.
 
 ### Banc de conformité
 

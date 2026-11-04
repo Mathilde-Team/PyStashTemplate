@@ -120,6 +120,20 @@ class Output(ABC):
         """
         self.options: dict[str, Any] = options
 
+    @property
+    @traced
+    def nom(self) -> str:
+        """Nom de la sortie, inscrit dans les entrées de DLQ (``@dlq_output``, #7).
+
+        L'option ``id`` du bloc `output{}` (option commune de Logstash)
+        quand elle est donnée, sinon le nom du plugin (à défaut, celui de
+        la classe : famille commune sans plugin propre).
+        """
+        identifiant = self.options.get("id")
+        nom = str(identifiant) if identifiant else getattr(self, "plugin", type(self).__name__)
+        logger.debug("Output.nom | {}", nom)
+        return nom
+
     @abstractmethod
     async def open(self) -> None:
         """Établit la connexion (idempotent : sans effet si déjà ouverte)."""
