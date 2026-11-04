@@ -5,6 +5,15 @@ le projet suit SemVer.
 
 ## [Non publié]
 
+### Documentation
+
+- README remis à jour pour la v0.3.0 (issue #115) : installation à
+  version figée, 25 sorties livrées par famille, service autonome et
+  sFlow, SNMP confié à Mathilde-Team/asnmp (#47), références d'issues
+  liées explicitement (RsysLogstach ou PyStashTemplate) ; exemple des
+  sorties corrigé (`compiler_sorties`, `sorties_du_pipeline` n'existe
+  pas).
+
 ## [0.3.0] - 2026-11-04
 
 ### Évolutions
