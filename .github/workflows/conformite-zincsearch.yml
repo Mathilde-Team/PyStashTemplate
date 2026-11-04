@@ -37,10 +37,12 @@ jobs:
         run: uv sync --extra dev
 
       - name: ZincSearch éphémère
+        # Image distroless sans répertoire inscriptible pour l'utilisateur
+        # par défaut : root dans le conteneur éphémère, données sous /data.
         run: |
-          docker run -d --name zincsearch -p 4080:4080 \
+          docker run -d --name zincsearch --user 0 -p 4080:4080 \
             -e ZINC_FIRST_ADMIN_USER=admin -e ZINC_FIRST_ADMIN_PASSWORD=BancConformite1 \
-            -e ZINC_DATA_PATH=/tmp/data public.ecr.aws/zinclabs/zincsearch:0.4.10
+            -e ZINC_DATA_PATH=/data public.ecr.aws/zinclabs/zincsearch:0.4.10
           for i in $(seq 1 60); do
             if curl -sf http://localhost:4080/healthz >/dev/null; then echo "ZincSearch prêt"; exit 0; fi
             sleep 1
