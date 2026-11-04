@@ -22,6 +22,7 @@ coupure réseau, arrêt propre).
 | `elasticsearch` | toutes | oui | oui | — | oui | oui | oui |
 | `file` | `index`, `create` | non | oui | — | oui | oui | non |
 | `greptimedb` | `index`, `create` | non | oui | — | oui | oui | oui |
+| `http` | `index` | non | non | — | oui | oui | oui |
 | `loki` | `index` | non | non | — | oui | oui | oui |
 | `manticore` | toutes | oui | oui | — | oui | oui | oui |
 | `null` | toutes | oui | oui | — | non | oui | non |
@@ -365,210 +366,6 @@ Banc de conformité contre Quickwit 0.9.3 en conteneur
 `tests/test_integration_quickwit.py`) : lot `create` indexé puis
 retrouvé par la recherche, `_id` ignoré, index absent parti en DLQ.
 
-## Sortie `parseable` (issue #25)
-
-API d'ingestion JSON de Parseable (port 8000 par défaut) :
-`POST /api/v1/ingest`, corps **tableau JSON** des documents du lot
-(`Content-Type: application/json`), jeu de données visé dans l'en-tête
-`X-P-Stream` — créé automatiquement s'il n'existe pas.
-
-```
-output {
-  parseable {
-    hosts => ["http://parseable:8000"]
-    stream => "rsyslog"
-    user => "${PARSEABLE_USER}"
-    password => "${PARSEABLE_PASSWORD}"
-    tags => { "env" => "prod" }
-  }
-}
-```
-
-| Option propre | Rôle |
-|---|---|
-| `stream` | Jeu de données Parseable (en-tête `X-P-Stream`) ; **obligatoire** |
-| `api_key` | Clé d'API (en-tête `X-API-Key`, Parseable Cloud / Enterprise) ; absente par défaut |
-| `tenant_id` | Locataire multi-tenant (en-tête `X-P-Tenant-ID`) ; absent par défaut |
-| `tags` | Étiquettes ajoutées à chaque événement (en-têtes `X-P-Tag-<nom>`, nom en lettres, chiffres, `_`, `-`) ; `{}` par défaut |
-
-Particularités :
-
-- **authentification** : basique (`user`/`password`) pour l'édition
-  open source, `api_key` sinon ;
-- **schéma souple** : Parseable aplatit les champs imbriqués
-  (`host.name` → colonne `host_name`) et ajoute `p_timestamp`
-  (horodatage d'ingestion) ; un **conflit de type** n'est pas une
-  erreur : la valeur est rangée dans une colonne suffixée (`n`
-  numérique puis `"texte"` → colonne `n_utf8`), sans perte ;
-- **insertions seules** : `index` est la seule action acceptée (les
-  options `index`, `pipeline`, `routing`, `doc_as_upsert` de la famille
-  `_bulk` sont refusées à la compilation) ; `_id` refusé ;
-- **accusé global** : Parseable répond 200 sans corps, sans détail par
-  élément (`accuse_par_evenement=False`) : 2xx = lot ingéré ; 400 (JSON
-  invalide, élément qui n'est pas un objet, nom de jeu de données
-  invalide) = permanent, DLQ si configurée ; réseau, 429, 5xx =
-  transitoire, retenté puis rendu à l'appelant ; 401/403 (clé ou mot de
-  passe refusés) = lot rendu à l'appelant, jamais en DLQ ;
-- **taille** : 10 Mio au plus par requête (limite documentée de
-  Parseable, à respecter avec `batch_bytes`) ;
-- **lot vide jamais envoyé** : Parseable 3.2.6 panique et s'arrête sur
-  un tableau vide `[]` (constaté au banc) — le client n'envoie jamais
-  de lot vide.
-
-Santé : `health()` interroge `GET /api/v1/readiness` puis
-`GET /api/v1/about` (rend la version).
-
-Banc de conformité contre Parseable 3.2.6 (binaire officiel, empreinte
-vérifiée, dans un conteneur Debian éphémère : Parseable 3.x n'est pas
-publié sur Docker Hub) (`.github/workflows/conformite-parseable.yml`,
-`tests/test_integration_parseable.py`) : lot relu par l'API SQL, jeu de
-données créé à la volée, champs aplatis, conflit de type rangé en
-colonne suffixée, nom invalide en DLQ, mauvais mot de passe rendu à
-l'appelant. Fixture du banc commun (#9) en plus.
-
-## Sortie `otlp` (issue #22)
-
-OpenTelemetry OTLP/HTTP, journaux : `POST {hosts}/v1/logs` (port 4318
-par défaut), en protobuf (`application/x-protobuf`, défaut de la
-spécification) ou en JSON. Un seul client pour tous les récepteurs
-OTLP : OpenTelemetry Collector, SigNoz, Uptrace, HyperDX/ClickStack,
-OpenObserve, Quickwit, GreptimeDB, VictoriaLogs, Parseable, Data
-Prepper… Le protobuf est codé par `outputs/otlp_codec.py`, sans nouvelle
-dépendance.
-
-```
-output {
-  otlp {
-    hosts => ["http://otel-collector:4318"]
-    encoding => "protobuf"   # ou "json"
-    resource => { "service.name" => "rsyslog" }
-    fields => { "host" => "resource.host.name" "program" => "attributes.process.executable.name" }
-  }
-}
-```
-
-| Option propre | Rôle |
-|---|---|
-| `encoding` | `protobuf` (défaut) ou `json` |
-| `resource` | attributs de ressource fixes (défaut : `service.name => "pystashtemplate"`) |
-| `fields` | table de correspondance champ → cible, fusionnée avec la table par défaut |
-| `scope` | nom de la portée d'instrumentation (défaut : `pystashtemplate`) |
-| `timeout`, `headers`, `dlq_transitoires` | comme la famille `_bulk` |
-
-`compression => true` compresse le corps en gzip.
-
-Correspondance champ de l'événement → `LogRecord` (option `fields`) :
-
-| Cible | Effet | Champ par défaut |
-|---|---|---|
-| `body` | corps du journal | `message` |
-| `time` | `time_unix_nano` : date ISO 8601 (UTC si sans fuseau) ou nombre (s, ms, µs ou ns) | `@timestamp` |
-| `severity` | `severity_text` + `severity_number` : nom usuel (`info`, `warning`, `err`, `crit`…) ou code syslog 0–7 | `severity` |
-| `trace_id`, `span_id` | identifiants hexadécimaux (32 et 16 caractères) | champs de même nom |
-| `resource.<nom>` | attribut de ressource ; les journaux sont groupés par ressource | — |
-| `attributes.<nom>` | attribut du journal, renommé | — |
-| `drop` | champ non transmis | — |
-
-Tout autre champ devient un attribut du journal sous son nom ; une
-valeur illisible pour sa cible (date, identifiant) reste un attribut.
-`observed_time_unix_nano` est l'heure d'envoi.
-
-Accusé de réception **global** (OTLP ne rapporte rien par journal) :
-
-- 2xx accepté ; 400 refus définitif (DLQ) ; 429 et 5xx retentés
-  (`retry_max`) puis rendus à l'appelant ;
-- `partial_success` d'une réponse 2xx : tout le lot refusé → DLQ ;
-  refus partiel → les journaux refusés ne sont pas identifiables et la
-  spécification interdit de les renvoyer : ils sont comptés dans la
-  métrique `rejected` et journalisés avec le message du serveur, le
-  reste du lot compté indexé ;
-- en JSON, un document impossible à coder (flottant NaN ou infini) part
-  seul en DLQ, les autres sont envoyés.
-
-`health()` envoie une requête OTLP vide (OTLP n'a pas de point de santé).
-
-Banc de conformité : `tests/test_integration_otlp.py`, workflow
-`conformite-otlp.yml` (OpenTelemetry Collector contrib 0.164.0 en
-conteneur, exportateur `file`) — protobuf, JSON et gzip relus après
-décodage par le Collector (ressources, dates, sévérités, identifiants,
-attributs imbriqués).
-
-## Sortie `siglens` (issue #20)
-
-API `_bulk` compatible Elasticsearch de SigLens, sur le port
-d'ingestion (8081 par défaut) : `POST /elastic/_bulk`. La recherche est
-servie par un autre port (5122).
-
-```
-output {
-  siglens {
-    hosts => ["http://siglens:8081"]
-    index => "logs"
-  }
-}
-```
-
-Compatibilité Elasticsearch partielle (observée contre SigLens 1.0.57) :
-
-- actions `index` et `create` seules : `update` et `delete` font
-  rejeter tout le lot (HTTP 400 « request body is required ») et sont
-  refusées à la compilation ;
-- `_id` ignoré : SigLens l'accepte sans le conserver (deux documents de
-  même `_id` sont gardés tous deux, un `create` en double n'est pas
-  refusé) — la sortie n'envoie donc pas d'`_id` et le signale ;
-- accusé par élément : `items[]` (201, ou 400 `mapper_parse_exception`
-  pour une ligne illisible), chaque élément rapporté sous la clé `index`
-  même pour un `create`, le `status` d'un élément en échec placé hors de
-  l'objet de l'action. La sortie relit chaque élément sous l'action
-  envoyée, statut compris (`outputs/relecture.py`, partagé avec
-  `quickwit`) ;
-- conflit de type (un champ numérique puis texte) accepté et conservé ;
-- index créé à l'ingestion ; santé : `GET /elastic/` (fiche
-  « Elasticsearch » 7.9.3 de SigLens).
-
-Banc de conformité : `tests/test_integration_siglens.py`, workflow
-`conformite-siglens.yml` (SigLens 1.0.57 en conteneur) — lots `index`
-et `create`, `_id` ignoré, ligne illisible seule en DLQ, relus par l'API
-de recherche (`POST /api/search` du port 5122).
-
-## Sortie `greptimedb` (issue #19)
-
-API d'ingestion compatible Elasticsearch de GreptimeDB (port HTTP 4000
-par défaut) : `POST /v1/elasticsearch/_bulk`, le `_index` de chaque ligne
-étant la table (créée à la première écriture).
-
-```
-output {
-  greptimedb {
-    hosts => ["http://greptimedb:4000"]
-    index => "logs"
-  }
-}
-```
-
-Particularités, observées contre GreptimeDB 1.3.0 :
-
-- **insertions seules** : `index` (défaut) et `create` ; `update` et
-  `delete` refusées dès la compilation ; `_id` ignoré avec un
-  avertissement (non stocké) ;
-- **éléments sous `create`** : chaque élément de `items[]` est rapporté
-  sous `create`, même pour un `index` ; la sortie le relit sous l'action
-  envoyée (sinon une erreur d'élément serait comptée indexée) ;
-- **lot atomique** : une ligne invalide fait rejeter tout le lot en
-  HTTP 400, sans rien écrire. La sortie renvoie alors chaque document
-  seul — sans doublon possible — : seul le document fautif est refusé
-  (DLQ si configurée), avec la raison donnée par le serveur ;
-- **perte silencieuse sur conflit de type** : un document dont un champ
-  contredit le type déjà connu de la colonne n'est pas écrit, alors que
-  le serveur répond `201` ; indétectable dans la réponse. Garder des
-  types stables par champ (`mutate { convert => … }`).
-
-`health()` lit `GET /health` (`{}`). Aucune option propre.
-
-Banc de conformité : `tests/test_integration_greptimedb.py`, workflow
-`conformite-greptimedb.yml` (GreptimeDB 1.3.0 standalone en conteneur) —
-lot relu par SQL, lot rejeté dont seul le document fautif part en DLQ.
-
 ## Sortie `clickhouse` (issue #23)
 
 Interface HTTP de ClickHouse (port 8123 par défaut) :
@@ -619,6 +416,52 @@ Banc de conformité contre ClickHouse 26.3.62 en conteneur
 colonne, champ sans colonne écarté, `async_insert` visible à la
 lecture, table absente jamais comptée comme indexée. Fixture du banc
 commun (#9) en plus.
+
+## Sortie `http` générique (issue #24)
+
+Repli pour **tout récepteur HTTP** — Vector (source `http_server`),
+entrée `http` de Logstash, Fluent Bit, webhooks… — sans client dédié :
+`POST` (ou `PUT`) vers une URL libre, options reprises de la sortie
+`http` de Logstash.
+
+```
+output {
+  http {
+    url => "http://vector:8080/logs"
+    http_method => "post"
+    format => "json_batch"
+    headers => { "Authorization" => "Bearer ${TOKEN}" }
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `url` | URL libre du récepteur (schéma, hôte, chemin) — **requise**, prime sur `hosts` |
+| `http_method` | `post` (défaut) ou `put` |
+| `format` | `ndjson` (défaut : une ligne JSON par document), `json_batch` (tableau du lot), `json` (**un événement par requête**, lot retaillé à 1) |
+
+Particularités :
+
+- `url` est découpée : l'hôte alimente le client commun (options
+  communes `user`/`password`/`ssl_*`/`headers`…), le chemin (et la
+  requête d'URL) sert à chaque envoi ;
+- **accusé global** : un récepteur générique n'accuse pas réception
+  élément par élément (`accuse_par_evenement=False`) : 2xx = lot
+  accepté ; 400/404 = permanent (DLQ si configurée) ; réseau, 429, 5xx
+  = transitoire — un lot rejeté part en entier ;
+- **insertions seules** : `index`, `_id` refusé, options de la famille
+  `_bulk` (`index`/`action`/`pipeline`/`routing`/`doc_as_upsert`)
+  refusées à la compilation ;
+- **santé** : `health()` sonde le récepteur (`GET` sur le chemin
+  d'`url`) — toute réponse inférieure à 5xx prouve la joignabilité (un
+  récepteur générique n'a pas de protocole de santé standard).
+
+Banc de conformité contre Vector 0.59.0 en conteneur (source
+`http_server`, `.github/workflows/conformite-http.yml`,
+`tests/test_integration_http.py`) : événements relus dans les journaux
+du sink `console`, les trois formats vérifiés. Fixture du banc commun
+(#9) en plus.
 
 ## Sortie `loki` (issue #21)
 

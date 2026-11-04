@@ -32,6 +32,7 @@ from pystashtemplate.outputs.clickhouse import ClickHouseOutput
 from pystashtemplate.outputs.elasticsearch import ElasticsearchOutput
 from pystashtemplate.outputs.elasticsearch_bulk import ElasticsearchBulkOutput
 from pystashtemplate.outputs.greptimedb import GreptimeDbOutput
+from pystashtemplate.outputs.http_generique import HttpOutput
 from pystashtemplate.outputs.loki import LokiOutput
 from pystashtemplate.outputs.manticore import ManticoreOutput
 from pystashtemplate.outputs.metriques import CompteursSortie
@@ -110,6 +111,7 @@ FIXTURES: list[FixtureSortie] = [
     FixtureSortie(ZincSearchOutput),
     FixtureSortie(LokiOutput, {"labels": {"host": "%{host}"}}, compter=_lignes_push_loki),
     FixtureSortie(ClickHouseOutput, {"table": "logs"}, compter=_lignes_json),
+    FixtureSortie(HttpOutput, {"url": "http://faux:9200/logs"}, compter=_lignes_json),
     FixtureSortie(ParseableOutput, {"stream": "banc"}, compter=_tableau_json),
 ]
 

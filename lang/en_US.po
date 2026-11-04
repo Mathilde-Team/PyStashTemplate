@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 18:49+0000\n"
+"POT-Creation-Date: 2026-11-04 19:08+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: deusyv\n"
 "Language-Team: English\n"
@@ -142,7 +142,8 @@ msgstr "batch with transient failure sent to the DLQ documents={nombre}"
 msgid "réponse _bulk : {} éléments attendus, {} reçus"
 msgstr "_bulk response: {} items expected, {} received"
 
-#: src/pystashtemplate/outputs/elasticsearch_bulk.py src/pystashtemplate/outputs/manticore.py
+#: src/pystashtemplate/outputs/elasticsearch_bulk.py
+#: src/pystashtemplate/outputs/manticore.py
 #, python-brace-format
 msgid "réponse _bulk illisible erreur={error}"
 msgstr "unreadable _bulk response error={error}"
@@ -157,7 +158,7 @@ msgstr "file output: missing « path » option (output file path)"
 
 #: src/pystashtemplate/outputs/greptimedb.py
 msgid "greptimedb : lot de {} documents rejeté, renvoi un par un"
-msgstr "greptimedb: batch of {} documents rejected, resending one by one"
+msgstr "greptimedb: batch of {} documents rejected, replaying one by one"
 
 #: src/pystashtemplate/outputs/greptimedb.py
 #, python-brace-format
@@ -168,6 +169,10 @@ msgstr "greptimedb _bulk response not normalised error={error}"
 #, python-brace-format
 msgid "réponse greptimedb sans raison lisible erreur={error}"
 msgstr "greptimedb response without readable reason error={error}"
+
+#: src/pystashtemplate/outputs/http_generique.py
+msgid "sortie http : url complète attendue (ex. http://recepteur:8080/logs), reçu : {}"
+msgstr "http output: full url expected (e.g. http://receiver:8080/logs), got: {}"
 
 #: src/pystashtemplate/outputs/loki.py
 msgid "@timestamp {} illisible, heure d'envoi utilisée"
@@ -247,12 +252,12 @@ msgstr "OTLP response: whole batch rejected message={message}"
 #: src/pystashtemplate/outputs/otlp.py
 #, python-brace-format
 msgid "réponse OTLP : {rejetes} journal(aux) refusé(s) sur {total}, non identifiables message={message}"
-msgstr "OTLP response: {rejetes} log record(s) rejected out of {total}, not identifiable message={message}"
+msgstr "OTLP response: {rejetes} log(s) rejected out of {total}, not identifiable message={message}"
 
 #: src/pystashtemplate/outputs/otlp.py
 #, python-brace-format
 msgid "réponse OTLP illisible, lot compté accepté erreur={error}"
-msgstr "unreadable OTLP response, batch counted as accepted error={error}"
+msgstr "OTLP response unreadable, batch counted as accepted error={error}"
 
 #: src/pystashtemplate/outputs/otlp.py
 #, python-brace-format
@@ -271,7 +276,7 @@ msgstr "otlp output: batch cannot be encoded error={error}"
 #: src/pystashtemplate/outputs/otlp_codec.py
 #, python-brace-format
 msgid "codage OTLP JSON impossible erreur={error}"
-msgstr "OTLP JSON encoding impossible error={error}"
+msgstr "OTLP JSON encoding failed error={error}"
 
 #: src/pystashtemplate/outputs/otlp_codec.py
 msgid "réponse OTLP JSON : objet attendu"
@@ -288,7 +293,7 @@ msgstr "OTLP protobuf response: truncated field"
 #: src/pystashtemplate/outputs/otlp_codec.py
 #, python-brace-format
 msgid "réponse OTLP protobuf : type de fil {type_fil} non pris en charge"
-msgstr "OTLP protobuf response: unsupported wire type {type_fil}"
+msgstr "OTLP protobuf response: wire type {type_fil} not supported"
 
 #: src/pystashtemplate/outputs/otlp_codec.py
 msgid "réponse OTLP protobuf : varint tronqué"
@@ -296,7 +301,7 @@ msgstr "OTLP protobuf response: truncated varint"
 
 #: src/pystashtemplate/outputs/parseable.py
 msgid "sortie parseable : nom d'étiquette invalide {!r} (lettres, chiffres, _ et -)"
-msgstr "parseable output: invalid tag name {!r} (letters, digits, _ and -)"
+msgstr "parseable output: invalid label name {!r} (letters, digits, _ and -)"
 
 #: src/pystashtemplate/outputs/parseable.py
 msgid "sortie parseable : option stream manquante"
@@ -308,7 +313,7 @@ msgstr "parseable output: stream is required (Parseable dataset)"
 
 #: src/pystashtemplate/outputs/parseable.py
 msgid "sortie parseable : étiquette {} refusée"
-msgstr "parseable output: tag {} rejected"
+msgstr "parseable output: label {} refused"
 
 #: src/pystashtemplate/outputs/quickwit.py
 #, python-brace-format
@@ -345,7 +350,7 @@ msgstr "DLQ replay finished replayed={rejouees} kept={conservees}"
 #: src/pystashtemplate/outputs/relecture.py
 #, python-brace-format
 msgid "réponse _bulk {produit} non relue erreur={error}"
-msgstr "{produit} _bulk response not re-read error={error}"
+msgstr "_bulk response from {produit} not parsed error={error}"
 
 #: src/pystashtemplate/outputs/schema.py
 msgid "option « {} » inconnue pour la sortie « {} » (options valides : {})"
