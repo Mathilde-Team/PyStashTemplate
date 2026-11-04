@@ -7,6 +7,14 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- Documentation et exemples de la bibliothèque rapatriés de RsysLogstach
+  (issue #57, suite du découpage RsysLogstach#111) : `PATTERNS.md` et
+  `FEATURES.md` (cités par les tests mais absents), référence des filtres et
+  pipelines `docs/pipeline-logstash.md`, audit
+  `docs/audit-fonctions-logstash.md`, exemples `filters.example.json`,
+  `blocklist.example.txt`, `enrich-dict.example.json` et
+  `pipeline.example.d/` (cités par le code de `filters`, `interpreter` et
+  `enrichment`) ; liens depuis le README.
 - `atraced` (issue #37, chantier full async #1) : équivalent asynchrone de
   `@traced` dans `tracing.py` — la sortie est journalisée quand la
   coroutine se termine réellement (autour du `await`), et non dès sa

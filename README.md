@@ -26,6 +26,22 @@ outil (…beat) pourrait le faire).
   `opensearch`, banc de conformité en conteneur en CI) — voir
   [docs/sorties.md](docs/sorties.md)
 
+## Documentation
+
+- [docs/pipeline-logstash.md](docs/pipeline-logstash.md) : référence de la
+  chaîne de filtres JSON, de l'enrichissement et des pipelines `.conf`
+  (translate, grok, useragent, xml, dns, clone/split…)
+- [docs/audit-fonctions-logstash.md](docs/audit-fonctions-logstash.md) :
+  état fonction par fonction (fait, partiel, pas fait)
+- [docs/sorties.md](docs/sorties.md) : sorties agnostiques
+- [FEATURES.md](FEATURES.md) : fonctionnalités et limites connues
+- [PATTERNS.md](PATTERNS.md) : conventions (traçabilité, graphe acyclique)
+- Exemples : `filters.example.json`, `blocklist.example.txt`,
+  `enrich-dict.example.json`, `pipeline.example.d/`
+
+Rapatriés de RsysLogstach par #57 (découpage
+[#111](https://github.com/Mathilde-Team/RsysLogstach/issues/111)).
+
 ## Utilisation
 
 ```bash

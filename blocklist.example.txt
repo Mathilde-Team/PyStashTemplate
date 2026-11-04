@@ -1,0 +1,7 @@
+# Un motif par ligne. Lignes vides et commençant par "#" ignorées.
+# Comparaison "contains" (sous-chaîne) et insensible à la casse par défaut
+# (voir "mode" et "case_sensitive" dans la définition du filtre "drop").
+keepalive
+heartbeat
+# Exemples de bruit fréquent à adapter à vos propres messages :
+NTP synchronized
