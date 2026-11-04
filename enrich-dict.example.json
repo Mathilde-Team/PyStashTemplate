@@ -1,0 +1,11 @@
+{
+  "sw-core-01": {
+    "site": "Besançon - DR",
+    "role": "core",
+    "owner_team": "Infra Réseau"
+  },
+  "sw-access-12": {
+    "site": "Besançon - DR",
+    "role": "access"
+  }
+}
