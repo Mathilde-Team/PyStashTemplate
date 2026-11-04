@@ -300,3 +300,15 @@ def test_rejeu_refuse_un_lot_tamponne(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="batch_size"):
         asyncio.run(rejouer_dlq(chemin, bulk(FauxServeur([]), batch_size=10)))
     assert len(read_entries(chemin)) == 1
+
+
+def test_rejeu_gzip_refuse_d_ecraser_un_fichier_existant(tmp_path: Path) -> None:
+    rotate = tmp_path / "dlq.jsonl.20260101T000000Z.gz"
+    with gzip.open(rotate, "wt", encoding="utf-8") as f:
+        f.write(json.dumps({"@dlq_index": "i", "document": {"m": 1}}) + "\n")
+    existant = tmp_path / "dlq.jsonl.20260101T000000Z"
+    existant.write_text("à garder\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="écrasé"):
+        asyncio.run(rejouer_dlq(rotate, bulk(FauxServeur([]))))
+    assert existant.read_text(encoding="utf-8") == "à garder\n"
+    assert rotate.exists()

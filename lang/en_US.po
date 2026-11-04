@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 16:58+0000\n"
+"POT-Creation-Date: 2026-11-04 16:59+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: deusyv\n"
 "Language-Team: English\n"
@@ -183,6 +183,10 @@ msgstr "DLQ replay: document kept error={error}"
 #: src/pystashtemplate/outputs/rejeu.py
 msgid "rejeu DLQ : la sortie doit avoir batch_size à 1"
 msgstr "DLQ replay: the output must have batch_size set to 1"
+
+#: src/pystashtemplate/outputs/rejeu.py
+msgid "rejeu DLQ : {} existe déjà, il serait écrasé"
+msgstr "DLQ replay: {} already exists, it would be overwritten"
 
 #: src/pystashtemplate/outputs/rejeu.py
 #, python-brace-format

@@ -16,7 +16,13 @@ Rien n'est perdu : le fichier est réécrit (remplacement atomique) avec
 les seules entrées conservées, au format d'origine ; il est supprimé
 quand tout a été rejoué. Les fichiers rotatés compressés (``.gz``) se
 relisent aussi ; ils sont réécrits non compressés à côté
-(``<nom>`` sans ``.gz``) quand des entrées restent.
+(``<nom>`` sans ``.gz``) quand des entrées restent — refusé d'emblée si
+ce fichier existe déjà, pour ne jamais l'écraser.
+
+Ne pas rejouer le fichier **courant** d'une DLQ encore alimentée par un
+pipeline en marche : la réécriture finale perdrait les entrées ajoutées
+pendant le rejeu. Le faire tourner d'abord (`LocalDeadLetterQueue.rotate`)
+et rejouer le fichier rotaté.
 
 Une sortie à résultat par document doit avoir ``batch_size`` à 1 (le
 résultat d'un document seulement tamponné n'est pas connu). Si la sortie
@@ -113,12 +119,15 @@ async def rejouer_dlq(chemin: str | Path, sortie: Output) -> RapportRejeu:
         Le bilan du rejeu.
 
     Raises:
-        ValueError: fichier DLQ illisible, ou sortie à résultat par
+        ValueError: fichier DLQ illisible, version décompressée d'un
+            ``.gz`` déjà présente, ou sortie à résultat par
             document avec ``batch_size`` différent de 1 (rien n'est rejoué).
     """
     if hasattr(sortie, "envoyer") and int(sortie.options.get("batch_size", 1)) != 1:
         raise ValueError(_("rejeu DLQ : la sortie doit avoir batch_size à 1"))
     fichier = Path(chemin)
+    if fichier.suffix == ".gz" and fichier.with_suffix("").exists():
+        raise ValueError(_("rejeu DLQ : {} existe déjà, il serait écrasé").format(fichier.with_suffix("")))
     entrees = read_entries(fichier)
     rapport = RapportRejeu()
     if not entrees:

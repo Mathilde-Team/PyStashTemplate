@@ -151,7 +151,9 @@ Chaque document repart vers son index d'origine (`@dlq_index`). Les
 entrées refusées restent dans le fichier, au format d'origine
 (remplacement atomique) ; le fichier est supprimé quand tout est
 rejoué. Un fichier rotaté `.gz` se rejoue aussi (le reste est réécrit à
-côté, non compressé). Les sorties sans résultat par document (`file`,
+côté, non compressé ; refusé si ce fichier existe déjà). Ne rejouez
+pas le fichier courant d'une DLQ encore alimentée : faites-le tourner
+(`LocalDeadLetterQueue.rotate()`) et rejouez le fichier rotaté. Les sorties sans résultat par document (`file`,
 `stdout`, `null`) sont rejouées par `send()` : accepté si aucune
 exception n'est levée.
 
