@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 16:59+0000\n"
+"POT-Creation-Date: 2026-11-04 17:04+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -85,6 +85,18 @@ msgstr ""
 
 #: src/pystashtemplate/outputs/base.py
 msgid "action « {} » non supportée par cette sortie (supportées : {})"
+msgstr ""
+
+#: src/pystashtemplate/outputs/elasticsearch.py
+msgid "sortie elasticsearch : une seule authentification parmi user/password, api_key et token ({})"
+msgstr ""
+
+#: src/pystashtemplate/outputs/elasticsearch.py
+msgid "sortie elasticsearch : data_stream n'accepte que l'action create ({})"
+msgstr ""
+
+#: src/pystashtemplate/outputs/elasticsearch.py
+msgid "sortie elasticsearch : data_stream_type/dataset/namespace exigent data_stream => true"
 msgstr ""
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
