@@ -120,6 +120,7 @@ from pystashtemplate.outputs.opensearch import OpenSearchOutput  # noqa: E402
 from pystashtemplate.outputs.quickwit import QuickwitOutput  # noqa: E402
 from pystashtemplate.outputs.stdout import StdoutOutput  # noqa: E402
 from pystashtemplate.outputs.victorialogs import VictoriaLogsOutput  # noqa: E402
+from pystashtemplate.outputs.zincsearch import ZincSearchOutput  # noqa: E402
 
 __all__ = [
     "ACTIONS",
@@ -140,6 +141,7 @@ __all__ = [
     "SortieInconnueError",
     "StdoutOutput",
     "VictoriaLogsOutput",
+    "ZincSearchOutput",
     "compiler_sorties",
     "enregistrer",
 ]
