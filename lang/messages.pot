@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 20:58+0000\n"
+"POT-Creation-Date: 2026-11-04 21:35+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -638,6 +638,11 @@ msgid "entrée syslog udp : datagramme perdu erreur={error}"
 msgstr ""
 
 #: src/pystashtemplate/service.py
+#, python-brace-format
+msgid "entrée sflow : datagramme perdu erreur={error}"
+msgstr ""
+
+#: src/pystashtemplate/service.py
 msgid "service : trame json illisible écartée"
 msgstr ""
 
@@ -647,6 +652,10 @@ msgstr ""
 
 #: src/pystashtemplate/service.py
 msgid "service : sortie « {} » absente du pipeline"
+msgstr ""
+
+#: src/pystashtemplate/sflow.py
+msgid "sflow : datagramme tronqué écarté"
 msgstr ""
 
 #: src/pystashtemplate/simples.py
