@@ -7,6 +7,16 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- Sorties locales `file` et `stdout` (issue #32, chantier sorties #2) :
+  plugins `output{}` sans client — `file` écrit une ligne JSON par
+  document dans le fichier rendu par le gabarit `path` (rotation par
+  `%{+YYYY-MM-dd}` contre `@timestamp`, le fichier précédent fermé à la
+  rotation, DLQ sur échec d'écriture via `dlq_path`) ; `stdout` écrit
+  une ligne par document sur la sortie standard (flux injectable).
+  Codecs partagés `outputs/codecs.py` : `json_lines` (NDJSON) et
+  `rubydebug` (rendu « inspect Ruby » multi-lignes, simplifié) —
+  documentés dans `docs/sorties.md`.
+
 - Documentation et exemples de la bibliothèque rapatriés de RsysLogstach
   (issue #57, suite du découpage RsysLogstach#111) : `PATTERNS.md` et
   `FEATURES.md` (cités par les tests mais absents), référence des filtres et

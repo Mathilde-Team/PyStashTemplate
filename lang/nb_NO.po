@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-03 22:26+0000\n"
+"POT-Creation-Date: 2026-11-04 16:42+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -131,6 +131,15 @@ msgstr ""
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
 msgid "sortie : _id refusé par le produit, ignoré"
+msgstr ""
+
+#: src/pystashtemplate/outputs/fichier.py src/pystashtemplate/outputs/stdout.py
+#, python-brace-format
+msgid "codec {} inconnu (codecs disponibles : json_lines, rubydebug)"
+msgstr ""
+
+#: src/pystashtemplate/outputs/fichier.py
+msgid "sortie file : option « path » manquante (chemin du fichier de sortie)"
 msgstr ""
 
 #: src/pystashtemplate/outputs/lotisseur.py

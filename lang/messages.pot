@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-03 22:26+0000\n"
+"POT-Creation-Date: 2026-11-04 16:42+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -131,6 +131,15 @@ msgstr ""
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
 #, python-brace-format
 msgid "envoi _bulk échoué définitivement erreur={error}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/fichier.py
+msgid "sortie file : option « path » manquante (chemin du fichier de sortie)"
+msgstr ""
+
+#: src/pystashtemplate/outputs/fichier.py src/pystashtemplate/outputs/stdout.py
+#, python-brace-format
+msgid "codec {} inconnu (codecs disponibles : json_lines, rubydebug)"
 msgstr ""
 
 #: src/pystashtemplate/outputs/lotisseur.py

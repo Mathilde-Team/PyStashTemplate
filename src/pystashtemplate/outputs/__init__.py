@@ -108,18 +108,22 @@ class SortieInconnueError(ValueError):
 # Import tardif : les sorties s'inscrivent au registre ci-dessus au
 # moment de leur import — le registre doit exister (définitions ci-dessus)
 # avant que ce module ne soit chargé.
+from pystashtemplate.outputs.fichier import FileOutput  # noqa: E402
 from pystashtemplate.outputs.null import NullOutput  # noqa: E402
 from pystashtemplate.outputs.opensearch import OpenSearchOutput  # noqa: E402
+from pystashtemplate.outputs.stdout import StdoutOutput  # noqa: E402
 
 __all__ = [
     "ACTIONS",
     "Capacites",
     "Document",
+    "FileOutput",
     "NullOutput",
     "OpenSearchOutput",
     "Output",
     "REGISTRY",
     "SortieInconnueError",
+    "StdoutOutput",
     "compiler_sorties",
     "enregistrer",
 ]
