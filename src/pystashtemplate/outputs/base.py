@@ -34,6 +34,7 @@ from typing import Any, ClassVar, Self
 from loguru import logger
 
 from pystashtemplate.i18n import _
+from pystashtemplate.outputs.metriques import OBSERVATEUR_NUL, ObservateurSortie
 from pystashtemplate.tracing import atraced, traced
 
 # Actions d'indexation d'un document, comme l'API `_bulk` de la famille
@@ -108,6 +109,11 @@ class Output(ABC):
     # Ce que la sortie accepte (voir `Capacites`). Renseigné par chaque
     # sous-classe — les valeurs par défaut supposent une sortie complète.
     capacites: ClassVar[Capacites] = Capacites()
+
+    # Observateur des métriques de la sortie (issue #10) : nul par défaut,
+    # remplacé par instance (`sortie.observateur = CompteursSortie()` ou
+    # adaptateur vers les métriques d'un connecteur).
+    observateur: ObservateurSortie = OBSERVATEUR_NUL
 
     @traced
     def __init__(self, options: dict[str, Any]) -> None:

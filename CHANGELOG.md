@@ -14,6 +14,16 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- Métriques des sorties (issue #10) : protocole `ObservateurSortie`
+  porté par chaque sortie (nul par défaut), prévenu des documents par
+  issue (`indexed`, `dead_lettered`, `retryable`, `rejected`), des
+  retentes, de la latence des requêtes et de la taille du tampon ;
+  branché dans le client HTTP commun et la sortie `file`.
+  `CompteursSortie` : compteurs en mémoire et exposition texte
+  Prometheus, sans dépendance. Vérifiées pour chaque sortie du banc
+  commun de conformité. Documentées dans `docs/sorties.md` (adaptateur
+  RsysLogstach à noms inchangés).
+
 - Banc commun de conformité des sorties (issue #9) : une même suite
   (lot simple, erreur partielle, 429, coupure réseau, arrêt propre)
   rejouée sans réseau contre chaque sortie HTTP par un faux serveur

@@ -263,3 +263,79 @@ docker run -d -p 9200:9200 -e DISABLE_SECURITY_PLUGIN=true \
 PYSTASHTEMPLATE_OPENSEARCH_URL=http://localhost:9200 \
   uv run pytest tests/test_integration_opensearch.py
 ```
+
+## Métriques des sorties (issue #10)
+
+Chaque sortie prévient son `observateur` (attribut d'instance, nul par
+défaut : aucun coût sans métriques) — protocole
+`pystashtemplate.outputs.metriques.ObservateurSortie` :
+
+| Appel | Quand | Sorties |
+|---|---|---|
+| `evenements(sortie, "indexed", n)` | documents acceptés par la cible | HTTP, `file` |
+| `evenements(sortie, "dead_lettered", n)` | documents écrits en DLQ | HTTP, `file` |
+| `evenements(sortie, "retryable", n)` | documents rendus à l'appelant (transitoire épuisé) | HTTP |
+| `evenements(sortie, "rejected", n)` | refus définitif de la cible (compté en plus de l'issue finale) | HTTP, `file` |
+| `reessai(sortie)` | chaque retente d'une requête (429, 5xx, réseau) | HTTP |
+| `latence(sortie, secondes)` | chaque requête vers la cible, réussie ou non | HTTP |
+| `file(sortie, taille)` | taille du tampon (`batch_size`) après chaque ajout / envoi | HTTP |
+
+`sortie` est `Output.nom` (option `id`, sinon le nom du plugin).
+`CompteursSortie` tient ces compteurs en mémoire (`instantane()`) et les
+expose au format texte Prometheus (`exposition()`, contenu d'un
+`/metrics`) : `pystashtemplate_output_events_total{output,outcome}`,
+`pystashtemplate_output_retries_total{output}`,
+`pystashtemplate_output_request_duration_seconds{output}` (résumé
+`_count`/`_sum`) et `pystashtemplate_output_queue_size{output}`. Le banc
+commun de conformité vérifie ces métriques pour chaque sortie HTTP.
+
+```python
+from pystashtemplate.outputs.metriques import CompteursSortie
+
+compteurs = CompteursSortie()
+for sortie in compiler_sorties(pipeline):
+    sortie.observateur = compteurs
+...
+print(compteurs.exposition())
+```
+
+### Connecteur RsysLogstach : mêmes métriques qu'aujourd'hui
+
+Le connecteur compte déjà l'issue de chaque message
+(`rsyslogstach_messages_total{outcome}`) et la durée de l'appel
+`indexer.send` (`rsyslogstach_index_latency_seconds`). Pour n'en changer
+aucun nom, il branche un adaptateur sur ses compteurs `prometheus_client`
+existants plutôt que `CompteursSortie` :
+
+```python
+from prometheus_client import Counter, Gauge
+
+
+class ObservateurRsyslogstach:
+    """Mesures de la sortie sur le registre de `metrics.Metrics`, sous de nouveaux noms."""
+
+    def __init__(self, metrics: Metrics) -> None:
+        r = metrics.registry
+        self.retries = Counter("rsyslogstach_output_retries", "Retentes de la sortie", registry=r)
+        self.rejected = Counter("rsyslogstach_output_rejected", "Refus définitifs de la cible", registry=r)
+        self.queue = Gauge("rsyslogstach_output_queue_size", "Tampon de la sortie", registry=r)
+
+    def evenements(self, sortie: str, issue: str, nombre: int = 1) -> None:
+        # indexed / dead_lettered / retryable : déjà comptés par message
+        # par omprog (rsyslogstach_messages_total{outcome}) — pas de double compte.
+        if issue == "rejected":
+            self.rejected.inc(nombre)
+
+    def reessai(self, sortie: str) -> None:
+        self.retries.inc()
+
+    def latence(self, sortie: str, secondes: float) -> None:
+        pass  # rsyslogstach_index_latency_seconds reste observée autour de send
+
+    def file(self, sortie: str, taille: int) -> None:
+        self.queue.set(taille)
+```
+
+Les métriques existantes ne changent ni de nom ni de valeur ; les
+nouvelles mesures (retentes, refus définitifs, taille du tampon)
+s'ajoutent sous de nouveaux noms.
