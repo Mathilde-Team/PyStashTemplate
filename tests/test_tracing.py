@@ -8,8 +8,10 @@ terminée, contrairement à `@traced` sur une fonction `async def`.
 
 from __future__ import annotations
 
+import ast
 import asyncio
 import inspect
+from pathlib import Path
 
 import pytest
 from loguru import logger
@@ -95,3 +97,57 @@ class TestAtraced:
         finally:
             logger.remove(sink)
         assert not any("s3cret" in m or "S3CRET" in m for m in messages)
+
+
+def _coroutines_de_src() -> list[tuple[str, ast.AsyncFunctionDef]]:
+    """Toutes les fonctions `async def` de `src/pystashtemplate` (chemin, nœud)."""
+    racine = Path(__file__).resolve().parents[1] / "src" / "pystashtemplate"
+    trouvees: list[tuple[str, ast.AsyncFunctionDef]] = []
+    for chemin in sorted(racine.rglob("*.py")):
+        arbre = ast.parse(chemin.read_text(encoding="utf-8"))
+        for noeud in ast.walk(arbre):
+            if isinstance(noeud, ast.AsyncFunctionDef):
+                trouvees.append((f"{chemin.relative_to(racine)}:{noeud.lineno} {noeud.name}", noeud))
+    return trouvees
+
+
+def _decorateurs(noeud: ast.AsyncFunctionDef) -> set[str]:
+    return {ast.unparse(d).split("(")[0].rsplit(".", 1)[-1] for d in noeud.decorator_list}
+
+
+def _exemptee(noeud: ast.AsyncFunctionDef) -> bool:
+    """Méthode abstraite, signature de Protocol (corps vide), générateur asynchrone, ou `atraced` lui-même."""
+    if "abstractmethod" in _decorateurs(noeud) or noeud.name == "wrapper":
+        return True
+    corps = [n for n in noeud.body if not (isinstance(n, ast.Expr) and isinstance(n.value, ast.Constant))]
+    if not corps:
+        return True
+    # `atraced` attend une coroutine : il ne s'applique pas à un générateur asynchrone (`yield`).
+    return any(isinstance(n, (ast.Yield, ast.YieldFrom)) for n in ast.walk(noeud))
+
+
+class TestRegleAtraced:
+    """Critère de #37 : toutes les fonctions `async def` de `src/` sont décorées `@atraced`."""
+
+    def test_inventaire_non_vide(self) -> None:
+        assert len(_coroutines_de_src()) > 100
+
+    def test_aucun_traced_sur_une_coroutine(self) -> None:
+        # `@traced` sur une coroutine journalise la « sortie » avant même l'`await`.
+        fautives = [nom for nom, noeud in _coroutines_de_src() if "traced" in _decorateurs(noeud)]
+        assert fautives == []
+
+    def test_toutes_les_coroutines_sont_atraced(self) -> None:
+        manquantes = [
+            nom for nom, noeud in _coroutines_de_src() if not _exemptee(noeud) and "atraced" not in _decorateurs(noeud)
+        ]
+        assert manquantes == []
+
+    def test_exemptions(self) -> None:
+        source = (
+            "async def protocole(self):\n    '''Signature seule.'''\n"
+            "async def generateur(self):\n    yield 1\n"
+            "async def normale(self):\n    return 1\n"
+        )
+        noeuds = [n for n in ast.parse(source).body if isinstance(n, ast.AsyncFunctionDef)]
+        assert [_exemptee(n) for n in noeuds] == [True, True, False]

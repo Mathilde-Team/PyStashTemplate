@@ -149,7 +149,7 @@ def analyser_syslog(trame: bytes) -> dict[str, Any] | None:
     return None
 
 
-@traced
+@atraced
 async def _lire_trame(lecteur: asyncio.StreamReader) -> bytes | None:
     """Lit UNE trame syslog TCP (RFC 6587) : octet-counting ou LF.
 
@@ -181,7 +181,7 @@ async def _lire_trame(lecteur: asyncio.StreamReader) -> bytes | None:
         tampon += octet
 
 
-@traced
+@atraced
 async def _lire_requete(lecteur: asyncio.StreamReader) -> tuple[list[bytes] | None, bytes]:
     """Lit UNE requête HTTP POST ; rend les documents du corps.
 
@@ -247,6 +247,7 @@ class EntreeSyslogTcp:
     async def demarrer(self, service: "Service") -> None:
         """Ouvre l'écoute : chaque connexion nourrit la file du service."""
 
+        @atraced
         async def servir(lecteur: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
             logger.debug("EntreeSyslogTcp.servir | connexion acceptée")
             self._connexions.add(writer)
@@ -405,6 +406,7 @@ class EntreeHttp:
     async def demarrer(self, service: "Service") -> None:
         """Ouvre l'écoute : chaque `POST` nourrit la file du service."""
 
+        @atraced
         async def servir(lecteur: asyncio.StreamReader, writer: asyncio.StreamWriter) -> None:
             logger.debug("EntreeHttp.servir | connexion acceptée")
             self._connexions.add(writer)
