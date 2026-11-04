@@ -14,6 +14,14 @@ le projet suit SemVer.
   TCP (octet nul, TLS/mTLS) et UDP (gzip, morceaux GELF, `chunksize`),
   champs additionnels aplatis, retentes et DLQ du socle. Banc de
   conformité contre Graylog 7.0 en conteneurs (`conformite-gelf.yml`).
+- Sortie `splunk_hec` (issue #28) : protocole HTTP Event Collector,
+  enveloppes JSON concaténées vers `/services/collector/event`, en-tête
+  `Authorization: Splunk <jeton>` (`token` requis, `user`/`password`
+  refusés), `sourcetype`, `source`, `host`, `index`, `time_field`
+  (secondes epoch), `fields` (champs indexés), `channel`
+  (`X-Splunk-Request-Channel`), statut HTTP global, santé
+  `/services/collector/health`. Banc de conformité contre SigLens 1.0.57.
+
 - Sortie `doris` (issue #27) : Stream Load d'Apache Doris
   (`PUT /api/<database>/<table>/_stream_load`, tableau JSON), redirection
   FE → BE suivie avec l'authentification, label par lot stable d'une
