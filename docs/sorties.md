@@ -7,14 +7,24 @@ une sortie inconnue échoue dès la compilation, avant toute connexion.
 
 ## Sorties disponibles
 
-| Plugin | Produit | Actions | `_id` | Accusé par élément |
-|---|---|---|---|---|
-| `elasticsearch` | Elasticsearch | toutes (`create` seule en data stream) | oui | oui (`items[]`) |
-| `opensearch` | OpenSearch | toutes | oui | oui (`items[]`) |
-| `victorialogs` | VictoriaLogs | `index`, `create` | non | non (statut HTTP global) |
-| `file` | fichier local (NDJSON) | `index`, `create` | non | oui |
-| `stdout` | sortie standard | `index`, `create` | non | oui |
-| `null` | (puits, tests) | toutes | oui | oui |
+Matrice de compatibilité (système × fonctionnalité), lue dans les
+capacités déclarées par chaque classe du registre ; « banc en
+conteneur » : sortie testée contre le vrai système (job CI séparé,
+`.github/workflows/conformite-<plugin>.yml`). Toutes les sorties HTTP
+passent en plus le banc commun sans réseau
+(`tests/test_conformite_sorties.py` : lot simple, erreur partielle, 429,
+coupure réseau, arrêt propre).
+
+<!-- matrice-sorties:debut (générée par scripts/matrice_sorties.py, ne pas éditer) -->
+| Plugin | Actions | `_id` | Accusé par élément | Taille max. de requête | DLQ | Réessais | Banc en conteneur |
+|---|---|---|---|---|---|---|---|
+| `elasticsearch` | toutes | oui | oui | — | oui | oui | oui |
+| `file` | `index`, `create` | non | oui | — | oui | non | non |
+| `null` | toutes | oui | oui | — | non | non | non |
+| `opensearch` | toutes | oui | oui | — | oui | oui | oui |
+| `stdout` | `index`, `create` | non | oui | — | non | non | non |
+| `victorialogs` | `index`, `create` | non | non | — | oui | oui | oui |
+<!-- matrice-sorties:fin -->
 
 La famille « API _bulk Elasticsearch » (issue #11) partage le client
 `pystashtemplate.outputs.elasticsearch_bulk` : chaque produit n'est

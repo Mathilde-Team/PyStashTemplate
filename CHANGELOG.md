@@ -14,6 +14,15 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- Banc commun de conformité des sorties (issue #9) : une même suite
+  (lot simple, erreur partielle, 429, coupure réseau, arrêt propre)
+  rejouée sans réseau contre chaque sortie HTTP par un faux serveur
+  générique (`tests/test_conformite_sorties.py`) ; une nouvelle sortie
+  s'y ajoute par une seule fixture, et un test exige une fixture pour
+  toute sortie HTTP du registre. Matrice de compatibilité (système ×
+  fonctionnalité) générée depuis le registre dans `docs/sorties.md`
+  (`scripts/matrice_sorties.py`, vérifiée à jour par les tests).
+
 - Sortie `victorialogs` (issue #14) : modes `bulk`
   (`/insert/elasticsearch/_bulk`) et `jsonline` (`/insert/jsonline`),
   `stream_fields`, `msg_field` (`message`) et `time_field`

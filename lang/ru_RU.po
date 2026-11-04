@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 17:09+0000\n"
+"POT-Creation-Date: 2026-11-04 17:16+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -189,6 +189,15 @@ msgstr ""
 
 #: src/pystashtemplate/outputs/lotisseur.py
 msgid "échec de l'envoi du lot ({} document(s))"
+msgstr ""
+
+#: src/pystashtemplate/outputs/matrice.py
+msgid "marqueurs de la matrice des sorties absents ou dans le désordre"
+msgstr ""
+
+#: src/pystashtemplate/outputs/matrice.py
+#, python-brace-format
+msgid "matrice des sorties : marqueurs introuvables debut={debut} fin={fin}"
 msgstr ""
 
 #: src/pystashtemplate/outputs/rejeu.py
