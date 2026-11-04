@@ -13,7 +13,14 @@ SigLens et Alloy :
   valeurs vides) ;
 - les lignes d'un même flux sont triées par horodatage (celui du
   document `@timestamp`, l'heure d'envoi sinon), en nanosecondes ;
-- multi-tenant : en-tête `X-Scope-OrgID` quand `tenant_id` est donné.
+- multi-tenant : en-tête `X-Scope-OrgID` quand `tenant_id` est donné ;
+- **cardinalité des labels** : chaque flux distinct coûte cher à Loki.
+  Un avertissement est journalisé à la construction quand un label
+  référence un champ connu pour varier à chaque événement (identifiants,
+  adresses IP, ports, message, horodatage, URL…, voir
+  `CHAMPS_FORTE_CARDINALITE`), puis une fois à l'exécution quand un label
+  dépasse `SEUIL_CARDINALITE` valeurs distinctes. Ces champs ont leur
+  place dans la ligne de log, pas dans les labels.
 
 ## Accusé de réception
 
@@ -40,6 +47,7 @@ output {
 from __future__ import annotations
 
 import json
+import re
 import time
 from datetime import datetime, timezone
 from typing import Any, ClassVar
@@ -57,6 +65,83 @@ from pystashtemplate.tracing import atraced, traced
 # Champ du document lu comme horodatage (ISO 8601) ; l'heure d'envoi
 # sinon (Loki veut des nanosecondes).
 CHAMP_HORODATAGE = "@timestamp"
+
+
+# Champs (dernier segment du nom, en minuscules) qui varient presque à
+# chaque événement : en faire un label crée un flux Loki par valeur.
+CHAMPS_FORTE_CARDINALITE: frozenset[str] = frozenset(
+    {
+        "@timestamp",
+        "timestamp",
+        "message",
+        "msg",
+        "event.original",
+        "original",
+        "id",
+        "_id",
+        "uuid",
+        "guid",
+        "request_id",
+        "trace_id",
+        "span_id",
+        "session_id",
+        "transaction_id",
+        "user_id",
+        "pid",
+        "ip",
+        "src_ip",
+        "dst_ip",
+        "client_ip",
+        "source_ip",
+        "destination_ip",
+        "fromhost-ip",
+        "port",
+        "src_port",
+        "dst_port",
+        "source_port",
+        "destination_port",
+        "url",
+        "uri",
+        "path",
+        "query",
+        "user_agent",
+        "duration",
+        "bytes",
+        "offset",
+        "sequence",
+    }
+)
+# Au-delà de ce nombre de valeurs distinctes vues pour un label, la
+# sortie avertit (une fois par label) que sa cardinalité est trop forte.
+SEUIL_CARDINALITE = 100
+
+# Références de champ d'un gabarit sprintf : `%{host}`, `%{[a][b]}`
+# (les formats de date `%{+YYYY}` ne sont pas des champs).
+_REFERENCE = re.compile(r"%\{([^}+][^}]*)\}")
+
+
+@traced
+def champs_forte_cardinalite(modele: Any) -> list[str]:
+    """Champs à forte cardinalité référencés par un gabarit de label.
+
+    Un nom est comparé, en minuscules, en entier puis par son dernier
+    segment (`[client][ip]`, `client.ip` → `ip`) ; tout nom en `_id`
+    compte aussi.
+
+    Returns:
+        Les références fautives, dans l'ordre du gabarit (vide pour une
+        valeur fixe).
+    """
+    if not isinstance(modele, str):
+        return []
+    fautifs: list[str] = []
+    for reference in _REFERENCE.findall(modele):
+        nom = reference.strip().lower()
+        segments = [seg for seg in re.split(r"[\[\].]+", nom) if seg]
+        dernier = segments[-1] if segments else nom
+        if nom in CHAMPS_FORTE_CARDINALITE or dernier in CHAMPS_FORTE_CARDINALITE or dernier.endswith("_id"):
+            fautifs.append(reference)
+    return fautifs
 
 
 @traced
@@ -143,6 +228,18 @@ class LokiOutput(ElasticsearchBulkOutput):
         self._labels_modele: dict[str, Any] = dict(options.get("labels") or {})
         self._tenant = str(options["tenant_id"]) if options.get("tenant_id") else None
         super().__init__(options, dlq=dlq, transport=transport)
+        # Valeurs distinctes vues par label (bornées à SEUIL_CARDINALITE + 1) ;
+        # un label déjà signalé n'est plus suivi.
+        self._valeurs_vues: dict[str, set[str]] = {str(nom): set() for nom in self._labels_modele}
+        self._labels_signales: set[str] = set()
+        for nom, modele in self._labels_modele.items():
+            fautifs = champs_forte_cardinalite(modele)
+            if fautifs:
+                logger.warning(
+                    _("sortie loki : label {} sur {}, champ à forte cardinalité (un flux par valeur)"),
+                    nom,
+                    ", ".join(fautifs),
+                )
         logger.debug("LokiOutput : labels {}, tenant {}", self._labels_modele, bool(self._tenant))
 
     @traced
@@ -167,7 +264,24 @@ class LokiOutput(ElasticsearchBulkOutput):
                 valeur = "" if modele is None else str(modele)
             if valeur:
                 rendus.append((str(nom), valeur))
+                self._suivre_cardinalite(str(nom), valeur)
         return tuple(sorted(rendus))
+
+    @traced
+    def _suivre_cardinalite(self, nom: str, valeur: str) -> None:
+        """Compte les valeurs distinctes de `nom` ; avertit une fois au-delà du seuil."""
+        if nom in self._labels_signales:
+            return
+        vues = self._valeurs_vues.setdefault(nom, set())
+        vues.add(valeur)
+        if len(vues) > SEUIL_CARDINALITE:
+            self._labels_signales.add(nom)
+            vues.clear()
+            logger.warning(
+                _("sortie loki : label {} à plus de {} valeurs distinctes, cardinalité trop forte"),
+                nom,
+                SEUIL_CARDINALITE,
+            )
 
     @traced
     def _corps_requete(self, pendings: list[dict[str, Any]]) -> str:

@@ -1006,7 +1006,21 @@ Particularités :
   élément (`accuse_par_evenement=False`) : 2xx = lot ingéré ; 400 =
   permanent (DLQ si configurée) ; réseau, 429, 5xx = transitoire,
   retenté puis rendu à l'appelant (ou DLQ avec `dlq_transitoires`) ;
-- **multi-tenant** : `tenant_id` devient l'en-tête `X-Scope-OrgID`.
+- **multi-tenant** : `tenant_id` devient l'en-tête `X-Scope-OrgID` ;
+- **cardinalité des labels** : chaque jeu de labels distinct est un flux
+  que Loki indexe et garde en mémoire. La sortie journalise un
+  avertissement (`WARNING`, sans bloquer) :
+  - à la construction, quand un label référence un champ qui varie à
+    chaque événement : `@timestamp`, `message`, identifiants (`id`,
+    `uuid`, `*_id`, `trace_id`…), `pid`, adresses IP et ports, `url`,
+    `path`, `query`, `user_agent`, `duration`, `bytes`… (liste complète :
+    `CHAMPS_FORTE_CARDINALITE` dans `outputs/loki.py`, comparée au
+    dernier segment du nom, `%{[client][ip]}` → `ip`) ;
+  - à l'exécution, une seule fois par label, quand il dépasse
+    `SEUIL_CARDINALITE` (100) valeurs distinctes ; le suivi est borné à
+    ce seuil puis abandonné pour ce label.
+
+  Ces champs restent consultables dans la ligne de log (LogQL `| json`).
 
 Santé : `health()` interroge `GET /ready` (200 quand Loki accepte des
 écritures).

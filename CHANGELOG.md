@@ -5,6 +5,14 @@ le projet suit SemVer.
 
 ## [Non publié]
 
+### Évolutions
+
+- Sortie `loki` : avertissement de cardinalité des labels (#21, critère
+  manquant relevé par l'audit du 04/11). À la construction quand un
+  label référence un champ qui varie à chaque événement
+  (`CHAMPS_FORTE_CARDINALITE`), puis une fois par label au-delà de
+  `SEUIL_CARDINALITE` (100) valeurs distinctes vues.
+
 ### Documentation
 
 - README largement repris (#117, suite de #115) : architecture, démarrage

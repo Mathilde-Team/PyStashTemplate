@@ -218,3 +218,76 @@ def test_labels_non_textels_convertis_en_chaines() -> None:
     envoyer(sortie(serveur, labels={"niveau": 3, "vide": None}), [{"message": "m"}])
     # Un label vide est écarté ; une valeur non textuelle devient une chaîne.
     assert serveur.corps()["streams"][0]["stream"] == {"niveau": "3"}
+
+
+# --- Cardinalité des labels (critère de #21) ---------------------------------
+
+
+def _avertissements(action) -> list[str]:
+    """Messages WARNING journalisés pendant `action()`."""
+    from loguru import logger
+
+    messages: list[str] = []
+    sink = logger.add(lambda m: messages.append(m.record["message"]), level="WARNING")
+    try:
+        action()
+    finally:
+        logger.remove(sink)
+    return messages
+
+
+@pytest.mark.parametrize(
+    ("modele", "attendus"),
+    [
+        ("%{host}", []),
+        ("rsyslog", []),
+        (3, []),
+        ("%{+YYYY.MM.dd}", []),
+        ("%{message}", ["message"]),
+        ("%{@timestamp}", ["@timestamp"]),
+        ("%{[client][ip]}", ["[client][ip]"]),
+        ("%{source.port}", ["source.port"]),
+        ("%{session_id}", ["session_id"]),
+        ("%{commande_id}", ["commande_id"]),
+        ("%{host}-%{pid}", ["pid"]),
+        ("%{ URL }", [" URL "]),
+    ],
+)
+def test_champs_forte_cardinalite(modele: Any, attendus: list[str]) -> None:
+    from pystashtemplate.outputs.loki import champs_forte_cardinalite
+
+    assert champs_forte_cardinalite(modele) == attendus
+
+
+def test_avertit_a_la_construction_sur_un_label_a_forte_cardinalite() -> None:
+    messages = _avertissements(lambda: sortie(FauxServeur(), labels={"job": "rsyslog", "client": "%{[client][ip]}"}))
+    assert len(messages) == 1
+    assert "client" in messages[0] and "[client][ip]" in messages[0]
+
+
+def test_aucun_avertissement_pour_des_labels_sobres() -> None:
+    assert _avertissements(lambda: sortie(FauxServeur(), labels={"job": "rsyslog", "host": "%{host}"})) == []
+
+
+def test_avertit_une_fois_au_dela_du_seuil_de_valeurs_distinctes() -> None:
+    from pystashtemplate.outputs.loki import SEUIL_CARDINALITE
+
+    serveur = FauxServeur()
+    s = sortie(serveur, labels={"job": "rsyslog", "hote": "%{hote}"})
+    documents = [{"hote": f"h{i}", "message": "m"} for i in range(SEUIL_CARDINALITE + 5)]
+    documents += [{"hote": "h0", "message": "m"}] * 3
+    messages = _avertissements(lambda: envoyer(s, documents))
+    cardinalite = [m for m in messages if "valeurs distinctes" in m]
+    assert len(cardinalite) == 1
+    assert "hote" in cardinalite[0] and str(SEUIL_CARDINALITE) in cardinalite[0]
+    # Le label signalé n'est plus suivi : la mémoire est libérée.
+    assert s._valeurs_vues["hote"] == set()
+    assert len(s._valeurs_vues["job"]) == 1
+
+
+def test_sous_le_seuil_aucun_avertissement_d_execution() -> None:
+    from pystashtemplate.outputs.loki import SEUIL_CARDINALITE
+
+    s = sortie(FauxServeur(), labels={"hote": "%{hote}"})
+    documents = [{"hote": f"h{i % SEUIL_CARDINALITE}"} for i in range(3 * SEUIL_CARDINALITE)]
+    assert [m for m in _avertissements(lambda: envoyer(s, documents)) if "valeurs distinctes" in m] == []
