@@ -1,0 +1,56 @@
+# Banc de conformité VictoriaLogs (issue #14) : la sortie `victorialogs`
+# contre un vrai VictoriaLogs en conteneur éphémère, modes `bulk` et
+# `jsonline`, relecture par l'API LogsQL. Complète les tests unitaires
+# (faux serveur `httpx.MockTransport`).
+#
+# Runner hébergé GitHub (ubuntu-latest, autorisé par la MISSION) : Docker
+# y est garanti, contrairement aux runners maison.
+name: Banc de conformité VictoriaLogs
+
+"on":
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conformite:
+    name: "Sortie victorialogs contre un vrai VictoriaLogs"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v7
+
+      - name: Installation de uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Installation de Python
+        run: uv python install
+
+      - name: Installation des dépendances
+        run: uv sync --extra dev
+
+      - name: VictoriaLogs éphémère
+        run: |
+          docker run -d --name victorialogs -p 9428:9428 victoriametrics/victoria-logs:v1.53.0
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:9428/health >/dev/null; then echo "VictoriaLogs prêt"; exit 0; fi
+            sleep 1
+          done
+          docker logs victorialogs
+          echo "::error::VictoriaLogs n'a pas démarré" && exit 1
+
+      - name: Banc de conformité
+        env:
+          PYSTASHTEMPLATE_VICTORIALOGS_URL: http://localhost:9428
+        run: uv run pytest tests/test_integration_victorialogs.py -v
+
+      - name: Nettoyage du conteneur
+        if: always()
+        run: docker rm -f victorialogs || true

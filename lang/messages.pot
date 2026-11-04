@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 17:04+0000\n"
+"POT-Creation-Date: 2026-11-04 17:09+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -133,6 +133,11 @@ msgstr ""
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
 #, python-brace-format
+msgid "envoi _bulk : statut global {statut}, lot rendu à l'appelant"
+msgstr ""
+
+#: src/pystashtemplate/outputs/elasticsearch_bulk.py
+#, python-brace-format
 msgid "réponse _bulk illisible erreur={error}"
 msgstr ""
 
@@ -206,6 +211,14 @@ msgstr ""
 
 #: src/pystashtemplate/outputs/transport.py
 msgid "transport : échec réseau après {} essai(s)"
+msgstr ""
+
+#: src/pystashtemplate/outputs/victorialogs.py
+msgid "sortie victorialogs : mode {} inconnu (bulk ou jsonline)"
+msgstr ""
+
+#: src/pystashtemplate/outputs/victorialogs.py
+msgid "sortie victorialogs : liste de champs attendue, reçu {}"
 msgstr ""
 
 #: src/pystashtemplate/simples.py

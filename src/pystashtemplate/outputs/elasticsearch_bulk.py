@@ -287,6 +287,21 @@ class ElasticsearchBulkOutput(Output):
         return json.dumps({action: meta}, ensure_ascii=False)
 
     @traced
+    def _chemin_envoi(self) -> str:
+        """Chemin de la requête d'envoi : `<chemin_bulk>/_bulk` (surchargeable)."""
+        return f"{self.chemin_bulk}/_bulk"
+
+    @traced
+    def _parametres_requete(self) -> dict[str, str]:
+        """Paramètres d'URL propres au produit, ajoutés à chaque envoi (aucun par défaut)."""
+        return {}
+
+    @traced
+    def _corps_requete(self, pendings: list[dict[str, Any]]) -> str:
+        """Corps de la requête d'envoi : le NDJSON `_bulk` (surchargeable)."""
+        return self._corps_ndjson(pendings)
+
+    @traced
     def _corps_ndjson(self, pendings: list[dict[str, Any]]) -> str:
         """Corps NDJSON du lot : ligne d'action + document (ou rien pour `delete`).
 
@@ -456,7 +471,7 @@ class ElasticsearchBulkOutput(Output):
             La réponse HTTP, ou None après `retry_max` retentes épuisées
             sur un échec transitoire (connexion, 429, 5xx…).
         """
-        params: dict[str, str] = {}
+        params: dict[str, str] = self._parametres_requete()
         pipelines = {p["pipeline"] for p in pendings if p["pipeline"]}
         if len(pipelines) == 1:
             params["pipeline"] = next(iter(pipelines))
@@ -464,8 +479,8 @@ class ElasticsearchBulkOutput(Output):
         while True:
             try:
                 response = await self._client_http().post(
-                    f"{self.chemin_bulk}/_bulk",
-                    content=self._corps_ndjson(pendings),
+                    self._chemin_envoi(),
+                    content=self._corps_requete(pendings),
                     params=params or None,
                 )
             except httpx.HTTPError as exc:
@@ -498,6 +513,14 @@ class ElasticsearchBulkOutput(Output):
         if response.status_code in _STATUTS_PERMANENTS:
             return [await self._permanent(pending, f"statut {response.status_code}") for pending in pendings]
         if not self.capacites.accuse_par_evenement:
+            # Statut global seul : seul un 2xx vaut indexation. Un 5xx ou
+            # 429 aux réessais épuisés, ou un statut inattendu (401, 403…),
+            # rend le lot à l'appelant — jamais compté comme indexé (#14).
+            if not 200 <= response.status_code < 300:
+                logger.warning(
+                    _("envoi _bulk : statut global {statut}, lot rendu à l'appelant"), statut=response.status_code
+                )
+                return [SendOutcome.RETRYABLE] * len(pendings)
             logger.debug("_analyser_reponse | statut global seul")
             return [SendOutcome.INDEXED] * len(pendings)
         try:
