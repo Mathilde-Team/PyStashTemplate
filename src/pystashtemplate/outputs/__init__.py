@@ -108,6 +108,7 @@ class SortieInconnueError(ValueError):
 # Import tardif : les sorties s'inscrivent au registre ci-dessus au
 # moment de leur import — le registre doit exister (définitions ci-dessus)
 # avant que ce module ne soit chargé.
+from pystashtemplate.outputs.clickhouse import ClickHouseOutput  # noqa: E402
 from pystashtemplate.outputs.elasticsearch import ElasticsearchOutput  # noqa: E402
 from pystashtemplate.outputs.fichier import FileOutput  # noqa: E402
 from pystashtemplate.outputs.loki import LokiOutput  # noqa: E402
@@ -122,6 +123,7 @@ from pystashtemplate.outputs.victorialogs import VictoriaLogsOutput  # noqa: E40
 __all__ = [
     "ACTIONS",
     "Capacites",
+    "ClickHouseOutput",
     "Document",
     "ElasticsearchOutput",
     "FileOutput",

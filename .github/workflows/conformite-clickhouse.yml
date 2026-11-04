@@ -1,0 +1,57 @@
+# Banc de conformité ClickHouse (issue #23) : la sortie `clickhouse`
+# contre un vrai ClickHouse en conteneur éphémère, INSERT JSONEachRow
+# par l'interface HTTP, relecture par SELECT. Complète les tests
+# unitaires (faux serveur `httpx.MockTransport`) et la fixture du banc
+# commun (#9).
+#
+# Runner hébergé GitHub (ubuntu-latest, autorisé par la MISSION) : Docker
+# y est garanti, contrairement aux runners maison.
+name: Banc de conformité ClickHouse
+
+"on":
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conformite:
+    name: "Sortie clickhouse contre un vrai ClickHouse"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v7
+
+      - name: Installation de uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Installation de Python
+        run: uv python install
+
+      - name: Installation des dépendances
+        run: uv sync --extra dev
+
+      - name: ClickHouse éphémère
+        run: |
+          docker run -d --name clickhouse -p 8123:8123 clickhouse/clickhouse-server:26.3.62
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:8123/ping >/dev/null; then echo "ClickHouse prêt"; exit 0; fi
+            sleep 1
+          done
+          docker logs clickhouse
+          echo "::error::ClickHouse n'a pas démarré" && exit 1
+
+      - name: Banc de conformité
+        env:
+          PYSTASHTEMPLATE_CLICKHOUSE_URL: http://localhost:8123
+        run: uv run pytest tests/test_integration_clickhouse.py -v
+
+      - name: Nettoyage du conteneur
+        if: always()
+        run: docker rm -f clickhouse || true
