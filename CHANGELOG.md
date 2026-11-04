@@ -14,6 +14,12 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- Sortie `manticore` (issue #17) : `/_bulk` compatible Elasticsearch,
+  accusé par élément ; `create` en doublon (HTTP 409 + élément 400 avant
+  29.9.0, élément 409 depuis) compté indexé et non envoyé en DLQ ; les
+  `create` annulés par Manticore avant un doublon sont rendus à
+  l'appelant. Banc de conformité contre Manticore 29.9.0 en conteneur.
+
 - Sortie `quickwit` (issue #15) : sous-classe du client _bulk commun
   (`/api/v1/_elastic/_bulk`), action `create` seule (défaut, toute autre
   refusée dès la compilation), `_id` ignoré, accusé par élément (relu sous

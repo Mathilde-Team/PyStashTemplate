@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 17:52+0000\n"
+"POT-Creation-Date: 2026-11-04 18:00+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -137,6 +137,7 @@ msgid "envoi _bulk : statut global {statut}, lot rendu à l'appelant"
 msgstr ""
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
+#: src/pystashtemplate/outputs/manticore.py
 #, python-brace-format
 msgid "réponse _bulk illisible erreur={error}"
 msgstr ""
@@ -189,6 +190,14 @@ msgstr ""
 
 #: src/pystashtemplate/outputs/lotisseur.py
 msgid "échec de l'envoi du lot ({} document(s))"
+msgstr ""
+
+#: src/pystashtemplate/outputs/manticore.py
+msgid "manticore : {} create en doublon (document déjà présent)"
+msgstr ""
+
+#: src/pystashtemplate/outputs/manticore.py
+msgid "manticore : {} create précédant un doublon rendus à l'appelant"
 msgstr ""
 
 #: src/pystashtemplate/outputs/matrice.py
