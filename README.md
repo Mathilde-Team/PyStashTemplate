@@ -140,7 +140,7 @@ async with TransportHTTP(essais_max=5, delai_initial=0.5) as transport:
 from pystashtemplate.interpreter import PipelineInterpreter
 from pystashtemplate.service import EntreeHttp, EntreeSyslogTcp, Service
 
-service = Service(PipelineInterpreter('filter { } output { null {} }'))
+service = Service(PipelineInterpreter("filter { } output { null {} }"))
 await service.demarrer([EntreeSyslogTcp("0.0.0.0", 514), EntreeHttp("0.0.0.0", 8080)])
 await service.arreter()  # arrêt propre : écoutes fermées, file vidée, sorties poussées
 ```
