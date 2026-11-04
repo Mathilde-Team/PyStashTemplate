@@ -7,6 +7,16 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- DLQ générique des sorties (issue #7) : chaque entrée porte le nom de la
+  sortie (`@dlq_output`, option `id` sinon nom du plugin) et la raison
+  (`@dlq_reason` : `permanent` ou `transitoire_epuise`), champs ajoutés au
+  format historique de RsysLogstach (relu sans conversion) ; option
+  `dlq_transitoires` de la famille _bulk (faux par défaut, parité) pour
+  envoyer en DLQ un lot transitoire aux réessais épuisés ;
+  `dlq.read_entries()` (JSONL et `.gz`) et rejeu
+  `outputs.rejeu.rejouer_dlq()` vers n'importe quelle sortie, les refus
+  conservés dans le fichier. Documenté dans `docs/sorties.md`.
+
 - Sorties locales `file` et `stdout` (issue #32, chantier sorties #2) :
   plugins `output{}` sans client — `file` écrit une ligne JSON par
   document dans le fichier rendu par le gabarit `path` (rotation par

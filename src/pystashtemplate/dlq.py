@@ -15,7 +15,8 @@ document dans un fichier JSONL local (une ligne par document,
 append-only). Les sorties (`outputs.elasticsearch_bulk`) l'appellent
 uniquement pour les erreurs identifiées comme permanentes (4xx), jamais
 pour une erreur de connexion ou un timeout (transitoires).
-Ne dépend que de `tracing`, comme les autres modules feuilles du projet
+Ne dépend que de `tracing` et `i18n` (messages des erreurs de relecture,
+#7), feuilles du projet
 (graphe acyclique vérifié par `tests/test_no_cross_imports.py`).
 """
 
@@ -31,11 +32,17 @@ from pathlib import Path
 
 from loguru import logger
 
+from pystashtemplate.i18n import _
 from pystashtemplate.tracing import atraced, traced
 
 _SIZE_UNITS = {"": 1, "b": 1, "k": 1024, "kb": 1024, "m": 1024**2, "mb": 1024**2, "g": 1024**3, "gb": 1024**3}
 _DURATION_UNITS = {"s": 1, "m": 60, "h": 3600, "d": 86400, "w": 7 * 86400}
 _ROTATED_SUFFIX = re.compile(r"\.(\d{8}T\d{6}Z)(?:-(\d+))?(\.gz)?$")
+
+# Valeurs de ``@dlq_reason`` (issue #7) : échec définitif (4xx, mapping…)
+# ou échec transitoire dont les réessais sont épuisés.
+REASON_PERMANENT = "permanent"
+REASON_TRANSIENT_EXHAUSTED = "transitoire_epuise"
 
 
 @traced
@@ -77,6 +84,13 @@ class LocalDeadLetterQueue:
     Une ligne par document, format :
         {"@dlq_timestamp": "<ISO-8601 UTC>", "@dlq_index": "<index visé>",
          "@dlq_error": "<message d'erreur>", "document": {...}}
+
+    Deux champs facultatifs s'y ajoutent quand l'appelant les fournit
+    (issue #7) : ``@dlq_output`` (nom de la sortie qui a échoué) et
+    ``@dlq_reason`` (``permanent`` ou ``transitoire_epuise``). Ils ne sont
+    écrits que s'ils sont renseignés : une entrée sans eux reste
+    exactement au format historique de RsysLogstach, et `read_entries`
+    relit indifféremment les deux formes.
 
     Rotation et purge (issue #27 de RsysLogstach), toutes désactivées par
     défaut (comportement historique : un seul fichier qui grandit) :
@@ -140,7 +154,15 @@ class LocalDeadLetterQueue:
         self._compress = compress
 
     @atraced
-    async def write(self, doc: dict, *, index: str, error: str) -> None:
+    async def write(
+        self,
+        doc: dict,
+        *,
+        index: str,
+        error: str,
+        output: str | None = None,
+        reason: str | None = None,
+    ) -> None:
         """Ajoute une ligne JSON au fichier DLQ pour ce document.
 
         Args:
@@ -149,13 +171,22 @@ class LocalDeadLetterQueue:
             error: Message d'erreur (`str(exception)`), à titre indicatif
                 seulement — jamais reparsé, jamais utilisé pour décider quoi
                 que ce soit.
+            output: Nom de la sortie qui a échoué (``@dlq_output``), omis
+                de l'entrée si None.
+            reason: Raison du passage en DLQ (``@dlq_reason`` :
+                `REASON_PERMANENT` ou `REASON_TRANSIENT_EXHAUSTED`), omise
+                de l'entrée si None.
         """
         entry = {
             "@dlq_timestamp": datetime.now(timezone.utc).isoformat(),
             "@dlq_index": index,
             "@dlq_error": error,
-            "document": doc,
         }
+        if output is not None:
+            entry["@dlq_output"] = output
+        if reason is not None:
+            entry["@dlq_reason"] = reason
+        entry["document"] = doc
         line = json.dumps(entry, ensure_ascii=False) + "\n"
         await asyncio.to_thread(self._append, line)
 
@@ -257,3 +288,52 @@ class LocalDeadLetterQueue:
         for path in doomed:
             path.unlink(missing_ok=True)
         return doomed
+
+
+@traced
+def read_entries(path: str | Path) -> list[dict]:
+    """Relit les entrées d'un fichier DLQ, courant (JSONL) ou rotaté (``.gz``).
+
+    Lit les deux formats d'entrée : historique RsysLogstach (sans
+    ``@dlq_output`` ni ``@dlq_reason``) et enrichi (#7). Les lignes vides
+    sont ignorées ; un fichier absent donne une liste vide.
+
+    Args:
+        path: Chemin du fichier DLQ ; compressé en gzip si son nom finit
+            par ``.gz``.
+
+    Returns:
+        Les entrées, dans l'ordre du fichier.
+
+    Raises:
+        ValueError: ligne qui n'est pas un objet JSON portant ``document``
+            (le numéro de ligne est donné : rien n'est rejoué à moitié).
+    """
+    chemin = Path(path)
+    if not chemin.exists():
+        logger.debug("read_entries : {} absent", chemin)
+        return []
+    if chemin.suffix == ".gz":
+        with gzip.open(chemin, "rt", encoding="utf-8") as handle:
+            lines = handle.read().splitlines()
+    else:
+        lines = chemin.read_text(encoding="utf-8").splitlines()
+    entries: list[dict] = []
+    for numero, line in enumerate(lines, start=1):
+        if not line.strip():
+            continue
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError as exc:
+            logger.warning(
+                _("ligne DLQ illisible fichier={chemin} ligne={numero} erreur={error}"),
+                chemin=chemin,
+                numero=numero,
+                error=exc,
+            )
+            raise ValueError(_("{}:{} : ligne DLQ illisible ({})").format(chemin, numero, exc)) from exc
+        if not isinstance(entry, dict) or not isinstance(entry.get("document"), dict):
+            raise ValueError(_("{}:{} : entrée DLQ sans objet « document »").format(chemin, numero))
+        entries.append(entry)
+    logger.debug("read_entries : {} entrée(s) dans {}", len(entries), chemin)
+    return entries
