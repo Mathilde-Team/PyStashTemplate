@@ -1043,6 +1043,195 @@ Banc de conformité contre Grafana Loki 3.7.9 en conteneur
 documents retrouvés par LogQL avec leurs labels de flux, horodatage du
 document respecté. Fixture du banc commun (#9) en plus.
 
+## Sortie `greptimedb` (issue #19)
+
+GreptimeDB (port HTTP 4000 par défaut) lit le NDJSON `_bulk` du client
+commun (#11) sur `POST /v1/elasticsearch/_bulk` ; le `_index` de chaque
+ligne d'action est la **table**, créée à la première écriture.
+
+```
+output {
+  greptimedb {
+    hosts => ["http://greptimedb:4000"]
+    index => "logs"
+    user => "${GREPTIME_USER}"
+    password => "${GREPTIME_PASSWORD}"
+  }
+}
+```
+
+Aucune option propre : seules les options communes s'appliquent
+(authentification basique `user`/`password` si le serveur l'exige).
+
+Particularités (observées contre GreptimeDB 1.3.0) :
+
+- **insertions seules** : `index` (défaut) et `create` ; `update` et
+  `delete` sont refusées dès la compilation (le serveur les rejette en
+  400) ; `_id` ignoré avec un avertissement (non stocké) ;
+- **éléments sous la clé `create`** : chaque élément de `items[]` est
+  rapporté sous `create`, même pour un `index` ; la sortie le relit sous
+  l'action envoyée avant l'analyse commune ;
+- **lot atomique** : une ligne invalide fait rejeter **tout** le lot en
+  HTTP 400 sans rien écrire ; la sortie renvoie alors chaque document
+  **seul** — sans doublon possible, seul le fautif est refusé (DLQ si
+  configurée), avec la raison donnée par le serveur ;
+- **perte silencieuse sur conflit de type** : un champ qui contredit le
+  type déjà connu de la colonne n'est pas écrit alors que le serveur
+  répond `201` ; rien dans la réponse ne permet de le détecter — garder
+  des types stables par champ (`mutate { convert => … }`).
+
+Santé : `health()` interroge `GET /health` (`{}` quand le serveur est
+prêt).
+
+Banc de conformité contre GreptimeDB 1.3.0 en conteneur, mode standalone
+(`.github/workflows/conformite-greptimedb.yml`,
+`tests/test_integration_greptimedb.py`). Fixture du banc commun (#9) en
+plus.
+
+## Sortie `siglens` (issue #20)
+
+SigLens sépare l'ingestion (port 8081 par défaut), que vise cette
+sortie, et la recherche (5122). Le NDJSON `_bulk` du client commun (#11)
+est envoyé sur `POST /elastic/_bulk` ; l'index est créé à l'ingestion.
+
+```
+output {
+  siglens {
+    hosts => ["http://siglens:8081"]
+    index => "logs"
+  }
+}
+```
+
+Aucune option propre : seules les options communes s'appliquent. Pas
+d'authentification sur l'édition libre (`user`/`password` restent
+transmis si un mandataire les exige).
+
+Particularités (observées contre SigLens 1.0.57) :
+
+- **actions `index` et `create` seules** : `update` et `delete` font
+  rejeter tout le lot (HTTP 400) ; elles sont refusées dès la
+  compilation du pipeline ;
+- **pas de `_id`** : l'identifiant est accepté mais pas conservé (deux
+  documents de même `_id` sont gardés, un `create` en double n'est pas
+  refusé) ; un `document_id` est ignoré avec un avertissement ;
+- **accusé par élément, sous la clé `index`** : `items[]` (201 indexé,
+  400 `mapper_parse_exception` pour une ligne illisible), chaque élément
+  rapporté sous `index` même pour un `create`, `status` d'un échec placé
+  à côté de l'objet de l'action ; la sortie relit chaque élément sous
+  l'action envoyée (`pystashtemplate.outputs.relecture`).
+
+Santé : `health()` interroge `GET /elastic/` (la fiche « Elasticsearch »
+de SigLens).
+
+Banc de conformité contre SigLens 1.0.57 en conteneur
+(`.github/workflows/conformite-siglens.yml`,
+`tests/test_integration_siglens.py`) : documents retrouvés par l'API de
+recherche (port 5122). Fixture du banc commun (#9) en plus.
+
+## Sortie `otlp` (issue #22)
+
+OpenTelemetry OTLP/HTTP, journaux : `POST {hosts}/v1/logs` (port 4318
+par défaut), en protobuf (`application/x-protobuf`, défaut de la
+spécification) ou en JSON. Un seul client couvre tous les récepteurs
+OTLP (OpenTelemetry Collector, SigNoz, Uptrace, HyperDX/ClickStack,
+OpenObserve, Quickwit, GreptimeDB, VictoriaLogs, Parseable…). Tampon,
+réessais, DLQ et métriques sont ceux du client HTTP commun (#11).
+
+```
+output {
+  otlp {
+    hosts => ["http://otel-collector:4318"]
+    encoding => "protobuf"
+    resource => { "service.name" => "rsyslog" }
+    fields => { "host" => "resource.host.name" "program" => "attributes.process.executable.name" }
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `encoding` | `protobuf` (défaut) ou `json` |
+| `resource` | Attributs de ressource fixes (défaut `service.name => "pystashtemplate"`) |
+| `fields` | Correspondance champ de l'événement → cible du `LogRecord`, fusionnée avec la table par défaut |
+| `scope` | Nom de la portée d'instrumentation (défaut `pystashtemplate`) |
+
+Cibles de `fields` : `body` (défaut : `message`), `time`
+(`time_unix_nano`, ISO 8601 ou nombre ; défaut : `@timestamp`),
+`severity` (`severity_text`/`severity_number`, nom usuel ou code syslog
+0–7), `trace_id`/`span_id` (hexadécimal), `resource.<nom>`,
+`attributes.<nom>`, `drop` (non transmis). Tout autre champ devient un
+attribut du journal sous son propre nom.
+
+Particularités :
+
+- **groupement par ressource** : les journaux d'un lot sont regroupés
+  par jeu d'attributs de ressource ; `observed_time_unix_nano` est
+  l'heure d'envoi ;
+- **accusé global** : OTLP ne rapporte pas d'erreur par journal ; 2xx
+  accepté, 400 permanent (DLQ), 429/5xx retentés ; puis
+  `partial_success` : si tout le lot est refusé, il part en DLQ ; si une
+  partie seulement l'est, les journaux refusés ne sont pas identifiables
+  (la spécification interdit de les renvoyer) — ils sont comptés dans la
+  métrique `rejected` et journalisés avec le message du serveur ;
+- `compression => true` compresse le corps en gzip.
+
+Santé : `health()` envoie une requête OTLP vide (OTLP n'a pas de point
+de santé) et renvoie le statut HTTP.
+
+Banc de conformité contre OpenTelemetry Collector contrib 0.164.0 en
+conteneur, récepteur OTLP/HTTP et exportateur `file`
+(`.github/workflows/conformite-otlp.yml`, `tests/test_integration_otlp.py`),
+en protobuf, en JSON et compressé en gzip. Fixture du banc commun (#9) en plus.
+
+## Sortie `parseable` (issue #25)
+
+Parseable (port 8000 par défaut) reçoit un tableau JSON d'événements sur
+`POST /api/v1/ingest` ; le jeu de données (« stream ») passe dans
+l'en-tête `X-P-Stream` et il est créé s'il n'existe pas. Parseable aplatit
+les champs imbriqués (`host.name` → `host_name`) et ajoute
+`p_timestamp`.
+
+```
+output {
+  parseable {
+    hosts => ["http://parseable:8000"]
+    stream => "rsyslog"
+    user => "${PARSEABLE_USER}"
+    password => "${PARSEABLE_PASSWORD}"
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `stream` | Jeu de données visé, en-tête `X-P-Stream` (obligatoire) |
+| `api_key` | Clé d'API, en-tête `X-API-Key` (Parseable Cloud / Enterprise) |
+| `tenant_id` | Locataire, en-tête `X-P-Tenant-ID` (déploiements multi-tenant) |
+| `tags` | Étiquettes ajoutées à chaque événement, en-têtes `X-P-Tag-<nom>` ; `{}` par défaut |
+
+Particularités (observées contre Parseable 3.2.6) :
+
+- **insertions seules** : action `index` seule, pas de `_id` (Parseable
+  ignore l'identifiant et l'index) ;
+- **accusé global** : 200 sans corps si le lot est accepté, un message
+  texte sinon (`accuse_par_evenement=False`) : 400/404 = permanent (DLQ
+  si configurée) ; réseau, 429, 5xx = transitoire ; 401/403 (clé ou
+  droits refusés) = lot rendu à l'appelant ;
+- **conflit de type** : pas une erreur — Parseable range la valeur dans
+  une colonne suffixée (`n` numérique puis `"texte"` → colonne
+  `n_utf8`) ;
+- **jamais de lot vide** : Parseable 3.2.6 s'arrête net sur un tableau
+  vide.
+
+Santé : `health()` interroge `GET /api/v1/readiness` puis
+`GET /api/v1/about` (`{"status": "ready", "version": …}`).
+
+Banc de conformité contre Parseable 3.2.6 (binaire officiel en mode
+`local-store`, `.github/workflows/conformite-parseable.yml`,
+`tests/test_integration_parseable.py`). Fixture du banc commun (#9) en
+plus.
+
 ## Sorties `file` et `stdout` (issue #32)
 
 Sorties locales, sans client : chaque document part en texte, rendu par
