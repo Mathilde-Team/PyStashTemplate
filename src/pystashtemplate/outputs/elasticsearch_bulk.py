@@ -38,6 +38,15 @@ Comportement (parité avec l'`indexer` de RsysLogstach) :
 - `retry_max` (0 par défaut, parité exacte) : après un échec
   transitoire, retente le lot jusqu'à `retry_max` fois, délai
   `retry_backoff` entre chaque (exponentiel : délai × 2^n) ;
+- `dlq_transitoires` (faux par défaut, parité exacte) : avec une DLQ,
+  un échec transitoire du lot entier dont les réessais sont épuisés
+  (réseau, 429, 5xx global) mène les documents en DLQ
+  (`DEAD_LETTERED`, raison `transitoire_epuise`) au lieu de les rendre
+  à l'appelant — pour un appelant qui ne retient rien (contrat `send`).
+  Un échec transitoire d'un seul élément (`items[]`), jamais retenté
+  individuellement, reste `RETRYABLE` ;
+- chaque entrée de DLQ porte le nom de la sortie (`@dlq_output` : option
+  `id`, sinon nom du plugin) et la raison (`@dlq_reason`) ;
 - `batch_size` (1 par défaut) : les documents sont tamponnés et envoyés
   en un seul `_bulk` quand le tampon est plein — `envoyer` renvoie alors
   `SendOutcome.EN_ATTENTE` pour un document seulement tamponné (résultat
@@ -61,7 +70,7 @@ from typing import Any, ClassVar
 import httpx
 from loguru import logger
 
-from pystashtemplate.dlq import LocalDeadLetterQueue
+from pystashtemplate.dlq import REASON_PERMANENT, REASON_TRANSIENT_EXHAUSTED, LocalDeadLetterQueue
 from pystashtemplate.i18n import _
 from pystashtemplate.outputs.base import ACTIONS, Document, Output
 from pystashtemplate.tracing import atraced, traced
@@ -76,6 +85,12 @@ _STATUTS_PERMANENTS = frozenset({400, 404})
 # Statuts HTTP transitoires de la requête entière : retentés (jusqu'à
 # `retry_max`), puis rendus à l'appelant comme un échec transitoire.
 _STATUTS_TRANSITOIRES = frozenset({408, 425, 429})
+
+
+@traced
+def _statut_transitoire(statut: int) -> bool:
+    """Vrai pour un statut HTTP transitoire : 408, 425, 429 ou 5xx."""
+    return statut >= 500 or statut in _STATUTS_TRANSITOIRES
 
 
 class ActionInvalideError(ValueError):
@@ -160,6 +175,7 @@ class ElasticsearchBulkOutput(Output):
         self._batch_size = batch_size
         self._retry_max = retry_max
         self._retry_backoff = float(options.get("retry_backoff", 1.0))
+        self._dlq_transitoires = bool(options.get("dlq_transitoires", False))
         self._dlq = dlq
         if self._dlq is None and options.get("dlq_path"):
             self._dlq = LocalDeadLetterQueue(str(options["dlq_path"]))
@@ -188,7 +204,9 @@ class ElasticsearchBulkOutput(Output):
             "routing",
             "doc_as_upsert",
             "dlq_path",
+            "dlq_transitoires",
             "headers",
+            "id",
         }
     )
 
@@ -267,6 +285,21 @@ class ElasticsearchBulkOutput(Output):
         if pending["routing"]:
             meta["routing"] = pending["routing"]
         return json.dumps({action: meta}, ensure_ascii=False)
+
+    @traced
+    def _chemin_envoi(self) -> str:
+        """Chemin de la requête d'envoi : `<chemin_bulk>/_bulk` (surchargeable)."""
+        return f"{self.chemin_bulk}/_bulk"
+
+    @traced
+    def _parametres_requete(self) -> dict[str, str]:
+        """Paramètres d'URL propres au produit, ajoutés à chaque envoi (aucun par défaut)."""
+        return {}
+
+    @traced
+    def _corps_requete(self, pendings: list[dict[str, Any]]) -> str:
+        """Corps de la requête d'envoi : le NDJSON `_bulk` (surchargeable)."""
+        return self._corps_ndjson(pendings)
 
     @traced
     def _corps_ndjson(self, pendings: list[dict[str, Any]]) -> str:
@@ -407,9 +440,28 @@ class ElasticsearchBulkOutput(Output):
         logger.debug("_flush | {} document(s)", len(pendings))
         response = await self._envoyer_lot(pendings)
         if response is None:
-            # Échec transitoire épuisé : rendu à l'appelant (docstring).
-            return [SendOutcome.RETRYABLE] * len(pendings)
+            # Échec transitoire épuisé : rendu à l'appelant (docstring),
+            # ou en DLQ si `dlq_transitoires` (#7).
+            return await self._transitoires_epuises(pendings, "réseau : réessais épuisés")
+        if self._dlq_transitoires and _statut_transitoire(response.status_code):
+            return await self._transitoires_epuises(pendings, f"statut {response.status_code} : réessais épuisés")
         return await self._analyser_reponse(pendings, response)
+
+    @atraced
+    async def _transitoires_epuises(self, pendings: list[dict[str, Any]], erreur: str) -> list[SendOutcome]:
+        """Lot en échec transitoire, réessais épuisés : RETRYABLE, ou DLQ si `dlq_transitoires`."""
+        if self._dlq is None or not self._dlq_transitoires:
+            return [SendOutcome.RETRYABLE] * len(pendings)
+        logger.warning(_("lot en échec transitoire mis en DLQ documents={nombre}"), nombre=len(pendings))
+        for pending in pendings:
+            await self._dlq.write(
+                pending["doc"],
+                index=pending["index"],
+                error=erreur,
+                output=self.nom,
+                reason=REASON_TRANSIENT_EXHAUSTED,
+            )
+        return [SendOutcome.DEAD_LETTERED] * len(pendings)
 
     @atraced
     async def _envoyer_lot(self, pendings: list[dict[str, Any]]) -> httpx.Response | None:
@@ -419,7 +471,7 @@ class ElasticsearchBulkOutput(Output):
             La réponse HTTP, ou None après `retry_max` retentes épuisées
             sur un échec transitoire (connexion, 429, 5xx…).
         """
-        params: dict[str, str] = {}
+        params: dict[str, str] = self._parametres_requete()
         pipelines = {p["pipeline"] for p in pendings if p["pipeline"]}
         if len(pipelines) == 1:
             params["pipeline"] = next(iter(pipelines))
@@ -427,8 +479,8 @@ class ElasticsearchBulkOutput(Output):
         while True:
             try:
                 response = await self._client_http().post(
-                    f"{self.chemin_bulk}/_bulk",
-                    content=self._corps_ndjson(pendings),
+                    self._chemin_envoi(),
+                    content=self._corps_requete(pendings),
                     params=params or None,
                 )
             except httpx.HTTPError as exc:
@@ -441,7 +493,7 @@ class ElasticsearchBulkOutput(Output):
             if response.status_code in _STATUTS_PERMANENTS:
                 logger.warning(_("envoi _bulk refusé définitivement statut={statut}"), statut=response.status_code)
                 return response
-            if response.status_code >= 500 or response.status_code in _STATUTS_TRANSITOIRES:
+            if _statut_transitoire(response.status_code):
                 logger.warning(_("envoi _bulk échoué statut={statut}"), statut=response.status_code)
                 if essai >= self._retry_max:
                     return response
@@ -461,6 +513,14 @@ class ElasticsearchBulkOutput(Output):
         if response.status_code in _STATUTS_PERMANENTS:
             return [await self._permanent(pending, f"statut {response.status_code}") for pending in pendings]
         if not self.capacites.accuse_par_evenement:
+            # Statut global seul : seul un 2xx vaut indexation. Un 5xx ou
+            # 429 aux réessais épuisés, ou un statut inattendu (401, 403…),
+            # rend le lot à l'appelant — jamais compté comme indexé (#14).
+            if not 200 <= response.status_code < 300:
+                logger.warning(
+                    _("envoi _bulk : statut global {statut}, lot rendu à l'appelant"), statut=response.status_code
+                )
+                return [SendOutcome.RETRYABLE] * len(pendings)
             logger.debug("_analyser_reponse | statut global seul")
             return [SendOutcome.INDEXED] * len(pendings)
         try:
@@ -480,7 +540,7 @@ class ElasticsearchBulkOutput(Output):
                 outcomes.append(SendOutcome.INDEXED)
                 continue
             statut = resultat.get("status", 400)
-            if statut in _STATUTS_TRANSITOIRES or statut >= 500:
+            if _statut_transitoire(statut):
                 logger.warning(_("envoi _bulk élément échoué statut={statut}"), statut=statut)
                 outcomes.append(SendOutcome.RETRYABLE)
                 continue
@@ -493,7 +553,9 @@ class ElasticsearchBulkOutput(Output):
         logger.warning(_("envoi _bulk échoué définitivement erreur={error}"), error=erreur)
         if self._dlq is None:
             return SendOutcome.RETRYABLE
-        await self._dlq.write(pending["doc"], index=pending["index"], error=erreur)
+        await self._dlq.write(
+            pending["doc"], index=pending["index"], error=erreur, output=self.nom, reason=REASON_PERMANENT
+        )
         return SendOutcome.DEAD_LETTERED
 
     @atraced

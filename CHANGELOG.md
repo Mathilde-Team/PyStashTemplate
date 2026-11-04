@@ -5,7 +5,58 @@ le projet suit SemVer.
 
 ## [Non publié]
 
+### Corrections
+
+- Client _bulk, produits à statut HTTP global seul
+  (`accuse_par_evenement=False`) : un 5xx ou 429 aux réessais épuisés, ou
+  un statut inattendu (401, 403, redirection…), était compté comme
+  indexé — le lot est désormais rendu à l'appelant (#14).
+
 ### Évolutions
+
+- Banc commun de conformité des sorties (issue #9) : une même suite
+  (lot simple, erreur partielle, 429, coupure réseau, arrêt propre)
+  rejouée sans réseau contre chaque sortie HTTP par un faux serveur
+  générique (`tests/test_conformite_sorties.py`) ; une nouvelle sortie
+  s'y ajoute par une seule fixture, et un test exige une fixture pour
+  toute sortie HTTP du registre. Matrice de compatibilité (système ×
+  fonctionnalité) générée depuis le registre dans `docs/sorties.md`
+  (`scripts/matrice_sorties.py`, vérifiée à jour par les tests).
+
+- Sortie `victorialogs` (issue #14) : modes `bulk`
+  (`/insert/elasticsearch/_bulk`) et `jsonline` (`/insert/jsonline`),
+  `stream_fields`, `msg_field` (`message`) et `time_field`
+  (`@timestamp`) en paramètres d'ingestion, `health()` sur `/health`.
+  Banc de conformité contre VictoriaLogs v1.53.0
+  (`conformite-victorialogs.yml`). Documentée dans `docs/sorties.md`.
+
+- Sortie `elasticsearch` (issue #13) : sous-classe du client _bulk
+  commun, authentification par clé d'API (`api_key`, forme encodée ou
+  `id:api_key`) ou jeton porteur (`token`), exclusives entre elles et
+  avec `user`/`password` ; data streams (`data_stream`, action `create`
+  imposée, nommage `type-dataset-namespace` comme Logstash). Banc de
+  conformité contre Elasticsearch 9.5.5 en conteneur
+  (`conformite-elasticsearch.yml`). Documentée dans `docs/sorties.md`.
+
+- DLQ générique des sorties (issue #7) : chaque entrée porte le nom de la
+  sortie (`@dlq_output`, option `id` sinon nom du plugin) et la raison
+  (`@dlq_reason` : `permanent` ou `transitoire_epuise`), champs ajoutés au
+  format historique de RsysLogstach (relu sans conversion) ; option
+  `dlq_transitoires` de la famille _bulk (faux par défaut, parité) pour
+  envoyer en DLQ un lot transitoire aux réessais épuisés ;
+  `dlq.read_entries()` (JSONL et `.gz`) et rejeu
+  `outputs.rejeu.rejouer_dlq()` vers n'importe quelle sortie, les refus
+  conservés dans le fichier. Documenté dans `docs/sorties.md`.
+
+- Sorties locales `file` et `stdout` (issue #32, chantier sorties #2) :
+  plugins `output{}` sans client — `file` écrit une ligne JSON par
+  document dans le fichier rendu par le gabarit `path` (rotation par
+  `%{+YYYY-MM-dd}` contre `@timestamp`, le fichier précédent fermé à la
+  rotation, DLQ sur échec d'écriture via `dlq_path`) ; `stdout` écrit
+  une ligne par document sur la sortie standard (flux injectable).
+  Codecs partagés `outputs/codecs.py` : `json_lines` (NDJSON) et
+  `rubydebug` (rendu « inspect Ruby » multi-lignes, simplifié) —
+  documentés dans `docs/sorties.md`.
 
 - Documentation et exemples de la bibliothèque rapatriés de RsysLogstach
   (issue #57, suite du découpage RsysLogstach#111) : `PATTERNS.md` et
