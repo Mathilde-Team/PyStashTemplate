@@ -23,6 +23,7 @@ coupure réseau, arrêt propre).
 | `file` | `index`, `create` | non | oui | — | oui | oui | non |
 | `greptimedb` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `http` | `index` | non | non | — | oui | oui | oui |
+| `kafka` | `index` | non | non | — | oui | oui | oui |
 | `loki` | `index` | non | non | — | oui | oui | oui |
 | `manticore` | toutes | oui | oui | — | oui | oui | oui |
 | `null` | toutes | oui | oui | — | non | oui | non |
@@ -462,6 +463,57 @@ Banc de conformité contre Vector 0.59.0 en conteneur (source
 `tests/test_integration_http.py`) : événements relus dans les journaux
 du sink `console`, les trois formats vérifiés. Fixture du banc commun
 (#9) en plus.
+
+## Sortie `kafka` (issue #29)
+
+Producteur asynchrone vers **Apache Kafka et compatibles** (Redpanda,
+MSK…), comme le plugin `logstash-output-kafka` : `bootstrap_servers`
+et `topic_id` sont requis, le sujet et la clé (`message_key`) sont
+rendus par gabarit sprintf — les documents d'un même lot peuvent
+partir sur des sujets différents.
+
+```
+output {
+  kafka {
+    bootstrap_servers => "kafka:9092"
+    topic_id => "logs-%{+YYYY.MM.dd}"
+    message_key => "%{host}"
+    codec => "json"
+    acks => "1"
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `bootstrap_servers` | Nœud(s) `hôte:port` (chaîne ou liste) — **requise** |
+| `topic_id` | Sujet de destination, gabarit sprintf — **requis** |
+| `message_key` | Clé des messages (gabarit sprintf, partitionnement) |
+| `codec` | `json` (défaut), `json_lines` ou `rubydebug` : rendu de la valeur |
+| `acks` | `0`, `1` (défaut) ou `all` : niveau d'acquittement Kafka |
+| `compression_type` | `none` (défaut), `gzip`, `snappy`, `lz4`, `zstd` |
+| `client_id` | Identifiant du client auprès du cluster |
+| `security_protocol` | `PLAINTEXT` (défaut), `SSL`, `SASL_PLAINTEXT`, `SASL_SSL` (avec `user`/`password`, mécanisme PLAIN) |
+
+Particularités :
+
+- **accusé par message** : chaque envoi attend l'acquittement du
+  courtier (selon `acks`), mais l'issue est rapportée par lot —
+  `accuse_par_evenement=False` au sens du socle ;
+- **tout échec est transitoire** : Kafka ne rejette pas un message
+  pour son contenu — retentes exponentielles
+  (`retry_max`/`retry_backoff`) sur les seuls messages en échec, puis
+  lot rendu à l'appelant (`RETRYABLE`) ou en DLQ avec
+  `dlq_transitoires` (#7) ; la sémantique est **au moins une fois** :
+  un message dont l'acquittement s'est perdu peut partir en double ;
+- **insertions seules** : `index`, `_id` refusé ;
+- **santé** : `health()` relit le méta-annuaire du cluster (nœuds
+  connus du producteur) — pas d'endpoint de santé standard dans Kafka.
+
+Banc de conformité contre Redpanda en conteneur
+(`.github/workflows/conformite-kafka.yml`,
+`tests/test_integration_kafka.py`) : messages relus par un
+consommateur `aiokafka`, sujet, clé et valeur vérifiés.
 
 ## Sortie `loki` (issue #21)
 
