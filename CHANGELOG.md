@@ -7,6 +7,14 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- Entrée sFlow v5 du service autonome (issue #97) : `EntreeSflow`
+  écoute l'UDP (port configurable), `pystashtemplate.sflow` décode les
+  datagrammes RFC 3176 — échantillons de flux (en-tête Ethernet puis
+  IPv4/TCP/UDP : adresses MAC, IP, protocole, TTL, ports, taille du
+  paquet) et compteurs génériques d'interface (octets, paquets, erreurs,
+  rejets entrants/sortants). Un échantillon = un document ; version non
+  5, type ou format inconnu : écartés avec un journal, le collecteur
+  reste debout.
 - Service autonome asynchrone (issue #39) : `pystashtemplate.service`
   fait tourner le pipeline à l'écoute d'un port — entrées syslog TCP
   (cadrage RFC 6587 octet-counting/LF), syslog UDP et HTTP (`POST` JSON
@@ -14,7 +22,7 @@ le projet suit SemVer.
   `facility`/`severity`, file bornée entre réception et sorties
   (contre-pression : le récepteur TCP cesse de lire, en UDP les
   datagrammes sont perdus), arrêt propre qui vide la file et pousse les
-  sorties. sFlow attend sa sous-issue dédiée.
+  sorties.
 - Sorties `redis`, `rabbitmq` et `nats` (issue #33) : courtiers de
   messages sur un socle commun (`outputs/courtier.py` : tampon, retentes
   des seuls messages en échec, refus définitif par message en DLQ,

@@ -33,9 +33,18 @@ from typing import Any, ClassVar
 from loguru import logger
 
 from pystashtemplate.i18n import _
+from pystashtemplate.sflow import analyser_sflow
 from pystashtemplate.tracing import atraced, traced
 
-__all__ = ["Service", "EntreeSyslogTcp", "EntreeSyslogUdp", "EntreeHttp", "analyser_syslog", "PRIORITE"]
+__all__ = [
+    "Service",
+    "EntreeSyslogTcp",
+    "EntreeSyslogUdp",
+    "EntreeSflow",
+    "EntreeHttp",
+    "analyser_syslog",
+    "PRIORITE",
+]
 
 # Mots-clés RFC 5424 (facilité × 8 + sévérité), mêmes tables que la
 # sortie `syslog` (#30) — les codes non nommés (24-63, réserves)
@@ -304,6 +313,65 @@ class EntreeSyslogUdp:
         )
         self._transport = transport
         logger.debug("EntreeSyslogUdp.demarrer | écoute {}:{}", self._hote, self._port)
+
+    @atraced
+    async def arreter(self) -> None:
+        """Ferme l'écoute."""
+        if self._transport is not None:
+            self._transport.close()
+            self._transport = None
+
+
+class EntreeSflow:
+    """Entrée sFlow v5 (RFC 3176) : un datagramme, des échantillons.
+
+    Chaque échantillon (flux ou compteurs) devient un document pour le
+    pipeline — le décodage vit dans `pystashtemplate.sflow` (#97).
+    """
+
+    type = "sflow"
+
+    def __init__(self, hote: str, port: int) -> None:
+        logger.debug("EntreeSflow.__init__ | entrée")
+        self._hote = hote
+        self._port = port
+        self._transport: asyncio.DatagramTransport | None = None
+        logger.debug("EntreeSflow.__init__ | sortie")
+
+    @traced
+    def liaison(self) -> tuple[str, int]:
+        """Adresse effectivement liée."""
+        assert self._transport is not None
+        return self._transport.get_extra_info("sockname")[:2]
+
+    @atraced
+    async def demarrer(self, service: "Service") -> None:
+        """Ouvre l'écoute : chaque datagramme nourrit la file du service."""
+
+        entree = self
+
+        class Recepteur(asyncio.DatagramProtocol):
+            def datagram_received(self, data: bytes, addr: Any) -> None:
+                logger.debug("EntreeSflow.Recepteur.datagram_received | entrée")
+                asyncio.get_running_loop().create_task(entree._deposer(service, data))
+                logger.debug("EntreeSflow.Recepteur.datagram_received | sortie")
+
+            def error_received(self, exc: Exception) -> None:
+                logger.debug("EntreeSflow.Recepteur.error_received | entrée")
+                logger.warning(_("entrée sflow : datagramme perdu erreur={error}"), error=exc)
+                logger.debug("EntreeSflow.Recepteur.error_received | sortie")
+
+        transport, _ = await asyncio.get_running_loop().create_datagram_endpoint(
+            Recepteur, local_addr=(self._hote, self._port)
+        )
+        self._transport = transport
+        logger.debug("EntreeSflow.demarrer | écoute {}:{}", self._hote, self._port)
+
+    @atraced
+    async def _deposer(self, service: "Service", donnees: bytes) -> None:
+        """Décode un datagramme et met chaque échantillon en file."""
+        for document in analyser_sflow(donnees):
+            await service.deposer(json.dumps(document).encode("utf-8"))
 
     @atraced
     async def arreter(self) -> None:
