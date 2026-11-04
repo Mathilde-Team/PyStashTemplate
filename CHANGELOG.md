@@ -5,7 +5,21 @@ le projet suit SemVer.
 
 ## [Non publié]
 
+### Corrections
+
+- Client _bulk, produits à statut HTTP global seul
+  (`accuse_par_evenement=False`) : un 5xx ou 429 aux réessais épuisés, ou
+  un statut inattendu (401, 403, redirection…), était compté comme
+  indexé — le lot est désormais rendu à l'appelant (#14).
+
 ### Évolutions
+
+- Sortie `victorialogs` (issue #14) : modes `bulk`
+  (`/insert/elasticsearch/_bulk`) et `jsonline` (`/insert/jsonline`),
+  `stream_fields`, `msg_field` (`message`) et `time_field`
+  (`@timestamp`) en paramètres d'ingestion, `health()` sur `/health`.
+  Banc de conformité contre VictoriaLogs v1.53.0
+  (`conformite-victorialogs.yml`). Documentée dans `docs/sorties.md`.
 
 - Sortie `elasticsearch` (issue #13) : sous-classe du client _bulk
   commun, authentification par clé d'API (`api_key`, forme encodée ou

@@ -11,6 +11,7 @@ une sortie inconnue échoue dès la compilation, avant toute connexion.
 |---|---|---|---|---|
 | `elasticsearch` | Elasticsearch | toutes (`create` seule en data stream) | oui | oui (`items[]`) |
 | `opensearch` | OpenSearch | toutes | oui | oui (`items[]`) |
+| `victorialogs` | VictoriaLogs | `index`, `create` | non | non (statut HTTP global) |
 | `file` | fichier local (NDJSON) | `index`, `create` | non | oui |
 | `stdout` | sortie standard | `index`, `create` | non | oui |
 | `null` | (puits, tests) | toutes | oui | oui |
@@ -107,6 +108,49 @@ Banc de conformité : `tests/test_integration_elasticsearch.py`, workflow
 sécurité active) — indexation, `_id` déterministe, clé d'API créée puis
 utilisée sous ses deux formes, data stream créé par le modèle intégré
 `logs-*-*`, rejet de mapping parti en DLQ.
+
+## Sortie `victorialogs` (issue #14)
+
+Ingestion seule (port 9428 par défaut), deux modes :
+
+- `bulk` (défaut) : `POST /insert/elasticsearch/_bulk`, le NDJSON
+  `_bulk` du client commun ;
+- `jsonline` : `POST /insert/jsonline`, une ligne JSON par document.
+
+```
+output {
+  victorialogs {
+    hosts => ["http://victorialogs:9428"]
+    mode => "bulk"   # ou "jsonline"
+    stream_fields => ["host", "app"]
+  }
+}
+```
+
+| Option propre | Paramètre VictoriaLogs | Défaut |
+|---|---|---|
+| `mode` | — | `bulk` |
+| `stream_fields` | `_stream_fields` (liste ou chaîne) | aucun (flux `{}`) |
+| `msg_field` | `_msg_field` | `message` |
+| `time_field` | `_time_field` | `@timestamp` |
+
+Les défauts suivent les documents Logstash (`message`, `@timestamp`) ;
+une valeur vide retire le paramètre (VictoriaLogs lit alors `_msg` et
+`_time`). Les autres options sont celles du client commun.
+
+Accusé de réception : VictoriaLogs ne rapporte pas d'erreur par
+élément ; il s'arrête à la première erreur et la rend pour tout le lot.
+La décision se fait donc sur le **statut HTTP global** : 2xx = lot
+indexé ; 400/404 = permanent (DLQ si configurée) ; tout autre statut
+(réseau, 429, 5xx, 401…) = lot rendu à l'appelant, ou DLQ avec
+`dlq_transitoires`. En mode `jsonline`, VictoriaLogs ignore une ligne
+JSON invalide sans faire échouer le lot. `_index` et `_id` sont ignorés
+par le produit (`_id` refusé par la sortie). `health()` lit
+`GET /health`.
+
+Banc de conformité : `tests/test_integration_victorialogs.py`, workflow
+`conformite-victorialogs.yml` (VictoriaLogs v1.53.0 en conteneur) —
+modes `bulk` et `jsonline`, champs de flux et de date relus par LogsQL.
 
 ## Sorties `file` et `stdout` (issue #32)
 

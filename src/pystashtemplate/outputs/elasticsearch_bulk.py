@@ -517,7 +517,9 @@ class ElasticsearchBulkOutput(Output):
             # 429 aux réessais épuisés, ou un statut inattendu (401, 403…),
             # rend le lot à l'appelant — jamais compté comme indexé (#14).
             if not 200 <= response.status_code < 300:
-                logger.warning(_("envoi _bulk : statut global {statut}, lot rendu à l'appelant"), statut=response.status_code)
+                logger.warning(
+                    _("envoi _bulk : statut global {statut}, lot rendu à l'appelant"), statut=response.status_code
+                )
                 return [SendOutcome.RETRYABLE] * len(pendings)
             logger.debug("_analyser_reponse | statut global seul")
             return [SendOutcome.INDEXED] * len(pendings)

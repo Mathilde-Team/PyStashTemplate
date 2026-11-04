@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 17:04+0000\n"
+"POT-Creation-Date: 2026-11-04 17:09+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: deusyv\n"
 "Language-Team: English\n"
@@ -99,6 +99,11 @@ msgstr "elasticsearch output: data_stream_type/dataset/namespace require data_st
 #: src/pystashtemplate/outputs/elasticsearch.py
 msgid "sortie elasticsearch : une seule authentification parmi user/password, api_key et token ({})"
 msgstr "elasticsearch output: only one authentication among user/password, api_key and token ({})"
+
+#: src/pystashtemplate/outputs/elasticsearch_bulk.py
+#, python-brace-format
+msgid "envoi _bulk : statut global {statut}, lot rendu à l'appelant"
+msgstr "_bulk send: global status {statut}, batch returned to the caller"
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
 #, python-brace-format
@@ -208,6 +213,14 @@ msgstr "DLQ replay finished replayed={rejouees} kept={conservees}"
 #: src/pystashtemplate/outputs/transport.py
 msgid "transport : échec réseau après {} essai(s)"
 msgstr "transport: network failure after {} attempt(s)"
+
+#: src/pystashtemplate/outputs/victorialogs.py
+msgid "sortie victorialogs : liste de champs attendue, reçu {}"
+msgstr "victorialogs output: list of fields expected, got {}"
+
+#: src/pystashtemplate/outputs/victorialogs.py
+msgid "sortie victorialogs : mode {} inconnu (bulk ou jsonline)"
+msgstr "victorialogs output: unknown mode {} (bulk or jsonline)"
 
 #
 #
