@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 18:32+0000\n"
+"POT-Creation-Date: 2026-11-04 18:46+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: deusyv\n"
 "Language-Team: English\n"
@@ -142,7 +142,8 @@ msgstr "batch with transient failure sent to the DLQ documents={nombre}"
 msgid "réponse _bulk : {} éléments attendus, {} reçus"
 msgstr "_bulk response: {} items expected, {} received"
 
-#: src/pystashtemplate/outputs/elasticsearch_bulk.py src/pystashtemplate/outputs/manticore.py
+#: src/pystashtemplate/outputs/elasticsearch_bulk.py
+#: src/pystashtemplate/outputs/manticore.py
 #, python-brace-format
 msgid "réponse _bulk illisible erreur={error}"
 msgstr "unreadable _bulk response error={error}"
@@ -154,6 +155,22 @@ msgstr "output: _id rejected by the product, ignored"
 #: src/pystashtemplate/outputs/fichier.py
 msgid "sortie file : option « path » manquante (chemin du fichier de sortie)"
 msgstr "file output: missing « path » option (output file path)"
+
+#: src/pystashtemplate/outputs/greptimedb.py
+msgid "greptimedb : lot de {} documents rejeté, renvoi un par un"
+msgstr ""
+
+#: src/pystashtemplate/outputs/greptimedb.py
+#, fuzzy, python-brace-format
+#| msgid "réponse _bulk quickwit non normalisée erreur={error}"
+msgid "réponse _bulk greptimedb non normalisée erreur={error}"
+msgstr "quickwit _bulk response not normalised error={error}"
+
+#: src/pystashtemplate/outputs/greptimedb.py
+#, fuzzy, python-brace-format
+#| msgid "réponse _bulk illisible erreur={error}"
+msgid "réponse greptimedb sans raison lisible erreur={error}"
+msgstr "unreadable _bulk response error={error}"
 
 #: src/pystashtemplate/outputs/http_generique.py
 msgid "sortie http : url complète attendue (ex. http://recepteur:8080/logs), reçu : {}"
@@ -231,11 +248,6 @@ msgstr "openobserve output: empty organization"
 
 #: src/pystashtemplate/outputs/quickwit.py
 #, python-brace-format
-msgid "réponse _bulk quickwit non normalisée erreur={error}"
-msgstr "quickwit _bulk response not normalised error={error}"
-
-#: src/pystashtemplate/outputs/quickwit.py
-#, python-brace-format
 msgid "sortie quickwit : action {action} refusée (create seule)"
 msgstr "quickwit output: action {action} refused (create only)"
 
@@ -266,6 +278,12 @@ msgstr "DLQ replay: {} already exists, it would be overwritten"
 msgid "rejeu DLQ terminé rejouées={rejouees} conservées={conservees}"
 msgstr "DLQ replay finished replayed={rejouees} kept={conservees}"
 
+#: src/pystashtemplate/outputs/relecture.py
+#, fuzzy, python-brace-format
+#| msgid "réponse _bulk quickwit non normalisée erreur={error}"
+msgid "réponse _bulk {produit} non relue erreur={error}"
+msgstr "quickwit _bulk response not normalised error={error}"
+
 #: src/pystashtemplate/outputs/schema.py
 msgid "option « {} » inconnue pour la sortie « {} » (options valides : {})"
 msgstr "unknown option \"{}\" for output \"{}\" (valid options: {})"
@@ -285,6 +303,12 @@ msgstr "output \"{}\": option \"{}\" — expected type {} (got: {})"
 #: src/pystashtemplate/outputs/schema.py
 msgid "sortie « {} » : option « {} » — valeurs valides : {} (reçu : {})"
 msgstr "output \"{}\": option \"{}\" — valid values: {} (got: {})"
+
+#: src/pystashtemplate/outputs/siglens.py
+#, fuzzy, python-brace-format
+#| msgid "sortie quickwit : action {action} refusée (create seule)"
+msgid "sortie siglens : action {action} refusée (index, create seules)"
+msgstr "quickwit output: action {action} refused (create only)"
 
 #: src/pystashtemplate/outputs/transport.py
 msgid "transport : échec réseau après {} essai(s)"

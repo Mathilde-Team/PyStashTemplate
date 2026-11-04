@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 18:32+0000\n"
+"POT-Creation-Date: 2026-11-04 18:46+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -156,6 +156,20 @@ msgstr ""
 msgid "sortie file : option « path » manquante (chemin du fichier de sortie)"
 msgstr ""
 
+#: src/pystashtemplate/outputs/greptimedb.py
+msgid "greptimedb : lot de {} documents rejeté, renvoi un par un"
+msgstr ""
+
+#: src/pystashtemplate/outputs/greptimedb.py
+#, python-brace-format
+msgid "réponse _bulk greptimedb non normalisée erreur={error}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/greptimedb.py
+#, python-brace-format
+msgid "réponse greptimedb sans raison lisible erreur={error}"
+msgstr ""
+
 #: src/pystashtemplate/outputs/http_generique.py
 msgid "sortie http : url complète attendue (ex. http://recepteur:8080/logs), reçu : {}"
 msgstr ""
@@ -232,11 +246,6 @@ msgstr ""
 
 #: src/pystashtemplate/outputs/quickwit.py
 #, python-brace-format
-msgid "réponse _bulk quickwit non normalisée erreur={error}"
-msgstr ""
-
-#: src/pystashtemplate/outputs/quickwit.py
-#, python-brace-format
 msgid "sortie quickwit : action {action} refusée (create seule)"
 msgstr ""
 
@@ -267,6 +276,11 @@ msgstr ""
 msgid "rejeu DLQ terminé rejouées={rejouees} conservées={conservees}"
 msgstr ""
 
+#: src/pystashtemplate/outputs/relecture.py
+#, python-brace-format
+msgid "réponse _bulk {produit} non relue erreur={error}"
+msgstr ""
+
 #: src/pystashtemplate/outputs/schema.py
 msgid "option « {} » inconnue pour la sortie « {} » (options valides : {})"
 msgstr ""
@@ -285,6 +299,11 @@ msgstr ""
 
 #: src/pystashtemplate/outputs/schema.py
 msgid "sortie « {} » : option « {} » — valeurs valides : {} (reçu : {})"
+msgstr ""
+
+#: src/pystashtemplate/outputs/siglens.py
+#, python-brace-format
+msgid "sortie siglens : action {action} refusée (index, create seules)"
 msgstr ""
 
 #: src/pystashtemplate/outputs/transport.py

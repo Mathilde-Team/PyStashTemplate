@@ -31,6 +31,7 @@ from pystashtemplate.outputs import REGISTRY
 from pystashtemplate.outputs.clickhouse import ClickHouseOutput
 from pystashtemplate.outputs.elasticsearch import ElasticsearchOutput
 from pystashtemplate.outputs.elasticsearch_bulk import ElasticsearchBulkOutput
+from pystashtemplate.outputs.greptimedb import GreptimeDbOutput
 from pystashtemplate.outputs.http_generique import HttpOutput
 from pystashtemplate.outputs.loki import LokiOutput
 from pystashtemplate.outputs.manticore import ManticoreOutput
@@ -38,6 +39,7 @@ from pystashtemplate.outputs.metriques import CompteursSortie
 from pystashtemplate.outputs.openobserve import OpenObserveOutput
 from pystashtemplate.outputs.opensearch import OpenSearchOutput
 from pystashtemplate.outputs.quickwit import QuickwitOutput
+from pystashtemplate.outputs.siglens import SigLensOutput
 from pystashtemplate.outputs.victorialogs import VictoriaLogsOutput
 from pystashtemplate.outputs.zincsearch import ZincSearchOutput
 
@@ -86,7 +88,9 @@ FIXTURES: list[FixtureSortie] = [
     FixtureSortie(ElasticsearchOutput),
     FixtureSortie(ElasticsearchOutput, {"data_stream": True}),
     FixtureSortie(QuickwitOutput),
+    FixtureSortie(GreptimeDbOutput),
     FixtureSortie(ManticoreOutput),
+    FixtureSortie(SigLensOutput),
     FixtureSortie(OpenObserveOutput),
     FixtureSortie(VictoriaLogsOutput),
     FixtureSortie(VictoriaLogsOutput, {"mode": "jsonline"}, compter=_lignes_json),

@@ -41,6 +41,21 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- Sortie `siglens` (issue #20) : `/elastic/_bulk` du port d'ingestion,
+  actions `index`/`create` (`update`/`delete` refusées à la
+  compilation), `_id` ignoré (SigLens ne le conserve pas), accusé par
+  élément relu sous l'action envoyée avec le statut d'échec replacé dans
+  l'élément, santé `/elastic/`. Relecture des éléments factorisée
+  (`outputs/relecture.py`) et partagée avec `quickwit`. Banc de
+  conformité contre SigLens 1.0.57 en conteneur.
+
+- Sortie `greptimedb` (issue #19) : `/v1/elasticsearch/_bulk`,
+  insertions seules (`index`, `create`), éléments relus sous l'action
+  envoyée (GreptimeDB les rapporte sous `create`), lot rejeté en 400
+  renvoyé document par document pour n'écarter que le fautif, santé
+  `/health`. Perte silencieuse sur conflit de type documentée. Banc de
+  conformité contre GreptimeDB 1.3.0 en conteneur.
+
 - Sortie `zincsearch` (issue #18) : API `_bulk` native (`/api/_bulk`),
   actions `index`/`create`/`delete` (`update` refusée : pas de mise à
   jour partielle), `_id` transmis, statut HTTP global (500 d'arrêt de
