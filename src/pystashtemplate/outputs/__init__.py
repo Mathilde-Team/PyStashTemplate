@@ -110,6 +110,7 @@ class SortieInconnueError(ValueError):
 # avant que ce module ne soit chargé.
 from pystashtemplate.outputs.elasticsearch import ElasticsearchOutput  # noqa: E402
 from pystashtemplate.outputs.fichier import FileOutput  # noqa: E402
+from pystashtemplate.outputs.loki import LokiOutput  # noqa: E402
 from pystashtemplate.outputs.manticore import ManticoreOutput  # noqa: E402
 from pystashtemplate.outputs.null import NullOutput  # noqa: E402
 from pystashtemplate.outputs.openobserve import OpenObserveOutput  # noqa: E402
@@ -124,6 +125,7 @@ __all__ = [
     "Document",
     "ElasticsearchOutput",
     "FileOutput",
+    "LokiOutput",
     "ManticoreOutput",
     "NullOutput",
     "OpenSearchOutput",

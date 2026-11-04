@@ -30,6 +30,7 @@ from pystashtemplate.dlq import LocalDeadLetterQueue
 from pystashtemplate.outputs import REGISTRY
 from pystashtemplate.outputs.elasticsearch import ElasticsearchOutput
 from pystashtemplate.outputs.elasticsearch_bulk import ElasticsearchBulkOutput
+from pystashtemplate.outputs.loki import LokiOutput
 from pystashtemplate.outputs.manticore import ManticoreOutput
 from pystashtemplate.outputs.metriques import CompteursSortie
 from pystashtemplate.outputs.openobserve import OpenObserveOutput
@@ -46,6 +47,12 @@ def _paires_ndjson(corps: bytes) -> int:
 def _lignes_json(corps: bytes) -> int:
     """Documents d'un corps JSON Lines : une ligne par document."""
     return len(corps.decode("utf-8").splitlines())
+
+
+def _lignes_push_loki(corps: bytes) -> int:
+    """Documents d'un corps push Loki : les lignes de tous les flux."""
+    streams = json.loads(corps)["streams"]
+    return sum(len(flux["values"]) for flux in streams)
 
 
 @dataclass(frozen=True)
@@ -80,6 +87,7 @@ FIXTURES: list[FixtureSortie] = [
     FixtureSortie(OpenObserveOutput),
     FixtureSortie(VictoriaLogsOutput),
     FixtureSortie(VictoriaLogsOutput, {"mode": "jsonline"}, compter=_lignes_json),
+    FixtureSortie(LokiOutput, {"labels": {"host": "%{host}"}}, compter=_lignes_push_loki),
 ]
 
 
