@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 18:16+0000\n"
+"POT-Creation-Date: 2026-11-04 18:26+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: deusyv\n"
 "Language-Team: English\n"
@@ -154,6 +154,20 @@ msgstr "output: _id rejected by the product, ignored"
 #: src/pystashtemplate/outputs/fichier.py
 msgid "sortie file : option « path » manquante (chemin du fichier de sortie)"
 msgstr "file output: missing « path » option (output file path)"
+
+#: src/pystashtemplate/outputs/greptimedb.py
+msgid "greptimedb : lot de {} documents rejeté, renvoi un par un"
+msgstr "greptimedb: batch of {} documents rejected, resending one by one"
+
+#: src/pystashtemplate/outputs/greptimedb.py
+#, python-brace-format
+msgid "réponse _bulk greptimedb non normalisée erreur={error}"
+msgstr "greptimedb _bulk response not normalised error={error}"
+
+#: src/pystashtemplate/outputs/greptimedb.py
+#, python-brace-format
+msgid "réponse greptimedb sans raison lisible erreur={error}"
+msgstr "greptimedb response without readable reason error={error}"
 
 #: src/pystashtemplate/outputs/loki.py
 msgid "@timestamp {} illisible, heure d'envoi utilisée"

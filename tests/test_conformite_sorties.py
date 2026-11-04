@@ -31,6 +31,7 @@ from pystashtemplate.outputs import REGISTRY
 from pystashtemplate.outputs.clickhouse import ClickHouseOutput
 from pystashtemplate.outputs.elasticsearch import ElasticsearchOutput
 from pystashtemplate.outputs.elasticsearch_bulk import ElasticsearchBulkOutput
+from pystashtemplate.outputs.greptimedb import GreptimeDbOutput
 from pystashtemplate.outputs.loki import LokiOutput
 from pystashtemplate.outputs.manticore import ManticoreOutput
 from pystashtemplate.outputs.metriques import CompteursSortie
@@ -85,6 +86,7 @@ FIXTURES: list[FixtureSortie] = [
     FixtureSortie(ElasticsearchOutput),
     FixtureSortie(ElasticsearchOutput, {"data_stream": True}),
     FixtureSortie(QuickwitOutput),
+    FixtureSortie(GreptimeDbOutput),
     FixtureSortie(ManticoreOutput),
     FixtureSortie(OpenObserveOutput),
     FixtureSortie(VictoriaLogsOutput),
