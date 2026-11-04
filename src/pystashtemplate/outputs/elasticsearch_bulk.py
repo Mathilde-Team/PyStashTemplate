@@ -542,12 +542,11 @@ class ElasticsearchBulkOutput(Output):
             return [SendOutcome.INDEXED] * len(pendings)
         try:
             corps = response.json()
-            items = corps.get("items", [])
+            items = self._apparier(pendings, corps)
         except (ValueError, AttributeError) as exc:
             logger.warning(_("réponse _bulk illisible erreur={error}"), error=exc)
             return [SendOutcome.RETRYABLE] * len(pendings)
-        if len(items) != len(pendings):
-            logger.warning(_("réponse _bulk : {} éléments attendus, {} reçus"), len(pendings), len(items))
+        if items is None:
             return [SendOutcome.RETRYABLE] * len(pendings)
         outcomes: list[SendOutcome] = []
         for pending, item in zip(pendings, items, strict=True):
@@ -563,6 +562,27 @@ class ElasticsearchBulkOutput(Output):
                 continue
             outcomes.append(await self._permanent(pending, str(erreur)))
         return outcomes
+
+    @traced
+    def _apparier(self, pendings: list[dict[str, Any]], corps: dict[str, Any]) -> list[dict[str, Any]] | None:
+        """Élément de réponse de chaque document, dans l'ordre des documents.
+
+        Par défaut, par position (API `_bulk` : `items[]` dans l'ordre des
+        actions). Un produit dont l'ordre n'est pas garanti redéfinit ce
+        crochet (OpenObserve, #16).
+
+        Returns:
+            Un élément par document, ou `None` si la réponse ne permet pas
+            d'attribuer les résultats (le lot est alors rendu à l'appelant).
+
+        Raises:
+            AttributeError: corps qui n'est pas un objet JSON.
+        """
+        items: list[dict[str, Any]] = corps.get("items", [])
+        if len(items) != len(pendings):
+            logger.warning(_("réponse _bulk : {} éléments attendus, {} reçus"), len(pendings), len(items))
+            return None
+        return items
 
     @atraced
     async def _permanent(self, pending: dict[str, Any], erreur: str) -> SendOutcome:

@@ -32,6 +32,7 @@ from pystashtemplate.outputs.elasticsearch import ElasticsearchOutput
 from pystashtemplate.outputs.elasticsearch_bulk import ElasticsearchBulkOutput
 from pystashtemplate.outputs.manticore import ManticoreOutput
 from pystashtemplate.outputs.metriques import CompteursSortie
+from pystashtemplate.outputs.openobserve import OpenObserveOutput
 from pystashtemplate.outputs.opensearch import OpenSearchOutput
 from pystashtemplate.outputs.quickwit import QuickwitOutput
 from pystashtemplate.outputs.victorialogs import VictoriaLogsOutput
@@ -76,6 +77,7 @@ FIXTURES: list[FixtureSortie] = [
     FixtureSortie(ElasticsearchOutput, {"data_stream": True}),
     FixtureSortie(QuickwitOutput),
     FixtureSortie(ManticoreOutput),
+    FixtureSortie(OpenObserveOutput),
     FixtureSortie(VictoriaLogsOutput),
     FixtureSortie(VictoriaLogsOutput, {"mode": "jsonline"}, compter=_lignes_json),
 ]
@@ -102,11 +104,15 @@ class FauxServeurGenerique:
 
     def _items(self, corps: bytes, refuse: int | None) -> list[dict[str, Any]]:
         """`items[]` d'une réponse `_bulk` : un statut par ligne d'action."""
-        actions = [next(iter(json.loads(ligne))) for ligne in corps.decode("utf-8").splitlines()[0::2]]
+        lignes = corps.decode("utf-8").splitlines()
+        actions = [next(iter(json.loads(ligne))) for ligne in lignes[0::2]]
         items: list[dict[str, Any]] = []
         for i, action in enumerate(actions):
             if i == refuse:
-                items.append({action: {"status": 400, "error": {"type": "mapper_parsing_exception"}}})
+                # `originalRecord` : le document refusé, comme OpenObserve le
+                # renvoie (champ ignoré par les autres produits).
+                erreur = {"status": 400, "error": {"type": "mapper_parsing_exception"}}
+                items.append({action: {**erreur, "originalRecord": json.loads(lignes[2 * i + 1])}})
             else:
                 items.append({action: {"status": 201}})
         return items
