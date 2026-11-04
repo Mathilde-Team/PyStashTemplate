@@ -21,6 +21,7 @@ dependencies = [
     "redis>=6.0",  # client asynchrone de la sortie redis (#33)
     "aio-pika>=9.5",  # client AMQP 0-9-1 de la sortie rabbitmq (#33)
     "nats-py>=2.10",  # client NATS / JetStream de la sortie nats (#33)
+    "msgpack>=1.0",  # protocole forward de la sortie fluent_forward (#31)
 ]
 
 [project.optional-dependencies]
