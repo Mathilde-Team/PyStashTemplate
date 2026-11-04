@@ -83,11 +83,9 @@ def test_tcp_octet_counting_rfc5424() -> None:
     lignes = _chercher(marque, 3)
     assert len(lignes) == 3
     assert all(ligne.get("appname") == marque for ligne in lignes)
-    assert sorted(ligne.get("message", "") for ligne in lignes) == [
-        f"{marque} n0",
-        f"{marque} n1",
-        f"{marque} n2",
-    ]
+    # le MESSAGE est le document JSON : Vector le restitue tel quel
+    messages = [json.loads(ligne["message"])["message"] for ligne in lignes]
+    assert sorted(messages) == [f"{marque} n0", f"{marque} n1", f"{marque} n2"]
 
 
 def test_tcp_lf_rfc3164() -> None:
