@@ -1,0 +1,69 @@
+# Banc de conformité Elasticsearch (issue #13) : la sortie `elasticsearch`
+# contre la vraie API `_bulk` d'un conteneur éphémère. Complète les tests
+# unitaires (faux serveur `httpx.MockTransport`) : ici, c'est le produit
+# réel qui répond — indexation, `_id` déterministe, clé d'API créée puis
+# utilisée, data stream, rejet de mapping parti en DLQ.
+#
+# Sécurité active (utilisateur `elastic`, HTTP sans TLS) pour exercer la
+# clé d'API ; le mot de passe est un jeton jetable du conteneur, pas un
+# secret. Runner hébergé GitHub (ubuntu-latest, autorisé par la MISSION) :
+# Docker y est garanti, contrairement aux runners maison.
+name: Banc de conformité Elasticsearch
+
+"on":
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conformite:
+    name: "Sortie elasticsearch contre un vrai Elasticsearch"
+    runs-on: ubuntu-latest
+    env:
+      ES_PASSWORD: conformite-jetable
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v7
+
+      - name: Installation de uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Installation de Python
+        run: uv python install
+
+      - name: Installation des dépendances
+        run: uv sync --extra dev
+
+      - name: Elasticsearch éphémère (sécurité active, HTTP sans TLS)
+        run: |
+          docker run -d --name elasticsearch -p 9200:9200 \
+            -e "discovery.type=single-node" \
+            -e "xpack.security.enabled=true" \
+            -e "xpack.security.http.ssl.enabled=false" \
+            -e "xpack.security.transport.ssl.enabled=false" \
+            -e "ELASTIC_PASSWORD=$ES_PASSWORD" \
+            -e "ES_JAVA_OPTS=-Xms512m -Xmx512m" \
+            elasticsearch:9.5.5
+          for i in $(seq 1 90); do
+            if curl -sf -u "elastic:$ES_PASSWORD" http://localhost:9200 >/dev/null; then echo "Elasticsearch prêt"; exit 0; fi
+            sleep 2
+          done
+          docker logs elasticsearch
+          echo "::error::Elasticsearch n'a pas démarré" && exit 1
+
+      - name: Banc de conformité
+        env:
+          PYSTASHTEMPLATE_ELASTICSEARCH_URL: http://localhost:9200
+          PYSTASHTEMPLATE_ELASTICSEARCH_PASSWORD: ${{ env.ES_PASSWORD }}
+        run: uv run pytest tests/test_integration_elasticsearch.py -v
+
+      - name: Nettoyage du conteneur
+        if: always()
+        run: docker rm -f elasticsearch || true
