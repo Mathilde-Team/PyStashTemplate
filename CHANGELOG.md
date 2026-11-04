@@ -5,6 +5,25 @@ le projet suit SemVer.
 
 ## [Non publié]
 
+### Évolutions
+
+- Sortie `clickhouse` (issue #23) : interface HTTP
+  (`POST /?query=INSERT … FORMAT JSONEachRow`, corps JSON Each Row),
+  correspondance champ → colonne côté serveur, `table` requise,
+  `database`, `async_insert`, `champs_inconnus` (`ignorer` par défaut,
+  `erreur` pour faire échouer le lot), insertions seules, accusé sur
+  le statut HTTP global (lot entier en DLQ sur rejet). Banc de
+  conformité contre ClickHouse 26.3.62 en conteneur
+  (`conformite-clickhouse.yml`) et fixture du banc commun.
+
+- Sortie `loki` (issue #21) : API push de Grafana Loki
+  (`POST /loki/api/v1/push`, JSON), modèle par labels — labels rendus
+  par document (gabarits sprintf, valeurs vides écartées), document
+  entier en ligne JSON, horodatage `@timestamp` en nanosecondes, flux
+  triés, multi-tenant `X-Scope-OrgID`, insertions seules, accusé sur
+  le statut HTTP global. Banc de conformité contre Grafana Loki 3.7.9
+  en conteneur (`conformite-loki.yml`) et fixture du banc commun.
+
 ### Corrections
 
 - Client _bulk, produits à statut HTTP global seul
