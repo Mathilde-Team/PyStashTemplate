@@ -7,6 +7,17 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- Sortie `fluent_forward` (issue #31) : client asynchrone du protocole
+  forward v1 de Fluentd / Fluent Bit (MessagePack sur TCP), modes
+  `forward` et `packed_forward` (gzip avec `compression`), étiquette
+  rendue par gabarit sprintf (un message par étiquette), `EventTime`
+  exact ou secondes entières (`time_as_integer`), accusés `chunk`/`ack`
+  (`require_ack`, `ack_response_timeout`), clé partagée et utilisateur
+  (poignée de main HELO/PING/PONG), TLS et mTLS ; échec toujours
+  transitoire, retentes des seuls messages non acquittés, DLQ des
+  transitoires avec `dlq_transitoires`. Banc de conformité contre
+  Fluent Bit 5.1.5 en conteneur (`conformite-fluent_forward.yml`).
+  Nouvelle dépendance : `msgpack`.
 - Sortie `kafka` (issue #29) : producteur asynchrone `aiokafka` vers
   Apache Kafka et compatibles, options du plugin `kafka` de Logstash
   (`bootstrap_servers`/`topic_id` requis, `message_key`, `codec`,

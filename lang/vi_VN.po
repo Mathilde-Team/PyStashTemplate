@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 19:18+0000\n"
+"POT-Creation-Date: 2026-11-04 20:27+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -154,6 +154,49 @@ msgstr ""
 
 #: src/pystashtemplate/outputs/fichier.py
 msgid "sortie file : option « path » manquante (chemin du fichier de sortie)"
+msgstr ""
+
+#: src/pystashtemplate/outputs/fluent_forward.py
+#, python-brace-format
+msgid "envoi fluent_forward : réessais épuisés documents={nombre} erreur={error}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/fluent_forward.py
+#, python-brace-format
+msgid "envoi fluent_forward échoué erreur={error} documents={nombre}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/fluent_forward.py
+#, python-brace-format
+msgid "lot fluent_forward en échec transitoire mis en DLQ documents={nombre}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/fluent_forward.py
+#, python-brace-format
+msgid "sortie fluent_forward : HELO attendu, reçu {recu}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/fluent_forward.py
+#, python-brace-format
+msgid "sortie fluent_forward : PONG attendu, reçu {recu}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/fluent_forward.py
+#, python-brace-format
+msgid "sortie fluent_forward : accusé inattendu {recu}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/fluent_forward.py
+#, python-brace-format
+msgid "sortie fluent_forward : authentification refusée ({raison})"
+msgstr ""
+
+#: src/pystashtemplate/outputs/fluent_forward.py
+msgid "sortie fluent_forward : connexion fermée par le serveur"
+msgstr ""
+
+#: src/pystashtemplate/outputs/fluent_forward.py
+msgid "sortie fluent_forward : empreinte du serveur invalide"
 msgstr ""
 
 #: src/pystashtemplate/outputs/greptimedb.py
