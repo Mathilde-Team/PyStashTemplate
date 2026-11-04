@@ -90,7 +90,7 @@ def test_documents_ingeres_sont_retrouvables_avec_leurs_labels() -> None:
     resultats = _envoyer_tous(sortie, _documents(marque, 3))
     assert resultats == ["en_attente", "en_attente", "indexed"]
     resultats = _chercher(f'{{app="{marque}"}}', 3)
-    lignes = [json.loads(ligne) for flux in resultats for ligne in flux.get("values", [])]
+    lignes = [json.loads(ligne[1]) for flux in resultats for ligne in flux.get("values", [])]
     assert sorted(ligne["message"] for ligne in lignes) == [f"{marque} n{n}" for n in range(3)]
     # Le document entier part dans la ligne (JSON, sans perte).
     assert all(ligne["host"] == "banc" for ligne in lignes)
@@ -105,7 +105,8 @@ def test_horodatage_du_document_utilise() -> None:
     marque = f"conformitedate{uuid.uuid4().hex[:8]}"
     date = (datetime.now(timezone.utc) - timedelta(hours=1)).replace(microsecond=0)
     document = {"message": marque, "@timestamp": date.isoformat(), "app": marque}
-    assert _envoyer_tous(LokiOutput({"hosts": URL}), [document]) == ["indexed"]
+    sortie = LokiOutput({"hosts": URL, "labels": {"app": "%{app}"}})
+    assert _envoyer_tous(sortie, [document]) == ["indexed"]
     debut_ns = int(date.timestamp() * 1_000_000_000) - 60_000_000_000
     resultats = _chercher(f'{{app="{marque}"}}', 1, debut_ns=debut_ns)
     lignes = [ligne for flux in resultats for ligne in flux.get("values", [])]

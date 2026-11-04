@@ -47,6 +47,7 @@ from typing import Any, ClassVar
 import httpx
 from loguru import logger
 
+from pystashtemplate.i18n import _
 from pystashtemplate.outputs import Capacites, enregistrer
 from pystashtemplate.outputs.elasticsearch_bulk import ElasticsearchBulkOutput
 from pystashtemplate.outputs.schema import OptionSpec
@@ -72,6 +73,7 @@ def _horodatage_ns(doc: dict[str, Any]) -> int:
         try:
             moment = datetime.fromisoformat(brut.replace("Z", "+00:00"))
         except ValueError:
+            logger.warning(_("@timestamp {} illisible, heure d'envoi utilisée"), brut)
             moment = None
         if moment is not None:
             if moment.tzinfo is None:
