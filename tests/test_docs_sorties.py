@@ -4,7 +4,7 @@
 Une page = un titre `## Sortie(s) …` qui nomme le plugin entre accents
 graves, et au moins un gabarit `output { <plugin> { … } }` dans la
 section. Garde-fou ajouté après l'audit du 04/11 (pages manquantes pour
-greptimedb #19, siglens #20, otlp #22, parseable #25).
+greptimedb, siglens, otlp, parseable ; gabarits d'openobserve, quickwit, stdout).
 """
 
 from __future__ import annotations
