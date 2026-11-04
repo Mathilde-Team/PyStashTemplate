@@ -133,7 +133,6 @@ __all__ = [
     "FileOutput",
     "GreptimeDbOutput",
     "HttpOutput",
-
     "LokiOutput",
     "ManticoreOutput",
     "NullOutput",

@@ -158,19 +158,17 @@ msgstr "file output: missing « path » option (output file path)"
 
 #: src/pystashtemplate/outputs/greptimedb.py
 msgid "greptimedb : lot de {} documents rejeté, renvoi un par un"
-msgstr ""
+msgstr "greptimedb: batch of {} documents rejected, replaying one by one"
 
 #: src/pystashtemplate/outputs/greptimedb.py
-#, fuzzy, python-brace-format
-#| msgid "réponse _bulk quickwit non normalisée erreur={error}"
+#, python-brace-format
 msgid "réponse _bulk greptimedb non normalisée erreur={error}"
-msgstr "quickwit _bulk response not normalised error={error}"
+msgstr "greptimedb _bulk response not normalised error={error}"
 
 #: src/pystashtemplate/outputs/greptimedb.py
-#, fuzzy, python-brace-format
-#| msgid "réponse _bulk illisible erreur={error}"
+#, python-brace-format
 msgid "réponse greptimedb sans raison lisible erreur={error}"
-msgstr "unreadable _bulk response error={error}"
+msgstr "greptimedb response without readable reason error={error}"
 
 #: src/pystashtemplate/outputs/http_generique.py
 msgid "sortie http : url complète attendue (ex. http://recepteur:8080/logs), reçu : {}"
@@ -279,10 +277,9 @@ msgid "rejeu DLQ terminé rejouées={rejouees} conservées={conservees}"
 msgstr "DLQ replay finished replayed={rejouees} kept={conservees}"
 
 #: src/pystashtemplate/outputs/relecture.py
-#, fuzzy, python-brace-format
-#| msgid "réponse _bulk quickwit non normalisée erreur={error}"
+#, python-brace-format
 msgid "réponse _bulk {produit} non relue erreur={error}"
-msgstr "quickwit _bulk response not normalised error={error}"
+msgstr "_bulk response from {produit} not parsed error={error}"
 
 #: src/pystashtemplate/outputs/schema.py
 msgid "option « {} » inconnue pour la sortie « {} » (options valides : {})"
@@ -305,10 +302,9 @@ msgid "sortie « {} » : option « {} » — valeurs valides : {} (reçu : {})"
 msgstr "output \"{}\": option \"{}\" — valid values: {} (got: {})"
 
 #: src/pystashtemplate/outputs/siglens.py
-#, fuzzy, python-brace-format
-#| msgid "sortie quickwit : action {action} refusée (create seule)"
+#, python-brace-format
 msgid "sortie siglens : action {action} refusée (index, create seules)"
-msgstr "quickwit output: action {action} refused (create only)"
+msgstr "siglens output: action {action} refused (index, create only)"
 
 #: src/pystashtemplate/outputs/transport.py
 msgid "transport : échec réseau après {} essai(s)"
