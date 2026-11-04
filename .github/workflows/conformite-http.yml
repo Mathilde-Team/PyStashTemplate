@@ -58,8 +58,9 @@ jobs:
             -v /tmp/vector.yaml:/etc/vector/vector.yaml:ro \
             timberio/vector:0.59.0-debian --config /etc/vector/vector.yaml
           for i in $(seq 1 60); do
-            if curl -sf -o /dev/null -w '%{http_code}' http://localhost:8080/ | rg -q "^[1-5]"; then
-              echo "Vector prêt"; exit 0
+            code=$(curl -s -o /dev/null -w '%{http_code}' http://localhost:8080/ || true)
+            if [ "$code" != "000" ] && [ -n "$code" ]; then
+              echo "Vector prêt (HTTP $code)"; exit 0
             fi
             sleep 1
           done
