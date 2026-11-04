@@ -115,17 +115,20 @@ def test_pipeline_ne_modifie_pas_les_parametres_de_la_sortie() -> None:
 
 
 def test_mode_inconnu_refuse() -> None:
-    with pytest.raises(ValueError, match="mode loki inconnu"):
+    # Schéma commun (#8) : énumération validée à l'instanciation.
+    with pytest.raises(ValueError, match="valeurs valides : bulk, jsonline \(reçu : loki\)"):
         sortie(FauxServeur(), mode="loki")
 
 
 def test_stream_fields_de_mauvais_type_refuse() -> None:
-    with pytest.raises(ValueError, match="liste de champs attendue"):
+    # Schéma commun (#8) : type validé à l'instanciation (str ou liste).
+    with pytest.raises(ValueError, match="type str ou list ou tuple attendu \(reçu : int\)"):
         sortie(FauxServeur(), stream_fields=3)
 
 
 def test_option_inconnue_refusee() -> None:
-    with pytest.raises(ValueError, match="options inconnues"):
+    # Schéma commun (#8) : option inconnue = faute de frappe, échec franc.
+    with pytest.raises(ValueError, match="option « stream_field » inconnue pour la sortie « victorialogs »"):
         sortie(FauxServeur(), stream_field="host")
 
 

@@ -71,6 +71,22 @@ le projet suit SemVer.
   `dlq.read_entries()` (JSONL et `.gz`) et rejeu
   `outputs.rejeu.rejouer_dlq()` vers n'importe quelle sortie, les refus
   conservés dans le fichier. Documenté dans `docs/sorties.md`.
+- Schéma de configuration commun des sorties (issue #8) :
+  `pystashtemplate.outputs.schema` déclare une seule fois les options
+  communes à toutes les sorties (`hosts`, authentification, `ssl_*`,
+  `compression`, `batch_size`, `batch_bytes`, `flush_interval`,
+  `max_concurrency`, `retry_max`, `retry_backoff`, `dlq_path`) avec
+  types, bornes et défauts documentés ; chaque sortie ajoute ses
+  options propres (`OPTIONS_PROPRES` : `index`/`action`… pour la
+  famille `_bulk`, `path`/`codec` pour `file`, `codec` pour `stdout`,
+  `refresh` pour `quickwit` — migrée au schéma commun).
+  Validation **à la compilation** du pipeline (via `Output.__init__`) :
+  option inconnue (faute de frappe), type inattendu, valeur hors
+  bornes ou hors énumération, option requise absente — échec franc,
+  message traduit nommant le plugin, avant toute connexion. Noms
+  d'options alignés sur les plugins Logstash correspondants ;
+  documentation : tableau des options communes dans
+  `docs/sorties.md`.
 
 - Sorties locales `file` et `stdout` (issue #32, chantier sorties #2) :
   plugins `output{}` sans client — `file` écrit une ligne JSON par
