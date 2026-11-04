@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 20:19+0000\n"
+"POT-Creation-Date: 2026-11-04 20:23+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -445,6 +445,33 @@ msgstr ""
 #: src/pystashtemplate/outputs/siglens.py
 #, python-brace-format
 msgid "sortie siglens : action {action} refusée (index, create seules)"
+msgstr ""
+
+#: src/pystashtemplate/outputs/syslog.py
+#, python-brace-format
+msgid "envoi syslog : réessais épuisés documents={nombre} erreur={error}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/syslog.py
+#, python-brace-format
+msgid "envoi syslog échoué erreur={error} documents={nombre}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/syslog.py
+#, python-brace-format
+msgid "lot syslog en échec transitoire mis en DLQ documents={nombre}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/syslog.py
+msgid "sortie syslog : aucun envoi"
+msgstr ""
+
+#: src/pystashtemplate/outputs/syslog.py
+msgid "sortie syslog : facilité « {} » inconnue (mots-clés RFC 5424)"
+msgstr ""
+
+#: src/pystashtemplate/outputs/syslog.py
+msgid "sortie syslog : sévérité « {} » inconnue (mots-clés RFC 5424)"
 msgstr ""
 
 #: src/pystashtemplate/outputs/transport.py
