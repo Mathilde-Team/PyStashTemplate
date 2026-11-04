@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 18:04+0000\n"
+"POT-Creation-Date: 2026-11-04 18:23+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -220,6 +220,61 @@ msgstr ""
 
 #: src/pystashtemplate/outputs/openobserve.py
 msgid "sortie openobserve : organisation vide"
+msgstr ""
+
+#: src/pystashtemplate/outputs/otlp.py
+#, python-brace-format
+msgid "réponse OTLP : lot entier refusé message={message}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/otlp.py
+#, python-brace-format
+msgid "réponse OTLP : {rejetes} journal(aux) refusé(s) sur {total}, non identifiables message={message}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/otlp.py
+#, python-brace-format
+msgid "réponse OTLP illisible, lot compté accepté erreur={error}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/otlp.py
+#, python-brace-format
+msgid "sortie otlp : cible {cible} inconnue pour {champ}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/otlp.py
+msgid "sortie otlp : cible « {} » inconnue pour le champ « {} » (attendu : {})"
+msgstr ""
+
+#: src/pystashtemplate/outputs/otlp.py
+#, python-brace-format
+msgid "sortie otlp : lot impossible à coder erreur={error}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/otlp_codec.py
+#, python-brace-format
+msgid "codage OTLP JSON impossible erreur={error}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/otlp_codec.py
+msgid "réponse OTLP JSON : objet attendu"
+msgstr ""
+
+#: src/pystashtemplate/outputs/otlp_codec.py
+msgid "réponse OTLP JSON : partialSuccess n'est pas un objet"
+msgstr ""
+
+#: src/pystashtemplate/outputs/otlp_codec.py
+msgid "réponse OTLP protobuf : champ tronqué"
+msgstr ""
+
+#: src/pystashtemplate/outputs/otlp_codec.py
+#, python-brace-format
+msgid "réponse OTLP protobuf : type de fil {type_fil} non pris en charge"
+msgstr ""
+
+#: src/pystashtemplate/outputs/otlp_codec.py
+msgid "réponse OTLP protobuf : varint tronqué"
 msgstr ""
 
 #: src/pystashtemplate/outputs/quickwit.py

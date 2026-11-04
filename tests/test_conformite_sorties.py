@@ -34,6 +34,7 @@ from pystashtemplate.outputs.manticore import ManticoreOutput
 from pystashtemplate.outputs.metriques import CompteursSortie
 from pystashtemplate.outputs.openobserve import OpenObserveOutput
 from pystashtemplate.outputs.opensearch import OpenSearchOutput
+from pystashtemplate.outputs.otlp import OtlpOutput
 from pystashtemplate.outputs.quickwit import QuickwitOutput
 from pystashtemplate.outputs.victorialogs import VictoriaLogsOutput
 
@@ -41,6 +42,12 @@ from pystashtemplate.outputs.victorialogs import VictoriaLogsOutput
 def _paires_ndjson(corps: bytes) -> int:
     """Documents d'un corps `_bulk` : une ligne d'action + une ligne de document."""
     return len(corps.decode("utf-8").splitlines()) // 2
+
+
+def _journaux_otlp(corps: bytes) -> int:
+    """Journaux d'un corps OTLP JSON : `logRecords` de toutes les ressources."""
+    requete = json.loads(corps)
+    return sum(len(sl["logRecords"]) for rl in requete["resourceLogs"] for sl in rl["scopeLogs"])
 
 
 def _lignes_json(corps: bytes) -> int:
@@ -78,6 +85,7 @@ FIXTURES: list[FixtureSortie] = [
     FixtureSortie(QuickwitOutput),
     FixtureSortie(ManticoreOutput),
     FixtureSortie(OpenObserveOutput),
+    FixtureSortie(OtlpOutput, {"encoding": "json"}, compter=_journaux_otlp),
     FixtureSortie(VictoriaLogsOutput),
     FixtureSortie(VictoriaLogsOutput, {"mode": "jsonline"}, compter=_lignes_json),
 ]

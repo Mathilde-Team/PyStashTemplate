@@ -114,6 +114,7 @@ from pystashtemplate.outputs.manticore import ManticoreOutput  # noqa: E402
 from pystashtemplate.outputs.null import NullOutput  # noqa: E402
 from pystashtemplate.outputs.openobserve import OpenObserveOutput  # noqa: E402
 from pystashtemplate.outputs.opensearch import OpenSearchOutput  # noqa: E402
+from pystashtemplate.outputs.otlp import OtlpOutput  # noqa: E402
 from pystashtemplate.outputs.quickwit import QuickwitOutput  # noqa: E402
 from pystashtemplate.outputs.stdout import StdoutOutput  # noqa: E402
 from pystashtemplate.outputs.victorialogs import VictoriaLogsOutput  # noqa: E402
@@ -128,6 +129,7 @@ __all__ = [
     "NullOutput",
     "OpenSearchOutput",
     "OpenObserveOutput",
+    "OtlpOutput",
     "Output",
     "QuickwitOutput",
     "REGISTRY",
