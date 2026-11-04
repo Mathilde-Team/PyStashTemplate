@@ -44,11 +44,12 @@ def _sql(requete: str) -> list[list[str]]:
     """Exécute une requête par le client `mysql` ; lignes en colonnes (TSV)."""
     sortie = subprocess.run(
         [*shlex.split(SQL), "-N", "-B", "-e", requete],
-        check=True,
         capture_output=True,
         text=True,
         timeout=60,
     )
+    if sortie.returncode:  # l'erreur du serveur (stderr) dans le rapport
+        raise AssertionError(f"SQL en échec ({sortie.returncode}) : {requete}\n{sortie.stderr}")
     return [ligne.split("\t") for ligne in sortie.stdout.splitlines() if ligne]
 
 
