@@ -1,0 +1,67 @@
+# Banc de conformité Apache Doris (issue #27) : la sortie `doris` contre
+# un vrai Doris en conteneur éphémère (image all-in-one : un FE et un BE),
+# Stream Load par le FE (redirection 307 vers le BE suivie avec
+# l'authentification) et par le BE directement, relecture par le
+# protocole MySQL. Complète les tests unitaires (faux FE/BE
+# `httpx.MockTransport`) et la fixture du banc commun (#9).
+#
+# Runner hébergé GitHub (ubuntu-latest, autorisé par la MISSION) : Docker
+# y est garanti, contrairement aux runners maison.
+name: Banc de conformité Doris
+
+"on":
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conformite:
+    name: "Sortie doris contre un vrai Doris"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v7
+
+      - name: Installation de uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Installation de Python
+        run: uv python install
+
+      - name: Installation des dépendances
+        run: uv sync --extra dev
+
+      - name: Doris éphémère
+        run: |
+          sudo sysctl -w vm.max_map_count=2000000
+          docker run -d --name doris -p 9030:9030 -p 8030:8030 -p 8040:8040 \
+            apache/doris:all-in-one-4.1.3
+          for i in $(seq 1 300); do
+            etat=$(docker inspect -f '{{.State.Health.Status}}' doris)
+            if [ "$etat" = healthy ]; then echo "Doris prêt (${i} s)"; exit 0; fi
+            sleep 1
+          done
+          docker logs doris | tail -100
+          echo "::error::Doris n'a pas démarré" && exit 1
+
+      - name: Banc de conformité
+        env:
+          PYSTASHTEMPLATE_DORIS_URL: http://localhost:8030
+          PYSTASHTEMPLATE_DORIS_BE_URL: http://localhost:8040
+          PYSTASHTEMPLATE_DORIS_SQL: docker exec -i doris mysql -uroot -h127.0.0.1 -P9030
+        run: uv run pytest tests/test_integration_doris.py -v
+
+      - name: Journaux du conteneur
+        if: failure()
+        run: docker logs doris 2>&1 | tail -200
+
+      - name: Nettoyage du conteneur
+        if: always()
+        run: docker rm -f doris || true
