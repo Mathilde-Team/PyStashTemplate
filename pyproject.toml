@@ -1,6 +1,6 @@
 [project]
 name = "pystashtemplate"
-version = "0.2.0"
+version = "0.3.0"
 description = "Sémantique Logstash partagée : gabarits, filtres, interprétation des .conf (extrait de RsysLogstach, #111)"
 license = "GPL-3.0-or-later"
 requires-python = ">=3.11"

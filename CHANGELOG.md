@@ -5,6 +5,8 @@ le projet suit SemVer.
 
 ## [Non publié]
 
+## [0.3.0] - 2026-11-04
+
 ### Évolutions
 
 - Correction du découpage RsysLogstach#111 (issue #110) : `indexer`
