@@ -39,6 +39,7 @@ from pystashtemplate.outputs.opensearch import OpenSearchOutput
 from pystashtemplate.outputs.otlp import OtlpOutput
 from pystashtemplate.outputs.quickwit import QuickwitOutput
 from pystashtemplate.outputs.victorialogs import VictoriaLogsOutput
+from pystashtemplate.outputs.zincsearch import ZincSearchOutput
 
 
 def _paires_ndjson(corps: bytes) -> int:
@@ -96,6 +97,7 @@ FIXTURES: list[FixtureSortie] = [
     FixtureSortie(OtlpOutput, {"encoding": "json"}, compter=_journaux_otlp),
     FixtureSortie(VictoriaLogsOutput),
     FixtureSortie(VictoriaLogsOutput, {"mode": "jsonline"}, compter=_lignes_json),
+    FixtureSortie(ZincSearchOutput),
     FixtureSortie(LokiOutput, {"labels": {"host": "%{host}"}}, compter=_lignes_push_loki),
     FixtureSortie(ClickHouseOutput, {"table": "logs"}, compter=_lignes_json),
 ]

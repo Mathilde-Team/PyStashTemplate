@@ -42,6 +42,12 @@ le projet suit SemVer.
   métrique). Banc de conformité contre OpenTelemetry Collector 0.164.0
   en conteneur.
 
+- Sortie `zincsearch` (issue #18) : API `_bulk` native (`/api/_bulk`),
+  actions `index`/`create`/`delete` (`update` refusée : pas de mise à
+  jour partielle), `_id` transmis, statut HTTP global (500 d'arrêt de
+  lot retenté), `health()` sur `/version`. Banc de conformité contre
+  ZincSearch 0.4.10 en conteneur.
+
 - Sortie `openobserve` (issue #16) : sous-classe du client _bulk commun
   (`/api/{organization}/_bulk`, option `organization`), actions `index`
   et `create`, appariement prudent des éléments de réponse dont l'ordre
