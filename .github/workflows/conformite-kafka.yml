@@ -1,0 +1,64 @@
+# Banc de conformité kafka (issue #29) : la sortie `kafka` contre un vrai
+# courtier — Redpanda (protocole Kafka), en conteneur éphémère. Les
+# messages poussés sont relus par un consommateur `aiokafka` : sujet,
+# clé et valeur vérifiés (`tests/test_integration_kafka.py`). Complète
+# les tests unitaires (faux producteur).
+#
+# Runner hébergé GitHub (ubuntu-latest, autorisé par la MISSION) : Docker
+# y est garanti, contrairement aux runners maison.
+name: Banc de conformité kafka
+
+"on":
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conformite:
+    name: "Sortie kafka contre un vrai courtier (Redpanda)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v7
+
+      - name: Installation de uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Installation de Python
+        run: uv python install
+
+      - name: Installation des dépendances
+        run: uv sync --extra dev
+
+      - name: Redpanda éphémère
+        run: |
+          docker run -d --name redpanda -p 9092:9092 \
+            redpandadata/redpanda:v26.2.6 \
+            redpanda start --overprovisioned --smp 1 --memory 1G \
+            --kafka-addr PLAINTEXT://0.0.0.0:9092 \
+            --advertise-kafka-addr PLAINTEXT://localhost:9092
+          for i in $(seq 1 60); do
+            if docker exec redpanda rpk cluster info >/dev/null 2>&1; then
+              echo "Redpanda prêt"; exit 0
+            fi
+            sleep 1
+          done
+          docker logs redpanda
+          echo "::error::Redpanda n'a pas démarré" && exit 1
+
+      - name: Banc de conformité
+        env:
+          PYSTASHTEMPLATE_KAFKA_BOOTSTRAP: localhost:9092
+          PYSTASHTEMPLATE_REDPANDA_CONTAINER: redpanda
+        run: uv run pytest tests/test_integration_kafka.py -v
+
+      - name: Nettoyage du conteneur
+        if: always()
+        run: docker rm -f redpanda || true

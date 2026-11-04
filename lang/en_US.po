@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 19:08+0000\n"
+"POT-Creation-Date: 2026-11-04 19:18+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: deusyv\n"
 "Language-Team: English\n"
@@ -173,6 +173,33 @@ msgstr "greptimedb response without readable reason error={error}"
 #: src/pystashtemplate/outputs/http_generique.py
 msgid "sortie http : url complète attendue (ex. http://recepteur:8080/logs), reçu : {}"
 msgstr "http output: full url expected (e.g. http://receiver:8080/logs), got: {}"
+
+#: src/pystashtemplate/outputs/kafka.py
+#, python-brace-format
+msgid "envoi kafka : réessais épuisés documents={nombre} erreur={error}"
+msgstr "kafka send: retries exhausted documents={nombre} error={error}"
+
+#: src/pystashtemplate/outputs/kafka.py
+#, python-brace-format
+msgid "envoi kafka échoué erreur={error} documents={nombre}"
+msgstr "kafka send failed error={error} documents={nombre}"
+
+#: src/pystashtemplate/outputs/kafka.py
+#, python-brace-format
+msgid "lot kafka en échec transitoire mis en DLQ documents={nombre}"
+msgstr "kafka batch with transient failure sent to the DLQ documents={nombre}"
+
+#: src/pystashtemplate/outputs/kafka.py
+msgid "sortie kafka : aucun envoi"
+msgstr "kafka output: no send"
+
+#: src/pystashtemplate/outputs/kafka.py
+msgid "sortie kafka : bootstrap_servers est requis (ex. kafka:9092)"
+msgstr "kafka output: bootstrap_servers is required (e.g. kafka:9092)"
+
+#: src/pystashtemplate/outputs/kafka.py
+msgid "sortie kafka : user est requis avec SASL"
+msgstr "kafka output: user is required with SASL"
 
 #: src/pystashtemplate/outputs/loki.py
 msgid "@timestamp {} illisible, heure d'envoi utilisée"

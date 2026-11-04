@@ -7,6 +7,15 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- Sortie `kafka` (issue #29) : producteur asynchrone `aiokafka` vers
+  Apache Kafka et compatibles, options du plugin `kafka` de Logstash
+  (`bootstrap_servers`/`topic_id` requis, `message_key`, `codec`,
+  `acks`, `compression_type`, `client_id`, `security_protocol` avec
+  SASL), sujet et clé rendus par gabarit sprintf, échec toujours
+  transitoire (retentes sur les seuls messages en échec, sémantique au
+  moins une fois), DLQ des transitoires avec `dlq_transitoires`, santé
+  par le méta-annuaire du cluster. Banc de conformité contre Redpanda
+  v26.2.6 en conteneur (`conformite-kafka.yml`).
 - Sortie `http` générique (issue #24) : `POST`/`PUT` vers une URL
   libre (options de la sortie `http` de Logstash : `url`, `http_method`,
   `format`, `headers`), formats `ndjson`/`json_batch`/`json` (un
