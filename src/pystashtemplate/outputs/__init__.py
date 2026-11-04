@@ -111,6 +111,7 @@ class SortieInconnueError(ValueError):
 from pystashtemplate.outputs.clickhouse import ClickHouseOutput  # noqa: E402
 from pystashtemplate.outputs.elasticsearch import ElasticsearchOutput  # noqa: E402
 from pystashtemplate.outputs.fichier import FileOutput  # noqa: E402
+from pystashtemplate.outputs.greptimedb import GreptimeDbOutput  # noqa: E402
 from pystashtemplate.outputs.loki import LokiOutput  # noqa: E402
 from pystashtemplate.outputs.manticore import ManticoreOutput  # noqa: E402
 from pystashtemplate.outputs.null import NullOutput  # noqa: E402
@@ -129,6 +130,7 @@ __all__ = [
     "Document",
     "ElasticsearchOutput",
     "FileOutput",
+    "GreptimeDbOutput",
     "LokiOutput",
     "ManticoreOutput",
     "NullOutput",
