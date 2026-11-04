@@ -50,8 +50,8 @@ class FauxProducteur:
                 host, port = "kafka", 9092
 
             class _Meta:
-                def brokers(self) -> dict[int, _Broker]:
-                    return {1: _Broker()}
+                def brokers(self) -> set[_Broker]:
+                    return {_Broker()}
 
             return _Meta()
 

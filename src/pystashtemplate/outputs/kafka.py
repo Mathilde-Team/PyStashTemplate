@@ -242,7 +242,7 @@ class KafkaOutput(Output):
         producteur = self._producteur()
         await self.open()  # le client n'interroge le cluster que démarré
         metadata = await producteur.client.fetch_all_metadata()
-        return {"brokers": [f"{broker.host}:{broker.port}" for broker in metadata.brokers().values()]}
+        return {"brokers": [f"{broker.host}:{broker.port}" for broker in metadata.brokers()]}
 
     @traced
     def _rendre(self, gabarit: Any, doc: dict[str, Any]) -> str:
