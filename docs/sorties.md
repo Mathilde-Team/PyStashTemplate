@@ -995,6 +995,12 @@ Particularités :
   chaque document (gabarit sprintf) ; un label rendu vide est écarté
   (Loki refuse les valeurs vides) ; les documents sont regroupés en un
   flux par jeu de labels ;
+- **avertissement de cardinalité** : un label dont le gabarit référence
+  un champ qui change à chaque document (`message`, `@timestamp`, `id`,
+  `trace_id`, `request_id`, ports, IP… — liste
+  `CHAMPS_FORTE_CARDINALITE` de `outputs/loki.py`) déclenche un
+  avertissement au démarrage (un flux Loki par valeur) ; la
+  configuration reste acceptée ;
 - **ligne de log** : le document entier part en ligne (JSON, sans
   perte) ; l'horodatage vient du champ `@timestamp` du document (ISO
   8601), l'heure d'envoi sinon, en nanosecondes ; les lignes d'un même

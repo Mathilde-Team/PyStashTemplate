@@ -16,11 +16,12 @@ from typing import Any
 
 import httpx
 import pytest
+from loguru import logger
 
 from pystashtemplate.dlq import LocalDeadLetterQueue
 from pystashtemplate.outputs import REGISTRY
 from pystashtemplate.outputs.elasticsearch_bulk import SendOutcome
-from pystashtemplate.outputs.loki import LokiOutput
+from pystashtemplate.outputs.loki import LokiOutput, champs_forte_cardinalite
 
 
 class FauxServeur:
@@ -218,3 +219,31 @@ def test_labels_non_textels_convertis_en_chaines() -> None:
     envoyer(sortie(serveur, labels={"niveau": 3, "vide": None}), [{"message": "m"}])
     # Un label vide est écarté ; une valeur non textuelle devient une chaîne.
     assert serveur.corps()["streams"][0]["stream"] == {"niveau": "3"}
+
+
+def _avertissements(**options: Any) -> list[str]:
+    """Avertissements émis à la construction de la sortie."""
+    messages: list[str] = []
+    puits = logger.add(lambda m: messages.append(m.record["message"]), level="WARNING")
+    try:
+        sortie(FauxServeur(), **options)
+    finally:
+        logger.remove(puits)
+    return messages
+
+
+def test_label_forte_cardinalite_avertit() -> None:
+    messages = _avertissements(labels={"job": "rsyslog", "ligne": "%{message}", "trace": "%{[otel][trace_id]}"})
+    assert len(messages) == 2
+    assert "ligne" in messages[0] and "message" in messages[0]
+    assert "trace" in messages[1] and "trace_id" in messages[1]
+
+
+def test_labels_faible_cardinalite_sans_avertissement() -> None:
+    assert _avertissements(labels={"job": "rsyslog", "host": "%{host}", "niveau": 3}) == []
+
+
+def test_champs_forte_cardinalite_dedoublonnes_et_constantes_ignorees() -> None:
+    assert champs_forte_cardinalite("%{message}-%{message}-%{host}") == ["message"]
+    assert champs_forte_cardinalite(None) == []
+    assert champs_forte_cardinalite("constante") == []
