@@ -32,6 +32,7 @@ from pystashtemplate.outputs.elasticsearch import ElasticsearchOutput
 from pystashtemplate.outputs.elasticsearch_bulk import ElasticsearchBulkOutput
 from pystashtemplate.outputs.opensearch import OpenSearchOutput
 from pystashtemplate.outputs.victorialogs import VictoriaLogsOutput
+from pystashtemplate.outputs.zincsearch import ZincSearchOutput
 
 
 def _paires_ndjson(corps: bytes) -> int:
@@ -73,6 +74,7 @@ FIXTURES: list[FixtureSortie] = [
     FixtureSortie(ElasticsearchOutput, {"data_stream": True}),
     FixtureSortie(VictoriaLogsOutput),
     FixtureSortie(VictoriaLogsOutput, {"mode": "jsonline"}, compter=_lignes_json),
+    FixtureSortie(ZincSearchOutput),
 ]
 
 

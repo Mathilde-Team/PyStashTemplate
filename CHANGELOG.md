@@ -14,6 +14,12 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- Sortie `zincsearch` (issue #18) : API `_bulk` native (`/api/_bulk`),
+  actions `index`/`create`/`delete` (`update` refusée : pas de mise à
+  jour partielle), `_id` transmis, statut HTTP global (500 d'arrêt de
+  lot retenté), `health()` sur `/version`. Banc de conformité contre
+  ZincSearch 0.4.10 en conteneur.
+
 - Banc commun de conformité des sorties (issue #9) : une même suite
   (lot simple, erreur partielle, 429, coupure réseau, arrêt propre)
   rejouée sans réseau contre chaque sortie HTTP par un faux serveur
