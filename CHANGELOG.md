@@ -24,6 +24,16 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- Sortie `openobserve` (issue #16) : sous-classe du client _bulk commun
+  (`/api/{organization}/_bulk`, option `organization`), actions `index`
+  et `create`, appariement prudent des éléments de réponse dont l'ordre
+  n'est pas garanti (amont #15716 : par contenu `originalRecord` ;
+  échecs sans contenu — listés en tête par OpenObserve 1.1.2 —
+  attribués s'ils couvrent tous les documents restants, sinon renvoi un
+  par un), santé `/healthz`. Nouveau crochet
+  `_apparier` du client commun. Banc de conformité contre OpenObserve
+  v1.1.2 en conteneur et fixture du banc commun.
+
 - Sortie `manticore` (issue #17) : `/_bulk` compatible Elasticsearch,
   accusé par élément ; `create` en doublon (HTTP 409 + élément 400 avant
   29.9.0, élément 409 depuis) compté indexé et non envoyé en DLQ ; les

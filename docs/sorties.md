@@ -23,6 +23,7 @@ coupure réseau, arrêt propre).
 | `loki` | `index` | non | non | — | oui | oui | oui |
 | `manticore` | toutes | oui | oui | — | oui | oui | oui |
 | `null` | toutes | oui | oui | — | non | oui | non |
+| `openobserve` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `opensearch` | toutes | oui | oui | — | oui | oui | oui |
 | `quickwit` | `create` | non | oui | 10 Mio | oui | oui | oui |
 | `stdout` | `index`, `create` | non | oui | — | non | oui | non |
@@ -207,6 +208,48 @@ par le produit (`_id` refusé par la sortie). `health()` lit
 Banc de conformité : `tests/test_integration_victorialogs.py`, workflow
 `conformite-victorialogs.yml` (VictoriaLogs v1.53.0 en conteneur) —
 modes `bulk` et `jsonline`, champs de flux et de date relus par LogsQL.
+
+## Sortie `openobserve` (issue #16)
+
+Sous-classe du client commun sur l'API compatible Elasticsearch
+d'OpenObserve : `POST /api/{organization}/_bulk` (port 5080 par défaut),
+le `_index` de chaque ligne étant le stream. Authentification basic
+(`user`/`password` via `${VAR}`).
+
+| Option propre | Rôle |
+|---|---|
+| `organization` | organisation, dans le chemin (défaut : `default`) |
+
+- **Actions `index` et `create`** ; `update`/`delete` refusées dès la
+  compilation (OpenObserve ignore `delete`, et génère ses identifiants :
+  `_id` ignoré avec un avertissement).
+- **Ordre des `items[]` non garanti** ([issue amont
+  #15716](https://github.com/openobserve/openobserve/issues/15716)) :
+  attribuer le N-ième élément au N-ième document pourrait déclarer
+  indexé un document refusé. Appariement prudent (crochet `_apparier`
+  du client commun) :
+  1. réponse sans champ `errors` (429, 5xx…) : règle commune ;
+  2. `errors: false` : tout le lot indexé, sans regarder l'ordre (couvre
+     `ZO_BULK_API_RESPONSE_ERRORS_ONLY`, qui omet les succès) ;
+  3. sinon, chaque échec est apparié par contenu (`originalRecord`) ;
+  4. les échecs sans contenu (`originalRecord` nul : OpenObserve 1.1.2
+     le perd pour les erreurs d'horodatage, et les liste **avant** les
+     éléments réussis — observé contre le vrai serveur) ne sont
+     attribués que s'il y en a autant que de documents non appariés, ou
+     si le lot n'a qu'un document ;
+  5. à défaut, chaque document non apparié est **renvoyé seul**, où
+     l'attribution est exacte : doublon possible pour ceux qui avaient
+     réussi, plutôt qu'une perte ou un rejeu sans fin du lot. Pour éviter
+     ces doublons, `batch_size => 1`.
+
+Santé : `health()` interroge `GET /healthz`.
+
+Banc de conformité contre OpenObserve v1.1.2 en conteneur
+(`.github/workflows/conformite-openobserve.yml`,
+`tests/test_integration_openobserve.py`) : lot indexé puis retrouvé par
+la recherche SQL ; un document trop ancien (au-delà de
+`ZO_INGEST_ALLOWED_UPTO`) part seul en DLQ après renvoi un par un, les
+autres documents indexés (en double).
 
 ## Sortie `manticore` (issue #17)
 
