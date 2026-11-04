@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 21:47+0000\n"
+"POT-Creation-Date: 2026-11-04 22:26+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: deusyv\n"
 "Language-Team: English\n"
@@ -380,6 +380,14 @@ msgstr "kafka output: user is required with SASL"
 #: src/pystashtemplate/outputs/loki.py
 msgid "@timestamp {} illisible, heure d'envoi utilisée"
 msgstr "unreadable @timestamp {}, send time used instead"
+
+#: src/pystashtemplate/outputs/loki.py
+msgid "sortie loki : label {} sur {}, champ à forte cardinalité (un flux par valeur)"
+msgstr ""
+
+#: src/pystashtemplate/outputs/loki.py
+msgid "sortie loki : label {} à plus de {} valeurs distinctes, cardinalité trop forte"
+msgstr ""
 
 #: src/pystashtemplate/outputs/lotisseur.py
 msgid "arrêt demandé mais le lotisseur n'a jamais démarré"
