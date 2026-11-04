@@ -186,10 +186,15 @@ le `_index` de chaque ligne étant le stream. Authentification basic
   2. `errors: false` : tout le lot indexé, sans regarder l'ordre (couvre
      `ZO_BULK_API_RESPONSE_ERRORS_ONLY`, qui omet les succès) ;
   3. sinon, chaque échec est apparié par contenu (`originalRecord`) ;
-  4. un échec sans contenu reconnaissable n'est attribué par position
-     que si la réponse a un élément par document (avertissement) ;
-  5. à défaut, le lot est rendu à l'appelant : doublon possible plutôt
-     que perte.
+  4. les échecs sans contenu (`originalRecord` nul : OpenObserve 1.1.2
+     le perd pour les erreurs d'horodatage, et les liste **avant** les
+     éléments réussis — observé contre le vrai serveur) ne sont
+     attribués que s'il y en a autant que de documents non appariés, ou
+     si le lot n'a qu'un document ;
+  5. à défaut, chaque document non apparié est **renvoyé seul**, où
+     l'attribution est exacte : doublon possible pour ceux qui avaient
+     réussi, plutôt qu'une perte ou un rejeu sans fin du lot. Pour éviter
+     ces doublons, `batch_size => 1`.
 
 Santé : `health()` interroge `GET /healthz`.
 
@@ -197,7 +202,8 @@ Banc de conformité contre OpenObserve v1.1.2 en conteneur
 (`.github/workflows/conformite-openobserve.yml`,
 `tests/test_integration_openobserve.py`) : lot indexé puis retrouvé par
 la recherche SQL ; un document trop ancien (au-delà de
-`ZO_INGEST_ALLOWED_UPTO`) part seul en DLQ, apparié par son contenu.
+`ZO_INGEST_ALLOWED_UPTO`) part seul en DLQ après renvoi un par un, les
+autres documents indexés (en double).
 
 ## Sorties `file` et `stdout` (issue #32)
 
@@ -300,3 +306,79 @@ docker run -d -p 9200:9200 -e DISABLE_SECURITY_PLUGIN=true \
 PYSTASHTEMPLATE_OPENSEARCH_URL=http://localhost:9200 \
   uv run pytest tests/test_integration_opensearch.py
 ```
+
+## Métriques des sorties (issue #10)
+
+Chaque sortie prévient son `observateur` (attribut d'instance, nul par
+défaut : aucun coût sans métriques) — protocole
+`pystashtemplate.outputs.metriques.ObservateurSortie` :
+
+| Appel | Quand | Sorties |
+|---|---|---|
+| `evenements(sortie, "indexed", n)` | documents acceptés par la cible | HTTP, `file` |
+| `evenements(sortie, "dead_lettered", n)` | documents écrits en DLQ | HTTP, `file` |
+| `evenements(sortie, "retryable", n)` | documents rendus à l'appelant (transitoire épuisé) | HTTP |
+| `evenements(sortie, "rejected", n)` | refus définitif de la cible (compté en plus de l'issue finale) | HTTP, `file` |
+| `reessai(sortie)` | chaque retente d'une requête (429, 5xx, réseau) | HTTP |
+| `latence(sortie, secondes)` | chaque requête vers la cible, réussie ou non | HTTP |
+| `file(sortie, taille)` | taille du tampon (`batch_size`) après chaque ajout / envoi | HTTP |
+
+`sortie` est `Output.nom` (option `id`, sinon le nom du plugin).
+`CompteursSortie` tient ces compteurs en mémoire (`instantane()`) et les
+expose au format texte Prometheus (`exposition()`, contenu d'un
+`/metrics`) : `pystashtemplate_output_events_total{output,outcome}`,
+`pystashtemplate_output_retries_total{output}`,
+`pystashtemplate_output_request_duration_seconds{output}` (résumé
+`_count`/`_sum`) et `pystashtemplate_output_queue_size{output}`. Le banc
+commun de conformité vérifie ces métriques pour chaque sortie HTTP.
+
+```python
+from pystashtemplate.outputs.metriques import CompteursSortie
+
+compteurs = CompteursSortie()
+for sortie in compiler_sorties(pipeline):
+    sortie.observateur = compteurs
+...
+print(compteurs.exposition())
+```
+
+### Connecteur RsysLogstach : mêmes métriques qu'aujourd'hui
+
+Le connecteur compte déjà l'issue de chaque message
+(`rsyslogstach_messages_total{outcome}`) et la durée de l'appel
+`indexer.send` (`rsyslogstach_index_latency_seconds`). Pour n'en changer
+aucun nom, il branche un adaptateur sur ses compteurs `prometheus_client`
+existants plutôt que `CompteursSortie` :
+
+```python
+from prometheus_client import Counter, Gauge
+
+
+class ObservateurRsyslogstach:
+    """Mesures de la sortie sur le registre de `metrics.Metrics`, sous de nouveaux noms."""
+
+    def __init__(self, metrics: Metrics) -> None:
+        r = metrics.registry
+        self.retries = Counter("rsyslogstach_output_retries", "Retentes de la sortie", registry=r)
+        self.rejected = Counter("rsyslogstach_output_rejected", "Refus définitifs de la cible", registry=r)
+        self.queue = Gauge("rsyslogstach_output_queue_size", "Tampon de la sortie", registry=r)
+
+    def evenements(self, sortie: str, issue: str, nombre: int = 1) -> None:
+        # indexed / dead_lettered / retryable : déjà comptés par message
+        # par omprog (rsyslogstach_messages_total{outcome}) — pas de double compte.
+        if issue == "rejected":
+            self.rejected.inc(nombre)
+
+    def reessai(self, sortie: str) -> None:
+        self.retries.inc()
+
+    def latence(self, sortie: str, secondes: float) -> None:
+        pass  # rsyslogstach_index_latency_seconds reste observée autour de send
+
+    def file(self, sortie: str, taille: int) -> None:
+        self.queue.set(taille)
+```
+
+Les métriques existantes ne changent ni de nom ni de valeur ; les
+nouvelles mesures (retentes, refus définitifs, taille du tampon)
+s'ajoutent sous de nouveaux noms.

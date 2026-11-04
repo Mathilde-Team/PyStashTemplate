@@ -140,32 +140,73 @@ def test_echecs_identiques_apparies_une_seule_fois(tmp_path: Path) -> None:
     assert _dlq(chemin) == ["x", "x"]
 
 
-def test_echec_sans_contenu_attribue_par_position(tmp_path: Path) -> None:
-    corps = {"errors": True, "items": [{"index": {"status": 200}}, {"index": {"status": 400}}, {"index": {}}]}
+class FauxOpenObserve112:
+    """Modèle d'OpenObserve 1.1.2 : échecs d'horodatage en tête, `originalRecord` nul.
+
+    Les messages de `refuses` échouent (422) ; les éléments en échec sont
+    listés avant les réussis, sans contenu (le serveur l'a déjà consommé).
+    """
+
+    def __init__(self, refuses: set[str]) -> None:
+        self.refuses = refuses
+        self.requests: list[httpx.Request] = []
+
+    def handler(self, request: httpx.Request) -> httpx.Response:
+        self.requests.append(request)
+        documents = [json.loads(ligne) for ligne in request.content.decode("utf-8").splitlines()[1::2]]
+        echecs = [d for d in documents if d["message"] in self.refuses]
+        erreur = {"type": "timestamp_parsing_failed", "reason": "Too old data"}
+        items = [{"index": {"status": 422, "error": erreur, "originalRecord": None}} for _ in echecs]
+        items += [{"index": {"status": 200, "result": "created"}} for _ in range(len(documents) - len(echecs))]
+        return httpx.Response(200, json={"took": 0, "errors": bool(echecs), "items": items})
+
+    def messages_par_requete(self) -> list[list[str]]:
+        return [
+            [json.loads(ligne)["message"] for ligne in r.content.decode("utf-8").splitlines()[1::2]]
+            for r in self.requests
+        ]
+
+
+def test_echecs_sans_contenu_en_tete_renvoi_un_par_un(tmp_path: Path) -> None:
+    serveur = FauxOpenObserve112({"b"})
     chemin = tmp_path / "dlq.jsonl"
-    lot(sortie(FauxOpenObserve(corps), dlq=LocalDeadLetterQueue(str(chemin)), batch_size=3), DOCS)
+    s = sortie(serveur, dlq=LocalDeadLetterQueue(str(chemin)), batch_size=3)
+    assert lot(s, DOCS)[-1] == "indexed"
+    assert serveur.messages_par_requete() == [["a", "b", "c"], ["a"], ["b"], ["c"]]
     assert _dlq(chemin) == ["b"]
-    assert "statut 400" in chemin.read_text()
+    assert "timestamp_parsing_failed" in chemin.read_text()
 
 
-def test_echec_contenu_inconnu_et_nombre_different_lot_rendu(tmp_path: Path) -> None:
-    corps = {"errors": True, "items": [{"index": {**ECHEC, "originalRecord": {"message": "z"}}}]}
+def test_tous_en_echec_sans_contenu_attribues_sans_renvoi(tmp_path: Path) -> None:
+    serveur = FauxOpenObserve112({"a", "b", "c"})
     chemin = tmp_path / "dlq.jsonl"
-    s = sortie(FauxOpenObserve(corps), dlq=LocalDeadLetterQueue(str(chemin)), batch_size=3)
-    assert lot(s, DOCS)[-1] == "retryable"
-    assert _dlq(chemin) == []
+    lot(sortie(serveur, dlq=LocalDeadLetterQueue(str(chemin)), batch_size=3), DOCS)
+    assert len(serveur.requests) == 1
+    assert _dlq(chemin) == ["a", "b", "c"]
 
 
-def test_position_deja_attribuee_lot_rendu(tmp_path: Path) -> None:
-    # « a » apparié par contenu à la position 0 ; l'échec sans contenu
-    # en position 0 ne peut plus lui être attribué.
+def test_echec_sans_contenu_apres_appariement_par_contenu(tmp_path: Path) -> None:
+    # « a » apparié par contenu ; un échec sans contenu reste pour « b »
+    # et « c » : ambigu, les deux sont renvoyés seuls.
     corps = {
         "errors": True,
         "items": [{"index": {"status": 400}}, {"index": {**ECHEC, "originalRecord": {"message": "a"}}}, {"index": {}}],
     }
+    serveur = FauxOpenObserve(corps)
     chemin = tmp_path / "dlq.jsonl"
-    s = sortie(FauxOpenObserve(corps), dlq=LocalDeadLetterQueue(str(chemin)), batch_size=3)
-    assert lot(s, DOCS)[-1] == "retryable"
+    lot(sortie(serveur, dlq=LocalDeadLetterQueue(str(chemin)), batch_size=3), DOCS)
+    assert len(serveur.requests) == 3
+    # Le faux serveur répond toujours le même corps : renvoyés seuls,
+    # « b » et « c » reçoivent l'échec sans contenu qui leur revient.
+    assert _dlq(chemin) == ["a", "b", "c"]
+
+
+def test_contenu_inconnu_renvoi_un_par_un() -> None:
+    corps = {"errors": True, "items": [{"index": {**ECHEC, "originalRecord": {"message": "z"}}}]}
+    serveur = FauxOpenObserve(corps)
+    # Renvoyé seul, chaque document reçoit l'échec (sans DLQ : rendu).
+    assert lot(sortie(serveur, batch_size=3), DOCS)[-1] == "retryable"
+    assert len(serveur.requests) == 4
 
 
 def test_element_mal_forme_ignore() -> None:

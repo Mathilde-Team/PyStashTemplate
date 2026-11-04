@@ -17,10 +17,22 @@ le projet suit SemVer.
 - Sortie `openobserve` (issue #16) : sous-classe du client _bulk commun
   (`/api/{organization}/_bulk`, option `organization`), actions `index`
   et `create`, appariement prudent des éléments de réponse dont l'ordre
-  n'est pas garanti (amont #15716 : par contenu `originalRecord`, repli
-  par position, sinon lot rendu), santé `/healthz`. Nouveau crochet
+  n'est pas garanti (amont #15716 : par contenu `originalRecord` ;
+  échecs sans contenu — listés en tête par OpenObserve 1.1.2 —
+  attribués s'ils couvrent tous les documents restants, sinon renvoi un
+  par un), santé `/healthz`. Nouveau crochet
   `_apparier` du client commun. Banc de conformité contre OpenObserve
   v1.1.2 en conteneur et fixture du banc commun.
+
+- Métriques des sorties (issue #10) : protocole `ObservateurSortie`
+  porté par chaque sortie (nul par défaut), prévenu des documents par
+  issue (`indexed`, `dead_lettered`, `retryable`, `rejected`), des
+  retentes, de la latence des requêtes et de la taille du tampon ;
+  branché dans le client HTTP commun et la sortie `file`.
+  `CompteursSortie` : compteurs en mémoire et exposition texte
+  Prometheus, sans dépendance. Vérifiées pour chaque sortie du banc
+  commun de conformité. Documentées dans `docs/sorties.md` (adaptateur
+  RsysLogstach à noms inchangés).
 
 - Banc commun de conformité des sorties (issue #9) : une même suite
   (lot simple, erreur partielle, 429, coupure réseau, arrêt propre)

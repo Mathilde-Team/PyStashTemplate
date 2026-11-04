@@ -11,8 +11,9 @@ Exécuté par `.github/workflows/conformite-openobserve.yml` (conteneur
 
 Sans la variable d'URL, le banc est ignoré. Un document trop ancien
 (au-delà de `ZO_INGEST_ALLOWED_UPTO`, 5 h par défaut) est refusé par
-OpenObserve : il doit partir seul en DLQ, apparié par son contenu
-(`originalRecord`), les autres documents du lot restant indexés.
+OpenObserve 1.1.2 en tête des éléments, sans `originalRecord` : la
+sortie renvoie alors chaque document seul ; le document refusé part seul
+en DLQ, les autres sont indexés (en double : premier envoi et renvoi).
 """
 
 from __future__ import annotations
@@ -104,4 +105,5 @@ def test_document_trop_ancien_seul_en_dlq(tmp_path) -> None:
     contenu = chemin.read_text(encoding="utf-8")
     assert "ancien" in contenu
     assert "recent" not in contenu
-    assert sorted(hit["message"] for hit in _chercher(stream, 2)) == ["recent-1", "recent-2"]
+    # Indexés au premier envoi puis au renvoi un par un (doublon assumé).
+    assert sorted(hit["message"] for hit in _chercher(stream, 4)) == ["recent-1", "recent-1", "recent-2", "recent-2"]

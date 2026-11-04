@@ -24,10 +24,15 @@ Particularités prises en charge :
      n'envoie pas les éléments réussis) ;
   2. sinon, chaque élément en échec est apparié **par contenu** : son
      ``originalRecord`` est comparé aux documents envoyés ;
-  3. un échec sans contenu reconnaissable n'est attribué **par position**
-     que si la réponse a un élément par document (avertissement) ;
-  4. à défaut, le lot entier est rendu à l'appelant (`RETRYABLE`) : un
-     doublon possible plutôt qu'une perte.
+  3. les échecs sans contenu reconnaissable (``originalRecord`` nul :
+     OpenObserve 1.1.2 le perd pour les erreurs d'horodatage, et les
+     place **avant** les éléments réussis) ne sont attribués que s'il y en
+     a exactement autant que de documents non appariés — tous ont alors
+     échoué — ou si le lot n'a qu'un document ;
+  4. à défaut (réussites et échecs mêlés, sans moyen de les distinguer),
+     chaque document non apparié est **renvoyé seul**, où l'attribution
+     est exacte : un doublon possible pour ceux qui avaient réussi,
+     plutôt qu'une perte ou un rejeu sans fin du lot entier.
 
 | Option propre | Rôle |
 |---|---|
@@ -54,12 +59,13 @@ import json
 from typing import Any, ClassVar
 from urllib.parse import quote
 
+import httpx
 from loguru import logger
 
 from pystashtemplate.dlq import LocalDeadLetterQueue
 from pystashtemplate.i18n import _
 from pystashtemplate.outputs import Capacites, enregistrer
-from pystashtemplate.outputs.elasticsearch_bulk import ElasticsearchBulkOutput
+from pystashtemplate.outputs.elasticsearch_bulk import ElasticsearchBulkOutput, SendOutcome
 from pystashtemplate.tracing import atraced, traced
 
 ORGANISATION_PAR_DEFAUT = "default"
@@ -125,6 +131,8 @@ class OpenObserveOutput(ElasticsearchBulkOutput):
             logger.warning(_("sortie openobserve : organisation vide"))
             raise ValueError(_("sortie openobserve : option « organization » vide"))
         self.organisation = organisation
+        # Documents à l'issue ambiguë du dernier lot analysé (règle 4 de `_apparier`).
+        self._ambigus: list[int] = []
         self.chemin_bulk = f"/api/{quote(organisation, safe='')}"
         logger.debug("OpenObserveOutput : chemin {}", self.chemin_bulk)
 
@@ -163,22 +171,36 @@ class OpenObserveOutput(ElasticsearchBulkOutput):
             resultats[trouve] = {pendings[trouve]["action"]: detail}
         if not sans_contenu:
             return resultats
-        if len(items) != len(pendings):
-            logger.warning(
-                _("réponse openobserve : {} échec(s) sans contenu reconnaissable, lot rendu à l'appelant"),
-                len(sans_contenu),
-            )
-            return None
+        if len(pendings) == 1 and libres:
+            logger.debug("_apparier | document seul : l'échec lui revient")
+            resultats[0] = {pendings[0]["action"]: sans_contenu[0][1]}
+            return resultats
+        if len(sans_contenu) == len(libres):
+            logger.debug("_apparier | {} échec(s) sans contenu, autant que de documents libres", len(libres))
+            for i, (_position, detail) in zip(sorted(libres), sans_contenu, strict=True):
+                resultats[i] = {pendings[i]["action"]: detail}
+            return resultats
         logger.warning(
-            _("réponse openobserve : {} échec(s) attribué(s) par position (ordre non garanti)"), len(sans_contenu)
+            _("réponse openobserve : {} échec(s) sans contenu pour {} document(s), renvoi un par un"),
+            len(sans_contenu),
+            len(libres),
         )
-        for position, detail in sans_contenu:
-            if position not in libres:
-                logger.warning(_("réponse openobserve : position {} déjà attribuée, lot rendu à l'appelant"), position)
-                return None
-            libres.discard(position)
-            resultats[position] = {pendings[position]["action"]: detail}
+        self._ambigus = sorted(libres)
         return resultats
+
+    @atraced
+    async def _analyser_reponse(self, pendings: list[dict[str, Any]], response: httpx.Response) -> list[SendOutcome]:
+        """Analyse commune, puis renvoi un par un des documents à l'issue ambiguë.
+
+        `_apparier` marque ces documents (règle 4) ; renvoyé seul, un
+        document reçoit un élément qui lui revient sans ambiguïté.
+        """
+        self._ambigus = []
+        outcomes = await super()._analyser_reponse(pendings, response)
+        ambigus, self._ambigus = self._ambigus, []
+        for i in ambigus:
+            (outcomes[i],) = await self._issues_du_lot([pendings[i]])
+        return outcomes
 
     @atraced
     async def health(self) -> dict[str, Any]:

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 17:30+0000\n"
+"POT-Creation-Date: 2026-11-04 17:58+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -200,6 +200,15 @@ msgstr ""
 msgid "marqueurs de la matrice des sorties absents ou dans le désordre"
 msgstr ""
 
+#: src/pystashtemplate/outputs/metriques.py
+#, python-brace-format
+msgid "métriques : issue inconnue {issue}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/metriques.py
+msgid "issue de métrique inconnue : {} (attendu : {})"
+msgstr ""
+
 #: src/pystashtemplate/outputs/openobserve.py
 msgid "sortie openobserve : organisation vide"
 msgstr ""
@@ -209,15 +218,7 @@ msgid "sortie openobserve : option « organization » vide"
 msgstr ""
 
 #: src/pystashtemplate/outputs/openobserve.py
-msgid "réponse openobserve : {} échec(s) sans contenu reconnaissable, lot rendu à l'appelant"
-msgstr ""
-
-#: src/pystashtemplate/outputs/openobserve.py
-msgid "réponse openobserve : {} échec(s) attribué(s) par position (ordre non garanti)"
-msgstr ""
-
-#: src/pystashtemplate/outputs/openobserve.py
-msgid "réponse openobserve : position {} déjà attribuée, lot rendu à l'appelant"
+msgid "réponse openobserve : {} échec(s) sans contenu pour {} document(s), renvoi un par un"
 msgstr ""
 
 #: src/pystashtemplate/outputs/rejeu.py
