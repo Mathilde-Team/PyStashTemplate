@@ -27,6 +27,7 @@ coupure réseau, arrêt propre).
 | `null` | toutes | oui | oui | — | non | oui | non |
 | `openobserve` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `opensearch` | toutes | oui | oui | — | oui | oui | oui |
+| `otlp` | `index`, `create` | non | non | — | oui | oui | oui |
 | `quickwit` | `create` | non | oui | 10 Mio | oui | oui | oui |
 | `siglens` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `stdout` | `index`, `create` | non | oui | — | non | oui | non |
@@ -362,6 +363,73 @@ Banc de conformité contre Quickwit 0.9.3 en conteneur
 (`.github/workflows/conformite-quickwit.yml`,
 `tests/test_integration_quickwit.py`) : lot `create` indexé puis
 retrouvé par la recherche, `_id` ignoré, index absent parti en DLQ.
+
+## Sortie `otlp` (issue #22)
+
+OpenTelemetry OTLP/HTTP, journaux : `POST {hosts}/v1/logs` (port 4318
+par défaut), en protobuf (`application/x-protobuf`, défaut de la
+spécification) ou en JSON. Un seul client pour tous les récepteurs
+OTLP : OpenTelemetry Collector, SigNoz, Uptrace, HyperDX/ClickStack,
+OpenObserve, Quickwit, GreptimeDB, VictoriaLogs, Parseable, Data
+Prepper… Le protobuf est codé par `outputs/otlp_codec.py`, sans nouvelle
+dépendance.
+
+```
+output {
+  otlp {
+    hosts => ["http://otel-collector:4318"]
+    encoding => "protobuf"   # ou "json"
+    resource => { "service.name" => "rsyslog" }
+    fields => { "host" => "resource.host.name" "program" => "attributes.process.executable.name" }
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `encoding` | `protobuf` (défaut) ou `json` |
+| `resource` | attributs de ressource fixes (défaut : `service.name => "pystashtemplate"`) |
+| `fields` | table de correspondance champ → cible, fusionnée avec la table par défaut |
+| `scope` | nom de la portée d'instrumentation (défaut : `pystashtemplate`) |
+| `timeout`, `headers`, `dlq_transitoires` | comme la famille `_bulk` |
+
+`compression => true` compresse le corps en gzip.
+
+Correspondance champ de l'événement → `LogRecord` (option `fields`) :
+
+| Cible | Effet | Champ par défaut |
+|---|---|---|
+| `body` | corps du journal | `message` |
+| `time` | `time_unix_nano` : date ISO 8601 (UTC si sans fuseau) ou nombre (s, ms, µs ou ns) | `@timestamp` |
+| `severity` | `severity_text` + `severity_number` : nom usuel (`info`, `warning`, `err`, `crit`…) ou code syslog 0–7 | `severity` |
+| `trace_id`, `span_id` | identifiants hexadécimaux (32 et 16 caractères) | champs de même nom |
+| `resource.<nom>` | attribut de ressource ; les journaux sont groupés par ressource | — |
+| `attributes.<nom>` | attribut du journal, renommé | — |
+| `drop` | champ non transmis | — |
+
+Tout autre champ devient un attribut du journal sous son nom ; une
+valeur illisible pour sa cible (date, identifiant) reste un attribut.
+`observed_time_unix_nano` est l'heure d'envoi.
+
+Accusé de réception **global** (OTLP ne rapporte rien par journal) :
+
+- 2xx accepté ; 400 refus définitif (DLQ) ; 429 et 5xx retentés
+  (`retry_max`) puis rendus à l'appelant ;
+- `partial_success` d'une réponse 2xx : tout le lot refusé → DLQ ;
+  refus partiel → les journaux refusés ne sont pas identifiables et la
+  spécification interdit de les renvoyer : ils sont comptés dans la
+  métrique `rejected` et journalisés avec le message du serveur, le
+  reste du lot compté indexé ;
+- en JSON, un document impossible à coder (flottant NaN ou infini) part
+  seul en DLQ, les autres sont envoyés.
+
+`health()` envoie une requête OTLP vide (OTLP n'a pas de point de santé).
+
+Banc de conformité : `tests/test_integration_otlp.py`, workflow
+`conformite-otlp.yml` (OpenTelemetry Collector contrib 0.164.0 en
+conteneur, exportateur `file`) — protobuf, JSON et gzip relus après
+décodage par le Collector (ressources, dates, sévérités, identifiants,
+attributs imbriqués).
 
 ## Sortie `siglens` (issue #20)
 

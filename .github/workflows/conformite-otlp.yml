@@ -1,0 +1,81 @@
+# Banc de conformité OTLP (issue #22) : la sortie `otlp`
+# contre un vrai OpenTelemetry Collector en conteneur éphémère (récepteur
+# OTLP/HTTP, exportateur `file`), relecture du fichier exporté. Complète les tests unitaires
+# (faux serveur `httpx.MockTransport`).
+#
+# Runner hébergé GitHub (ubuntu-latest, autorisé par la MISSION) : Docker
+# y est garanti, contrairement aux runners maison.
+name: Banc de conformité OTLP
+
+"on":
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conformite:
+    name: "Sortie otlp contre un vrai OpenTelemetry Collector"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v7
+
+      - name: Installation de uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Installation de Python
+        run: uv python install
+
+      - name: Installation des dépendances
+        run: uv sync --extra dev
+
+      - name: OpenTelemetry Collector éphémère
+        run: |
+          mkdir -p "$RUNNER_TEMP/otel/out" && chmod 777 "$RUNNER_TEMP/otel/out"
+          cat > "$RUNNER_TEMP/otel/config.yaml" <<'YAML'
+          receivers:
+            otlp:
+              protocols:
+                http:
+                  endpoint: 0.0.0.0:4318
+          exporters:
+            file:
+              path: /out/logs.json
+              flush_interval: 100ms
+          extensions:
+            health_check:
+              endpoint: 0.0.0.0:13133
+          service:
+            extensions: [health_check]
+            pipelines:
+              logs:
+                receivers: [otlp]
+                exporters: [file]
+          YAML
+          docker run -d --name otelcol -p 4318:4318 -p 13133:13133 \
+            -v "$RUNNER_TEMP/otel/config.yaml:/etc/otelcol-contrib/config.yaml:ro" \
+            -v "$RUNNER_TEMP/otel/out:/out" \
+            otel/opentelemetry-collector-contrib:0.164.0
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:13133/ >/dev/null; then echo "Collector prêt"; exit 0; fi
+            sleep 1
+          done
+          docker logs otelcol
+          echo "::error::le Collector n'a pas démarré" && exit 1
+
+      - name: Banc de conformité
+        env:
+          PYSTASHTEMPLATE_OTLP_URL: http://localhost:4318
+          PYSTASHTEMPLATE_OTLP_FICHIER: ${{ runner.temp }}/otel/out/logs.json
+        run: uv run pytest tests/test_integration_otlp.py -v
+
+      - name: Nettoyage du conteneur
+        if: always()
+        run: docker rm -f otelcol || true
