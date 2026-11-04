@@ -34,6 +34,7 @@ coupure réseau, arrêt propre).
 | `quickwit` | `create` | non | oui | 10 Mio | oui | oui | oui |
 | `siglens` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `stdout` | `index`, `create` | non | oui | — | non | oui | non |
+| `syslog` | `index` | non | non | — | oui | oui | oui |
 | `victorialogs` | `index`, `create` | non | non | — | oui | oui | oui |
 | `zincsearch` | `index`, `create`, `delete` | oui | non | — | oui | oui | oui |
 <!-- matrice-sorties:fin -->
@@ -514,6 +515,54 @@ Banc de conformité contre Redpanda en conteneur
 (`.github/workflows/conformite-kafka.yml`,
 `tests/test_integration_kafka.py`) : messages relus par un
 consommateur `aiokafka`, sujet, clé et valeur vérifiés.
+
+## Sortie `syslog` (issue #30)
+
+Émetteur syslog — **RFC 5424 ou RFC 3164**, vers UDP, TCP ou TCP+TLS
+(rsyslog, syslog-ng, entrée syslog de VictoriaLogs…) — options reprises
+de la sortie `syslog` de Logstash, défauts compris.
+
+```
+output {
+  syslog {
+    host => "rsyslog-relay"
+    port => 6514
+    protocol => "ssl-tcp"
+    rfc => "rfc5424"
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `host` | Récepteur syslog — **requise** |
+| `port` | Port du récepteur (514 par défaut) |
+| `protocol` | `udp` (défaut), `tcp` ou `ssl-tcp` (TLS, `cacert` des options communes) |
+| `rfc` | `rfc3164` (défaut) ou `rfc5424` |
+| `framing` | Cadrage TCP RFC 6587 : `octet-counting` (défaut) ou `lf` |
+| `facility` / `severity` | Mots-clés RFC 5424 (`user-level`/`notice` par défaut) |
+| `appname` / `procid` / `msgid` / `sourcehost` | Champs d'en-tête (`LOGSTASH`/`-`/`-`/`%{host}` par défaut, gabarits sprintf) |
+| `codec` | Encodage du MESSAGE (`json` par défaut, `json_lines`, `rubydebug`) |
+
+Particularités :
+
+- **le document voyage dans le MESSAGE** : l'en-tête syslog porte le
+  routage (PRI, facilité/sévérité, hôte, application), le MESSAGE
+  porte le document encodé par le `codec` — les deux RFC sont
+  émises mot pour mot (`<PRI>1 …` en 5424, BSD `<PRI>Mmm …` en
+  3164) ;
+- **pas d'accusé** : syslog n'accuse rien, ni UDP (feu-et-oubli) ni
+  TCP (écriture du flux) — l'issue est globale au lot, tout échec de
+  transport est transitoire (retentes exponentielles, puis lot rendu
+  à l'appelant ou en DLQ avec `dlq_transitoires` #7) ;
+- **santé** : TCP/ssl-tcp se connectent réellement ; UDP ne peut que
+  ouvrir sa socket (documenté — un datagramme ne prouve rien) ;
+- **insertions seules** : `index`, `_id` refusé.
+
+Banc de conformité contre Vector 0.59.0 en conteneur (sources
+`syslog` TCP et UDP, `.github/workflows/conformite-syslog.yml`,
+`tests/test_integration_syslog.py`) : cadrage octet-counting et LF,
+UDP, RFC 5424 et 3164 vérifiés dans les journaux du sink `console`.
 
 ## Sortie `loki` (issue #21)
 
