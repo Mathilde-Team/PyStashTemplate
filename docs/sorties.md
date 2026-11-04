@@ -21,14 +21,20 @@ coupure réseau, arrêt propre).
 | `clickhouse` | `index` | non | non | — | oui | oui | oui |
 | `elasticsearch` | toutes | oui | oui | — | oui | oui | oui |
 | `file` | `index`, `create` | non | oui | — | oui | oui | non |
+| `greptimedb` | `index`, `create` | non | oui | — | oui | oui | oui |
+| `http` | `index` | non | non | — | oui | oui | oui |
 | `loki` | `index` | non | non | — | oui | oui | oui |
 | `manticore` | toutes | oui | oui | — | oui | oui | oui |
 | `null` | toutes | oui | oui | — | non | oui | non |
 | `openobserve` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `opensearch` | toutes | oui | oui | — | oui | oui | oui |
+| `otlp` | `index`, `create` | non | non | — | oui | oui | oui |
+| `parseable` | `index` | non | non | 10 Mio | oui | oui | oui |
 | `quickwit` | `create` | non | oui | 10 Mio | oui | oui | oui |
+| `siglens` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `stdout` | `index`, `create` | non | oui | — | non | oui | non |
 | `victorialogs` | `index`, `create` | non | non | — | oui | oui | oui |
+| `zincsearch` | `index`, `create`, `delete` | oui | non | — | oui | oui | oui |
 <!-- matrice-sorties:fin -->
 
 La famille « API _bulk Elasticsearch » (issue #11) partage le client
@@ -210,6 +216,43 @@ Banc de conformité : `tests/test_integration_victorialogs.py`, workflow
 `conformite-victorialogs.yml` (VictoriaLogs v1.53.0 en conteneur) —
 modes `bulk` et `jsonline`, champs de flux et de date relus par LogsQL.
 
+## Sortie `zincsearch` (issue #18)
+
+API `_bulk` native de ZincSearch (port 4080 par défaut) :
+`POST /api/_bulk`, authentification basic.
+
+```
+output {
+  zincsearch {
+    hosts => ["http://zincsearch:4080"]
+    index => "logs"
+    user => "${ZINC_USER}"
+    password => "${ZINC_PASSWORD}"
+  }
+}
+```
+
+Compatibilité Elasticsearch partielle (lue dans le code de ZincSearch
+0.4.10) :
+
+- actions `index`, `create` et `delete` ; `update` est refusée à la
+  compilation, car ZincSearch enregistre la ligne de données comme
+  document complet (pas de mise à jour partielle `{"doc": …}`) ;
+- `_id` transmis : un `index`/`create` avec le même `_id` remplace le
+  document ;
+- statut HTTP global seul : la réponse ne porte que `record_count`.
+  Une erreur arrête le lot en HTTP 500 — les documents précédents sont
+  déjà indexés ; le lot est retenté puis rendu à l'appelant. Sans
+  `document_id`, un réessai peut donc créer des doublons. Une ligne JSON
+  illisible est ignorée sans erreur par le serveur.
+
+`health()` lit `GET /version`. Aucune option propre.
+
+Banc de conformité : `tests/test_integration_zincsearch.py`, workflow
+`conformite-zincsearch.yml` (ZincSearch 0.4.10 en conteneur) — lot
+indexé, remplacement par `_id` et `delete`, relus par l'API de
+recherche.
+
 ## Sortie `openobserve` (issue #16)
 
 Sous-classe du client commun sur l'API compatible Elasticsearch
@@ -373,6 +416,52 @@ Banc de conformité contre ClickHouse 26.3.62 en conteneur
 colonne, champ sans colonne écarté, `async_insert` visible à la
 lecture, table absente jamais comptée comme indexée. Fixture du banc
 commun (#9) en plus.
+
+## Sortie `http` générique (issue #24)
+
+Repli pour **tout récepteur HTTP** — Vector (source `http_server`),
+entrée `http` de Logstash, Fluent Bit, webhooks… — sans client dédié :
+`POST` (ou `PUT`) vers une URL libre, options reprises de la sortie
+`http` de Logstash.
+
+```
+output {
+  http {
+    url => "http://vector:8080/logs"
+    http_method => "post"
+    format => "json_batch"
+    headers => { "Authorization" => "Bearer ${TOKEN}" }
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `url` | URL libre du récepteur (schéma, hôte, chemin) — **requise**, prime sur `hosts` |
+| `http_method` | `post` (défaut) ou `put` |
+| `format` | `ndjson` (défaut : une ligne JSON par document), `json_batch` (tableau du lot), `json` (**un événement par requête**, lot retaillé à 1) |
+
+Particularités :
+
+- `url` est découpée : l'hôte alimente le client commun (options
+  communes `user`/`password`/`ssl_*`/`headers`…), le chemin (et la
+  requête d'URL) sert à chaque envoi ;
+- **accusé global** : un récepteur générique n'accuse pas réception
+  élément par élément (`accuse_par_evenement=False`) : 2xx = lot
+  accepté ; 400/404 = permanent (DLQ si configurée) ; réseau, 429, 5xx
+  = transitoire — un lot rejeté part en entier ;
+- **insertions seules** : `index`, `_id` refusé, options de la famille
+  `_bulk` (`index`/`action`/`pipeline`/`routing`/`doc_as_upsert`)
+  refusées à la compilation ;
+- **santé** : `health()` sonde le récepteur (`GET` sur le chemin
+  d'`url`) — toute réponse inférieure à 5xx prouve la joignabilité (un
+  récepteur générique n'a pas de protocole de santé standard).
+
+Banc de conformité contre Vector 0.59.0 en conteneur (source
+`http_server`, `.github/workflows/conformite-http.yml`,
+`tests/test_integration_http.py`) : événements relus dans les journaux
+du sink `console`, les trois formats vérifiés. Fixture du banc commun
+(#9) en plus.
 
 ## Sortie `loki` (issue #21)
 

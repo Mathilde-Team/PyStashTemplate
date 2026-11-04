@@ -111,14 +111,20 @@ class SortieInconnueError(ValueError):
 from pystashtemplate.outputs.clickhouse import ClickHouseOutput  # noqa: E402
 from pystashtemplate.outputs.elasticsearch import ElasticsearchOutput  # noqa: E402
 from pystashtemplate.outputs.fichier import FileOutput  # noqa: E402
+from pystashtemplate.outputs.greptimedb import GreptimeDbOutput  # noqa: E402
+from pystashtemplate.outputs.http_generique import HttpOutput  # noqa: E402
 from pystashtemplate.outputs.loki import LokiOutput  # noqa: E402
 from pystashtemplate.outputs.manticore import ManticoreOutput  # noqa: E402
 from pystashtemplate.outputs.null import NullOutput  # noqa: E402
 from pystashtemplate.outputs.openobserve import OpenObserveOutput  # noqa: E402
 from pystashtemplate.outputs.opensearch import OpenSearchOutput  # noqa: E402
+from pystashtemplate.outputs.otlp import OtlpOutput  # noqa: E402
+from pystashtemplate.outputs.parseable import ParseableOutput  # noqa: E402
 from pystashtemplate.outputs.quickwit import QuickwitOutput  # noqa: E402
+from pystashtemplate.outputs.siglens import SigLensOutput  # noqa: E402
 from pystashtemplate.outputs.stdout import StdoutOutput  # noqa: E402
 from pystashtemplate.outputs.victorialogs import VictoriaLogsOutput  # noqa: E402
+from pystashtemplate.outputs.zincsearch import ZincSearchOutput  # noqa: E402
 
 __all__ = [
     "ACTIONS",
@@ -127,17 +133,23 @@ __all__ = [
     "Document",
     "ElasticsearchOutput",
     "FileOutput",
+    "GreptimeDbOutput",
+    "HttpOutput",
     "LokiOutput",
     "ManticoreOutput",
     "NullOutput",
     "OpenSearchOutput",
     "OpenObserveOutput",
+    "OtlpOutput",
+    "ParseableOutput",
     "Output",
     "QuickwitOutput",
     "REGISTRY",
+    "SigLensOutput",
     "SortieInconnueError",
     "StdoutOutput",
     "VictoriaLogsOutput",
+    "ZincSearchOutput",
     "compiler_sorties",
     "enregistrer",
 ]

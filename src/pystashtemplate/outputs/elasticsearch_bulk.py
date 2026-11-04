@@ -291,6 +291,11 @@ class ElasticsearchBulkOutput(Output):
         return f"{self.chemin_bulk}/_bulk"
 
     @traced
+    def _verbe_envoi(self) -> str:
+        """Verbe HTTP de l'envoi (`post` ; la sortie `http` choisit `put`, #24)."""
+        return "post"
+
+    @traced
     def _parametres_requete(self) -> dict[str, str]:
         """Paramètres d'URL propres au produit, ajoutés à chaque envoi (aucun par défaut)."""
         return {}
@@ -491,7 +496,7 @@ class ElasticsearchBulkOutput(Output):
         while True:
             debut = time.perf_counter()
             try:
-                response = await self._client_http().post(
+                response = await getattr(self._client_http(), self._verbe_envoi())(
                     self._chemin_envoi(),
                     content=self._corps_requete(pendings),
                     params=params or None,

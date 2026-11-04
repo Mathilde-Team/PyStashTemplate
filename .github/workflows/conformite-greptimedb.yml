@@ -1,0 +1,57 @@
+# Banc de conformité GreptimeDB (issue #19) : la sortie `greptimedb`
+# contre un vrai GreptimeDB standalone en conteneur éphémère
+# (`/v1/elasticsearch/_bulk`), lot rejeté isolé, relecture par SQL. Complète les tests unitaires
+# (faux serveur `httpx.MockTransport`).
+#
+# Runner hébergé GitHub (ubuntu-latest, autorisé par la MISSION) : Docker
+# y est garanti, contrairement aux runners maison.
+name: Banc de conformité GreptimeDB
+
+"on":
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conformite:
+    name: "Sortie greptimedb contre un vrai GreptimeDB"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v7
+
+      - name: Installation de uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Installation de Python
+        run: uv python install
+
+      - name: Installation des dépendances
+        run: uv sync --extra dev
+
+      - name: GreptimeDB éphémère
+        run: |
+          docker run -d --name greptimedb -p 4000:4000 greptime/greptimedb:v1.3.0 \
+            standalone start --http-addr 0.0.0.0:4000
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:4000/health >/dev/null; then echo "GreptimeDB prêt"; exit 0; fi
+            sleep 1
+          done
+          docker logs greptimedb
+          echo "::error::GreptimeDB n'a pas démarré" && exit 1
+
+      - name: Banc de conformité
+        env:
+          PYSTASHTEMPLATE_GREPTIMEDB_URL: http://localhost:4000
+        run: uv run pytest tests/test_integration_greptimedb.py -v
+
+      - name: Nettoyage du conteneur
+        if: always()
+        run: docker rm -f greptimedb || true
