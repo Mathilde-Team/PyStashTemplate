@@ -177,3 +177,36 @@ def test_health_get_sur_le_chemin() -> None:
     assert asyncio.run(scenario()) == {"status": "joignable"}
     assert str(requetes[0].url) == "http://recepteur:8080/logs"
     assert requetes[0].method == "GET"
+
+
+def test_health_en_5xx_leve() -> None:
+    # Joignable mais en erreur serveur : la santé échoue (#24).
+    s = HttpOutput(
+        {"url": "http://recepteur:8080/logs"},
+        transport=httpx.MockTransport(lambda request: httpx.Response(503)),
+    )
+
+    async def scenario() -> None:
+        try:
+            await s.health()
+        finally:
+            await s.close()
+
+    with pytest.raises(httpx.HTTPStatusError):
+        asyncio.run(scenario())
+
+
+def test_health_en_4xx_reste_joignable() -> None:
+    # Un 4xx prouve que le récepteur répond : pas d'erreur de santé.
+    s = HttpOutput(
+        {"url": "http://recepteur:8080/logs"},
+        transport=httpx.MockTransport(lambda request: httpx.Response(405)),
+    )
+
+    async def scenario() -> dict[str, Any]:
+        try:
+            return await s.health()
+        finally:
+            await s.close()
+
+    assert asyncio.run(scenario()) == {"status": "joignable"}

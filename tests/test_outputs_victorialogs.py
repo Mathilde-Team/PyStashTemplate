@@ -116,13 +116,13 @@ def test_pipeline_ne_modifie_pas_les_parametres_de_la_sortie() -> None:
 
 def test_mode_inconnu_refuse() -> None:
     # Schéma commun (#8) : énumération validée à l'instanciation.
-    with pytest.raises(ValueError, match="valeurs valides : bulk, jsonline \(reçu : loki\)"):
+    with pytest.raises(ValueError, match=r"valeurs valides : bulk, jsonline \(reçu : loki\)"):
         sortie(FauxServeur(), mode="loki")
 
 
 def test_stream_fields_de_mauvais_type_refuse() -> None:
     # Schéma commun (#8) : type validé à l'instanciation (str ou liste).
-    with pytest.raises(ValueError, match="type str ou list ou tuple attendu \(reçu : int\)"):
+    with pytest.raises(ValueError, match=r"type str ou list ou tuple attendu \(reçu : int\)"):
         sortie(FauxServeur(), stream_fields=3)
 
 
@@ -179,3 +179,14 @@ def test_health_en_erreur_leve() -> None:
 
     with pytest.raises(httpx.HTTPStatusError):
         asyncio.run(scenario())
+
+
+def test_liste_virgules_chaine_liste_et_type_refuse() -> None:
+    # Le schéma commun filtre déjà les types ; l'aide garde son propre contrat (#14).
+    from pystashtemplate.outputs.victorialogs import _liste_virgules
+
+    assert _liste_virgules("host,app") == "host,app"
+    assert _liste_virgules(["host", "app"]) == "host,app"
+    assert _liste_virgules(("host",)) == "host"
+    with pytest.raises(ValueError, match="liste de champs attendue, reçu int"):
+        _liste_virgules(3)
