@@ -4,9 +4,12 @@ Sémantique Logstash partagée : gabarits `%{...}`, filtres (mutate, grok,
 kv, dissect, date, translate, geoip...), interprétation des `.conf`
 Logstash, enrichissement (GeoIP/mmdb, DNS) — bibliothèque extraite de
 RsysLogstach lors du découpage de l'issue [#111](https://github.com/Mathilde-Team/RsysLogstach/issues/111)
-(décision du 03/11/2026 : le connecteur rsyslog — omprog, indexer, dlq,
-metrics — dépend de PyStashTemplate à version figée, comme tout autre
-outil (…beat) pourrait le faire).
+(décision corrigée le 04/11/2026, issue
+[#110](https://github.com/Mathilde-Team/PyStashTemplate/issues/110) : seul
+`omprog`, propre à rsyslog, reste dans RsysLogstach ; l'indexation, la DLQ,
+les métriques et les options de connexion OpenSearch sont ici, utilisables
+par tout outil — connecteur rsyslog, service autonome, …beat — qui dépend
+de PyStashTemplate à version figée).
 
 ## Contenu
 
@@ -16,8 +19,15 @@ outil (…beat) pourrait le faire).
 - `grok`, `fingerprint`, `multievents`, `useragent`, `xmlfilter`, `simples` : plugins
 - `enrichment` : GeoIP (mmdb réels), translate, DNS (issue #22, variable `PYSTASHTEMPLATE_DNS=off`)
 - `dnslookup`, `util`, `tracing`, `i18n` : utilitaires
-- `dlq` : dead letter queue locale pour les échecs d'envoi permanents
-  (portée de RsysLogstach, chantier « sorties » #2)
+- `dlq` : dead letter queue locale pour les échecs d'envoi permanents,
+  rotation et purge (chantier « sorties » #2)
+- `indexer` : `OpenSearchIndexer`, un index par jour, `_id` par gabarit ou
+  empreinte, trois issues d'envoi (`SendOutcome`) — rapatrié de RsysLogstach (#110)
+- `opensearchconf` : options de connexion des blocs `opensearch{}` /
+  `elasticsearch{}` d'un `.conf` (hôtes, TLS, mTLS, authentification) (#110)
+- `metrics` : métriques Prometheus et endpoint `/metrics`, préfixe
+  paramétrable, observateur des sorties (#110) — voir
+  [docs/indexation-metriques.md](docs/indexation-metriques.md)
 - `outputs` : sorties agnostiques (#2) — `outputs.elasticsearch_bulk`
   est le client commun de la famille « API _bulk Elasticsearch »
   (Elasticsearch, OpenSearch, VictoriaLogs, Quickwit, OpenObserve : #11) ;
@@ -34,6 +44,9 @@ outil (…beat) pourrait le faire).
 - [docs/audit-fonctions-logstash.md](docs/audit-fonctions-logstash.md) :
   état fonction par fonction (fait, partiel, pas fait)
 - [docs/sorties.md](docs/sorties.md) : sorties agnostiques
+- [docs/indexation-metriques.md](docs/indexation-metriques.md) : indexation
+  OpenSearch, `_id`, options de connexion du `.conf`, mTLS, métriques
+  Prometheus et DLQ (#110)
 - [FEATURES.md](FEATURES.md) : fonctionnalités et limites connues
 - [PATTERNS.md](PATTERNS.md) : conventions (traçabilité, graphe acyclique)
 - Exemples : `filters.example.json`, `blocklist.example.txt`,

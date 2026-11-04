@@ -45,14 +45,22 @@ class TestPyproject:
 
     def test_modules_de_la_bibliotheque_dans_le_paquet(self) -> None:
         # Garde-fou sur la DISPOSITION : les modules de la bibliothèque vivent
-        # dans src/pystashtemplate/ (et pas le connecteur, resté dans
-        # RsysLogstach — voir test_no_cross_imports).
+        # dans src/pystashtemplate/. Seul `omprog.py` (propre à rsyslog) reste
+        # dans RsysLogstach ; indexer, metrics et opensearchconf ont rejoint
+        # la bibliothèque (découpage corrigé, RsysLogstach#111, #110).
         src = Path(__file__).resolve().parents[1] / "src" / "pystashtemplate"
         modules = sorted(p.name for p in src.glob("*.py"))
-        for attendu in ("filters.py", "interpreter.py", "templates.py", "__init__.py"):
+        for attendu in (
+            "filters.py",
+            "interpreter.py",
+            "templates.py",
+            "__init__.py",
+            "indexer.py",
+            "metrics.py",
+            "opensearchconf.py",
+        ):
             assert attendu in modules, f"{attendu} manque dans src/pystashtemplate/"
-        for interdit in ("omprog.py", "indexer.py", "metrics.py", "opensearchconf.py"):
-            assert interdit not in modules, f"{interdit} (connecteur) ne doit pas être dans la bibliothèque"
+        assert "omprog.py" not in modules, "omprog.py (connecteur rsyslog) ne doit pas être dans la bibliothèque"
         # `dlq.py` est passé dans la bibliothèque (chantier sorties #2) :
         # la DLQ fait partie du socle, le connecteur la réexporte.
         assert "dlq.py" in modules, "dlq.py (socle sorties) manque dans src/pystashtemplate/"
