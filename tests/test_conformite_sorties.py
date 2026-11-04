@@ -43,6 +43,7 @@ from pystashtemplate.outputs.otlp import OtlpOutput
 from pystashtemplate.outputs.parseable import ParseableOutput
 from pystashtemplate.outputs.quickwit import QuickwitOutput
 from pystashtemplate.outputs.siglens import SigLensOutput
+from pystashtemplate.outputs.splunk_hec import SplunkHecOutput
 from pystashtemplate.outputs.victorialogs import VictoriaLogsOutput
 from pystashtemplate.outputs.zincsearch import ZincSearchOutput
 
@@ -120,6 +121,7 @@ FIXTURES: list[FixtureSortie] = [
     FixtureSortie(ClickHouseOutput, {"table": "logs"}, compter=_lignes_json),
     FixtureSortie(HttpOutput, {"url": "http://faux:9200/logs"}, compter=_lignes_json),
     FixtureSortie(ParseableOutput, {"stream": "banc"}, compter=_tableau_json),
+    FixtureSortie(SplunkHecOutput, {"token": "jeton-banc"}, compter=_lignes_json),
     FixtureSortie(
         DorisOutput,
         {"database": "banc", "table": "logs"},

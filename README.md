@@ -96,7 +96,7 @@ Suit : lots et contre-pression (#6), DLQ et réessais génériques (#7),
 schéma de configuration commun (#8), puis les sorties une à une
 (`opensearch` #12, `elasticsearch` #13, `victorialogs` #14, `loki` #21,
 `clickhouse` #23, `doris` #27, `http` #24, `kafka` #29, `syslog` #30, `redis`/`rabbitmq`/`nats` #33,
-`parseable` #25…).
+`parseable` #25, `splunk_hec` #28…).
 
 ### Transport HTTP commun (#5)
 

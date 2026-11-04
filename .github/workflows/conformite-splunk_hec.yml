@@ -1,0 +1,65 @@
+# Banc de conformité du protocole Splunk HEC (issue #28) : la sortie
+# `splunk_hec` contre un vrai SigLens en conteneur éphémère (Splunk n'est
+# pas open source ; SigLens parle HEC : `/services/collector/event` sur le
+# port d'ingestion 8081), relecture par l'API de recherche (port 5122).
+# Complète les tests unitaires (faux serveur `httpx.MockTransport`) et la
+# fixture du banc commun (#9).
+#
+# Runner hébergé GitHub (ubuntu-latest, autorisé par la MISSION) : Docker
+# y est garanti, contrairement aux runners maison.
+name: Banc de conformité Splunk HEC
+
+"on":
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conformite:
+    name: "Sortie splunk_hec contre un vrai SigLens (HEC)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v7
+
+      - name: Installation de uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Installation de Python
+        run: uv python install
+
+      - name: Installation des dépendances
+        run: uv sync --extra dev
+
+      - name: SigLens éphémère
+        run: |
+          docker run -d --name siglens -p 8081:8081 -p 5122:5122 siglens/siglens:1.0.57
+          for i in $(seq 1 90); do
+            if curl -sf http://localhost:8081/services/collector/health >/dev/null && curl -sf http://localhost:5122/api/health >/dev/null; then
+              echo "SigLens prêt"; exit 0
+            fi
+            sleep 1
+          done
+          docker logs siglens
+          echo "::error::SigLens n'a pas démarré" && exit 1
+
+      - name: Banc de conformité
+        env:
+          PYSTASHTEMPLATE_HEC_URL: http://localhost:8081
+          PYSTASHTEMPLATE_SIGLENS_QUERY_URL: http://localhost:5122
+        run: uv run pytest tests/test_integration_splunk_hec.py -v
+
+      - name: Journal de SigLens
+        if: failure()
+        run: docker logs siglens || true
+
+      - name: Nettoyage du conteneur
+        if: always()
+        run: docker rm -f siglens || true

@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 20:41+0000\n"
+"POT-Creation-Date: 2026-11-04 20:47+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -485,6 +485,34 @@ msgstr ""
 #: src/pystashtemplate/outputs/siglens.py
 #, python-brace-format
 msgid "sortie siglens : action {action} refusée (index, create seules)"
+msgstr ""
+
+#: src/pystashtemplate/outputs/splunk_hec.py
+msgid "sortie splunk_hec : horodatage {} illisible, heure du serveur utilisée"
+msgstr ""
+
+#: src/pystashtemplate/outputs/splunk_hec.py
+msgid "sortie splunk_hec : authentification basique refusée"
+msgstr ""
+
+#: src/pystashtemplate/outputs/splunk_hec.py
+msgid "sortie splunk_hec : user/password remplaceraient le jeton HEC, utiliser token seul"
+msgstr ""
+
+#: src/pystashtemplate/outputs/splunk_hec.py
+msgid "sortie splunk_hec : jeton vide"
+msgstr ""
+
+#: src/pystashtemplate/outputs/splunk_hec.py
+msgid "sortie splunk_hec : token est requis (jeton HEC)"
+msgstr ""
+
+#: src/pystashtemplate/outputs/splunk_hec.py
+msgid "sortie splunk_hec : fields invalide {}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/splunk_hec.py
+msgid "sortie splunk_hec : fields doit être une liste de noms de champs"
 msgstr ""
 
 #: src/pystashtemplate/outputs/syslog.py
