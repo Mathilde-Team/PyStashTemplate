@@ -301,6 +301,16 @@ class ElasticsearchBulkOutput(Output):
         return {}
 
     @traced
+    def _entetes_requete(self, pendings: list[dict[str, Any]]) -> dict[str, str]:
+        """En-têtes propres à un lot, calculés une fois par lot (aucun par défaut).
+
+        Calculés avant la première tentative et réutilisés à chaque
+        retente : un en-tête d'idempotence (label Stream Load de `doris`,
+        #27) reste le même pour un même lot.
+        """
+        return {}
+
+    @traced
     def _corps_requete(self, pendings: list[dict[str, Any]]) -> str:
         """Corps de la requête d'envoi : le NDJSON `_bulk` (surchargeable)."""
         return self._corps_ndjson(pendings)
@@ -492,6 +502,7 @@ class ElasticsearchBulkOutput(Output):
         pipelines = {p["pipeline"] for p in pendings if p["pipeline"]}
         if len(pipelines) == 1:
             params["pipeline"] = next(iter(pipelines))
+        entetes = self._entetes_requete(pendings)
         essai = 0
         while True:
             debut = time.perf_counter()
@@ -500,6 +511,7 @@ class ElasticsearchBulkOutput(Output):
                     self._chemin_envoi(),
                     content=self._corps_requete(pendings),
                     params=params or None,
+                    headers=entetes or None,
                 )
             except httpx.HTTPError as exc:
                 self.observateur.latence(self.nom, time.perf_counter() - debut)

@@ -14,6 +14,22 @@ le projet suit SemVer.
   TCP (octet nul, TLS/mTLS) et UDP (gzip, morceaux GELF, `chunksize`),
   champs additionnels aplatis, retentes et DLQ du socle. Banc de
   conformité contre Graylog 7.0 en conteneurs (`conformite-gelf.yml`).
+- Sortie `doris` (issue #27) : Stream Load d'Apache Doris
+  (`PUT /api/<database>/<table>/_stream_load`, tableau JSON), redirection
+  FE → BE suivie avec l'authentification, label par lot stable d'une
+  retente à l'autre (rejeu sans doublon : `Label Already Exists`
+  `FINISHED` compté comme indexé), statut lu dans le corps (`Success`,
+  `Publish Timeout`, `Fail`), lot refusé renvoyé document par document
+  pour isoler la ligne fautive, `max_filter_ratio`, `label_prefix`,
+  santé `GET /api/health`. Client commun : en-têtes par lot
+  (`_entetes_requete`). Banc de conformité contre Doris 4.1.3
+  (`conformite-doris.yml`) et fixture du banc commun.
+- Sortie `syslog` (issue #30) : émetteur RFC 5424/3164 vers UDP, TCP
+  ou TCP+TLS, options de la sortie `syslog` de Logstash (défauts
+  compris), cadrage TCP RFC 6587 (octet-counting/LF), document dans le
+  MESSAGE, échec transitoire avec retentes, DLQ avec
+  `dlq_transitoires`. Banc de conformité contre Vector (sources
+  `syslog` TCP/UDP) en conteneur (`conformite-syslog.yml`).
 - Sortie `kafka` (issue #29) : producteur asynchrone `aiokafka` vers
   Apache Kafka et compatibles, options du plugin `kafka` de Logstash
   (`bootstrap_servers`/`topic_id` requis, `message_key`, `codec`,

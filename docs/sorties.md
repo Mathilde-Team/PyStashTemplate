@@ -19,6 +19,7 @@ coupure réseau, arrêt propre).
 | Plugin | Actions | `_id` | Accusé par élément | Taille max. de requête | DLQ | Réessais | Banc en conteneur |
 |---|---|---|---|---|---|---|---|
 | `clickhouse` | `index` | non | non | — | oui | oui | oui |
+| `doris` | `index` | non | non | — | oui | oui | oui |
 | `elasticsearch` | toutes | oui | oui | — | oui | oui | oui |
 | `file` | `index`, `create` | non | oui | — | oui | oui | non |
 | `gelf` | `index` | non | non | — | oui | oui | oui |
@@ -35,6 +36,7 @@ coupure réseau, arrêt propre).
 | `quickwit` | `create` | non | oui | 10 Mio | oui | oui | oui |
 | `siglens` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `stdout` | `index`, `create` | non | oui | — | non | oui | non |
+| `syslog` | `index` | non | non | — | oui | oui | oui |
 | `victorialogs` | `index`, `create` | non | non | — | oui | oui | oui |
 | `zincsearch` | `index`, `create`, `delete` | oui | non | — | oui | oui | oui |
 <!-- matrice-sorties:fin -->
@@ -419,6 +421,84 @@ colonne, champ sans colonne écarté, `async_insert` visible à la
 lecture, table absente jamais comptée comme indexée. Fixture du banc
 commun (#9) en plus.
 
+## Sortie `doris` (issue #27)
+
+Stream Load d'Apache Doris : `PUT /api/<database>/<table>/_stream_load`
+sur le FE (port HTTP 8030 par défaut), qui redirige (`307`) vers un BE.
+Chaque lot est **un** Stream Load : un tableau JSON (`format: json`,
+`strip_outer_array: true`), dont les clés sont appariées aux colonnes
+de la table par leur nom (les colonnes absentes du document prennent
+leur défaut, les champs sans colonne sont ignorés).
+
+```
+output {
+  doris {
+    hosts => ["http://doris-fe:8030"]
+    database => "logs"
+    table => "evenements"
+    user => "${DORIS_USER}"
+    password => "${DORIS_PASSWORD}"
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `database` | Base de la table — **requise** |
+| `table` | Table cible — **requise**, elle doit exister (Doris ne la crée pas) |
+| `label_prefix` | Préfixe du label de chaque lot (`pystashtemplate` par défaut ; lettres, chiffres, `-`, `_`) |
+| `max_filter_ratio` | Part de lignes invalides tolérée par lot, de 0 (défaut : lot refusé dès une ligne) à 1 |
+
+Particularités :
+
+- **redirection FE → BE avec authentification** : httpx retire
+  `Authorization` d'une requête redirigée vers un autre hôte (comme
+  `curl` sans `--location-trusted`) ; la sortie suit elle-même les
+  `307`/`308` (trois sauts au plus) en gardant l'authentification.
+  `hosts` peut aussi viser un BE directement (port 8040). Le BE doit
+  être joignable à l'adresse sous laquelle le FE le connaît ;
+- **label par lot, rejeu sans doublon** : chaque lot porte un label
+  `<label_prefix>_<32 chiffres hexadécimaux>`, réutilisé à chaque
+  retente du même lot. Si un chargement a abouti sans que la réponse
+  arrive (coupure), la retente répond `Label Already Exists` avec
+  `ExistingJobStatus: FINISHED` : le lot est compté comme indexé, sans
+  ligne en double. Un lot rendu à l'appelant (`retryable`) puis renvoyé
+  repart, lui, avec un nouveau label ;
+- **statut dans le corps** : Doris répond HTTP 200 même quand le
+  chargement échoue ; la sortie lit `Status` : `Success` et
+  `Publish Timeout` (données validées, visibles sous peu) = indexé ;
+  `Label Already Exists` = indexé si `FINISHED`, rendu à l'appelant
+  sinon ; `Fail` = refus ; corps illisible ou statut inconnu = rendu à
+  l'appelant. Statuts HTTP : 400/404 = permanent, 429/5xx/réseau =
+  transitoire (options communes de retente), autres (401, 403…) =
+  rendu à l'appelant ;
+- **lot atomique, ligne fautive isolée** : avec `max_filter_ratio => 0`,
+  une seule ligne invalide fait échouer tout le lot sans rien écrire.
+  La sortie renvoie alors chaque document **seul** : les bons sont
+  chargés, le fautif est refusé définitivement (DLQ si configurée) avec
+  le `Message` et l'`ErrorURL` du serveur ;
+- **lignes filtrées** : avec `max_filter_ratio` > 0, Doris peut écarter
+  des lignes et répondre `Success` sans dire lesquelles : le lot est
+  compté comme indexé, un avertissement donne `NumberFilteredRows` et
+  l'`ErrorURL` ;
+- **insertions seules** : ni `_id`, ni `update`/`delete` ; les options
+  `index`, `action`, `pipeline`, `routing`, `doc_as_upsert` sont
+  refusées à la compilation. Les en-têtes Stream Load additionnels
+  (`columns`, `timezone`, `strict_mode`…) passent par `headers`.
+
+StarRocks expose la même interface Stream Load ; la sortie n'a été
+vérifiée qu'au banc Doris.
+
+Santé : `health()` interroge `GET /api/health` du FE (nombre de BE en
+ligne).
+
+Banc de conformité contre Doris 4.1.3 (image `all-in-one`, un FE et un
+BE) en conteneur (`.github/workflows/conformite-doris.yml`,
+`tests/test_integration_doris.py`) : lot chargé par le FE et relu
+colonne par colonne, envoi direct au BE, même label rejoué sans
+doublon, table absente en DLQ, ligne invalide isolée du lot. Fixture du
+banc commun (#9) en plus.
+
 ## Sortie `http` générique (issue #24)
 
 Repli pour **tout récepteur HTTP** — Vector (source `http_server`),
@@ -515,6 +595,54 @@ Banc de conformité contre Redpanda en conteneur
 (`.github/workflows/conformite-kafka.yml`,
 `tests/test_integration_kafka.py`) : messages relus par un
 consommateur `aiokafka`, sujet, clé et valeur vérifiés.
+
+## Sortie `syslog` (issue #30)
+
+Émetteur syslog — **RFC 5424 ou RFC 3164**, vers UDP, TCP ou TCP+TLS
+(rsyslog, syslog-ng, entrée syslog de VictoriaLogs…) — options reprises
+de la sortie `syslog` de Logstash, défauts compris.
+
+```
+output {
+  syslog {
+    host => "rsyslog-relay"
+    port => 6514
+    protocol => "ssl-tcp"
+    rfc => "rfc5424"
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `host` | Récepteur syslog — **requise** |
+| `port` | Port du récepteur (514 par défaut) |
+| `protocol` | `udp` (défaut), `tcp` ou `ssl-tcp` (TLS, `cacert` des options communes) |
+| `rfc` | `rfc3164` (défaut) ou `rfc5424` |
+| `framing` | Cadrage TCP RFC 6587 : `octet-counting` (défaut) ou `lf` |
+| `facility` / `severity` | Mots-clés RFC 5424 (`user-level`/`notice` par défaut) |
+| `appname` / `procid` / `msgid` / `sourcehost` | Champs d'en-tête (`LOGSTASH`/`-`/`-`/`%{host}` par défaut, gabarits sprintf) |
+| `codec` | Encodage du MESSAGE (`json` par défaut, `json_lines`, `rubydebug`) |
+
+Particularités :
+
+- **le document voyage dans le MESSAGE** : l'en-tête syslog porte le
+  routage (PRI, facilité/sévérité, hôte, application), le MESSAGE
+  porte le document encodé par le `codec` — les deux RFC sont
+  émises mot pour mot (`<PRI>1 …` en 5424, BSD `<PRI>Mmm …` en
+  3164) ;
+- **pas d'accusé** : syslog n'accuse rien, ni UDP (feu-et-oubli) ni
+  TCP (écriture du flux) — l'issue est globale au lot, tout échec de
+  transport est transitoire (retentes exponentielles, puis lot rendu
+  à l'appelant ou en DLQ avec `dlq_transitoires` #7) ;
+- **santé** : TCP/ssl-tcp se connectent réellement ; UDP ne peut que
+  ouvrir sa socket (documenté — un datagramme ne prouve rien) ;
+- **insertions seules** : `index`, `_id` refusé.
+
+Banc de conformité contre Vector 0.59.0 en conteneur (sources
+`syslog` TCP et UDP, `.github/workflows/conformite-syslog.yml`,
+`tests/test_integration_syslog.py`) : cadrage octet-counting et LF,
+UDP, RFC 5424 et 3164 vérifiés dans les journaux du sink `console`.
 
 ## Sortie `gelf` (issue #26)
 
