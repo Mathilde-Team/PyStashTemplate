@@ -64,6 +64,7 @@ import asyncio
 import enum
 import json
 import ssl
+import time
 from datetime import datetime, timezone
 from typing import Any, ClassVar
 
@@ -73,6 +74,7 @@ from loguru import logger
 from pystashtemplate.dlq import REASON_PERMANENT, REASON_TRANSIENT_EXHAUSTED, LocalDeadLetterQueue
 from pystashtemplate.i18n import _
 from pystashtemplate.outputs.base import ACTIONS, Document, Output
+from pystashtemplate.outputs.schema import OptionSpec
 from pystashtemplate.tracing import atraced, traced
 
 # Statuts HTTP traités comme des échecs définitifs de TOUT le lot : un
@@ -163,15 +165,10 @@ class ElasticsearchBulkOutput(Output):
                 inconnue ou mal formée.
         """
         super().__init__(options)
-        inconnues = set(options) - self.OPTIONS_CONNUES
-        if inconnues:
-            raise ValueError(_("options inconnues pour cette sortie : {}").format(", ".join(sorted(inconnues))))
         self._hosts = self._hosts_de(options.get("hosts"))
         self._index_pattern = options.get("index") or "logs-%Y.%m.%d"
         batch_size = int(options.get("batch_size", 1))
         retry_max = int(options.get("retry_max", 0))
-        if batch_size < 1 or retry_max < 0:
-            raise ValueError("batch_size (>= 1) et retry_max (>= 0) doivent être positifs")
         self._batch_size = batch_size
         self._retry_max = retry_max
         self._retry_backoff = float(options.get("retry_backoff", 1.0))
@@ -183,32 +180,34 @@ class ElasticsearchBulkOutput(Output):
         self._pending: list[dict[str, Any]] = []
         self._client: httpx.AsyncClient | None = None
 
-    # Options lues par cette famille de sorties (garde-fou : une option
-    # inconnue est une faute de frappe qui mérite un échec franc).
-    OPTIONS_CONNUES: ClassVar[frozenset[str]] = frozenset(
-        {
-            "hosts",
-            "index",
-            "user",
-            "password",
-            "ssl",
-            "cacert",
-            "ssl_certificate",
-            "ssl_key",
-            "timeout",
-            "batch_size",
-            "retry_max",
-            "retry_backoff",
+    # Options propres à cette famille de sorties, en plus des communes du
+    # schéma (issue #8) : la base valide à l'instanciation qu'une option
+    # inconnue (faute de frappe) ou une valeur invalide échoue franchement.
+    OPTIONS_PROPRES: ClassVar[dict[str, OptionSpec]] = {
+        "index": OptionSpec("index", (str,), "logs-%Y.%m.%d", description="Gabarit du nom d'index"),
+        "action": OptionSpec(
             "action",
-            "pipeline",
-            "routing",
-            "doc_as_upsert",
-            "dlq_path",
+            (str,),
+            "index",
+            valeurs=("index", "create", "update", "delete"),
+            description="Action _bulk (index par défaut)",
+        ),
+        "pipeline": OptionSpec("pipeline", (str,), description="Pipeline d'ingestion côté serveur"),
+        "routing": OptionSpec("routing", (str,), description="Routage _bulk"),
+        "doc_as_upsert": OptionSpec(
+            "doc_as_upsert", (bool,), False, description="Update crée le document s'il est absent"
+        ),
+        "timeout": OptionSpec(
+            "timeout", (int, float), 30.0, minimum=0, description="Secondes avant abandon d'une requête"
+        ),
+        "headers": OptionSpec("headers", (dict,), description="En-têtes HTTP additionnels"),
+        "dlq_transitoires": OptionSpec(
             "dlq_transitoires",
-            "headers",
-            "id",
-        }
-    )
+            (bool,),
+            False,
+            description="Les échecs transitoires épuisés partent aussi en DLQ (#7)",
+        ),
+    }
 
     @traced
     def _hosts_de(self, hosts: Any) -> str:
@@ -381,6 +380,7 @@ class ElasticsearchBulkOutput(Output):
             "doc_as_upsert": doc_as_upsert,
         }
         self._pending.append(pending)
+        self.observateur.file(self.nom, len(self._pending))
         if len(self._pending) < self._batch_size:
             logger.debug("ElasticsearchBulkOutput.envoyer | document tamponné ({})", len(self._pending))
             logger.debug("ElasticsearchBulkOutput.envoyer | sortie")
@@ -438,6 +438,18 @@ class ElasticsearchBulkOutput(Output):
         pendings = self._pending
         self._pending = []
         logger.debug("_flush | {} document(s)", len(pendings))
+        self.observateur.file(self.nom, 0)
+        outcomes = await self._issues_du_lot(pendings)
+        for outcome in (SendOutcome.INDEXED, SendOutcome.DEAD_LETTERED, SendOutcome.RETRYABLE):
+            nombre = outcomes.count(outcome)
+            if nombre:
+                self.observateur.evenements(self.nom, outcome.value, nombre)
+        logger.debug("_flush | sortie")
+        return outcomes
+
+    @atraced
+    async def _issues_du_lot(self, pendings: list[dict[str, Any]]) -> list[SendOutcome]:
+        """Envoie un lot (retentes comprises) et renvoie l'issue de chaque document."""
         response = await self._envoyer_lot(pendings)
         if response is None:
             # Échec transitoire épuisé : rendu à l'appelant (docstring),
@@ -477,6 +489,7 @@ class ElasticsearchBulkOutput(Output):
             params["pipeline"] = next(iter(pipelines))
         essai = 0
         while True:
+            debut = time.perf_counter()
             try:
                 response = await self._client_http().post(
                     self._chemin_envoi(),
@@ -484,12 +497,15 @@ class ElasticsearchBulkOutput(Output):
                     params=params or None,
                 )
             except httpx.HTTPError as exc:
+                self.observateur.latence(self.nom, time.perf_counter() - debut)
                 logger.warning(_("envoi _bulk échoué (réseau) erreur={error}"), error=exc)
                 if essai >= self._retry_max:
                     return None
                 essai += 1
+                self.observateur.reessai(self.nom)
                 await asyncio.sleep(self._retry_backoff * 2 ** (essai - 1))
                 continue
+            self.observateur.latence(self.nom, time.perf_counter() - debut)
             if response.status_code in _STATUTS_PERMANENTS:
                 logger.warning(_("envoi _bulk refusé définitivement statut={statut}"), statut=response.status_code)
                 return response
@@ -498,6 +514,7 @@ class ElasticsearchBulkOutput(Output):
                 if essai >= self._retry_max:
                     return response
                 essai += 1
+                self.observateur.reessai(self.nom)
                 await asyncio.sleep(self._retry_backoff * 2 ** (essai - 1))
                 continue
             return response
@@ -525,12 +542,11 @@ class ElasticsearchBulkOutput(Output):
             return [SendOutcome.INDEXED] * len(pendings)
         try:
             corps = response.json()
-            items = corps.get("items", [])
+            items = self._apparier(pendings, corps)
         except (ValueError, AttributeError) as exc:
             logger.warning(_("réponse _bulk illisible erreur={error}"), error=exc)
             return [SendOutcome.RETRYABLE] * len(pendings)
-        if len(items) != len(pendings):
-            logger.warning(_("réponse _bulk : {} éléments attendus, {} reçus"), len(pendings), len(items))
+        if items is None:
             return [SendOutcome.RETRYABLE] * len(pendings)
         outcomes: list[SendOutcome] = []
         for pending, item in zip(pendings, items, strict=True):
@@ -547,10 +563,32 @@ class ElasticsearchBulkOutput(Output):
             outcomes.append(await self._permanent(pending, str(erreur)))
         return outcomes
 
+    @traced
+    def _apparier(self, pendings: list[dict[str, Any]], corps: dict[str, Any]) -> list[dict[str, Any]] | None:
+        """Élément de réponse de chaque document, dans l'ordre des documents.
+
+        Par défaut, par position (API `_bulk` : `items[]` dans l'ordre des
+        actions). Un produit dont l'ordre n'est pas garanti redéfinit ce
+        crochet (OpenObserve, #16).
+
+        Returns:
+            Un élément par document, ou `None` si la réponse ne permet pas
+            d'attribuer les résultats (le lot est alors rendu à l'appelant).
+
+        Raises:
+            AttributeError: corps qui n'est pas un objet JSON.
+        """
+        items: list[dict[str, Any]] = corps.get("items", [])
+        if len(items) != len(pendings):
+            logger.warning(_("réponse _bulk : {} éléments attendus, {} reçus"), len(pendings), len(items))
+            return None
+        return items
+
     @atraced
     async def _permanent(self, pending: dict[str, Any], erreur: str) -> SendOutcome:
         """Échec définitif d'un document : DLQ si configurée, sinon RETRYABLE."""
         logger.warning(_("envoi _bulk échoué définitivement erreur={error}"), error=erreur)
+        self.observateur.evenements(self.nom, "rejected")
         if self._dlq is None:
             return SendOutcome.RETRYABLE
         await self._dlq.write(

@@ -74,9 +74,11 @@ class TestCompilerSorties:
         interp.close()
 
     def test_options_du_bloc_transmises(self) -> None:
-        interp = _pipeline_avec_sortie("null", 'champ => "valeur"')
+        # Schéma commun (#8) : une option inconnue est refusée — la
+        # transmission se vérifie sur une option commune valide.
+        interp = _pipeline_avec_sortie("null", "retry_max => 3")
         (sortie,) = compiler_sorties(interp)
-        assert sortie.options == {"champ": "valeur"}
+        assert sortie.options == {"retry_max": 3}
         interp.close()
 
     def test_pipeline_sans_output_donne_rien(self) -> None:

@@ -1,0 +1,56 @@
+# Banc de conformité Quickwit (issue #15) : la sortie `quickwit`
+# contre un vrai Quickwit en conteneur éphémère (API `_bulk` compatible
+# Elasticsearch), relecture par l'API de recherche. Complète les tests unitaires
+# (faux serveur `httpx.MockTransport`).
+#
+# Runner hébergé GitHub (ubuntu-latest, autorisé par la MISSION) : Docker
+# y est garanti, contrairement aux runners maison.
+name: Banc de conformité Quickwit
+
+"on":
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conformite:
+    name: "Sortie quickwit contre un vrai Quickwit"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v7
+
+      - name: Installation de uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Installation de Python
+        run: uv python install
+
+      - name: Installation des dépendances
+        run: uv sync --extra dev
+
+      - name: Quickwit éphémère
+        run: |
+          docker run -d --name quickwit -p 7280:7280 quickwit/quickwit:0.9.3 run
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:7280/health/readyz >/dev/null; then echo "Quickwit prêt"; exit 0; fi
+            sleep 1
+          done
+          docker logs quickwit
+          echo "::error::Quickwit n'a pas démarré" && exit 1
+
+      - name: Banc de conformité
+        env:
+          PYSTASHTEMPLATE_QUICKWIT_URL: http://localhost:7280
+        run: uv run pytest tests/test_integration_quickwit.py -v
+
+      - name: Nettoyage du conteneur
+        if: always()
+        run: docker rm -f quickwit || true

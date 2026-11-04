@@ -22,6 +22,7 @@ from loguru import logger
 from pystashtemplate.i18n import _
 from pystashtemplate.outputs import REGISTRY
 from pystashtemplate.outputs.base import ACTIONS, Output
+from pystashtemplate.outputs.schema import OPTIONS_COMMUNES
 
 DEBUT = "<!-- matrice-sorties:debut (générée par scripts/matrice_sorties.py, ne pas éditer) -->"
 FIN = "<!-- matrice-sorties:fin -->"
@@ -31,6 +32,8 @@ ENTETE = (
     "|---|---|---|---|---|---|---|---|",
 )
 
+
+MIO = 1024 * 1024
 
 # Cellule « oui » / « non » d'une fonctionnalité booléenne.
 OUI_NON = {True: "oui", False: "non"}
@@ -52,9 +55,17 @@ def ligne(classe: type[Output], *, banc: bool) -> str:
         actions = "toutes"
     else:
         actions = ", ".join(f"`{a}`" for a in ACTIONS if a in capacites.actions)
-    taille = "—" if capacites.taille_max_requete is None else f"{capacites.taille_max_requete} o"
+    taille_max = capacites.taille_max_requete
+    if taille_max is None:
+        taille = "—"
+    elif taille_max % MIO == 0:
+        taille = f"{taille_max // MIO} Mio"
+    else:
+        taille = f"{taille_max} o"
     dlq = "dlq" in inspect.signature(classe.__init__).parameters
-    reessais = "retry_max" in getattr(classe, "OPTIONS_CONNUES", frozenset())
+    # Schéma commun (#8) : `retry_max` est une option commune, plus une
+    # éventuelle option propre de la sortie.
+    reessais = "retry_max" in {**OPTIONS_COMMUNES, **getattr(classe, "OPTIONS_PROPRES", {})}
     cellules = [
         f"`{classe.plugin}`",
         actions,

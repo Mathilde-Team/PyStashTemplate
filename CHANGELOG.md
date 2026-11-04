@@ -5,6 +5,16 @@ le projet suit SemVer.
 
 ## [Non publié]
 
+### Évolutions
+
+- Sortie `loki` (issue #21) : API push de Grafana Loki
+  (`POST /loki/api/v1/push`, JSON), modèle par labels — labels rendus
+  par document (gabarits sprintf, valeurs vides écartées), document
+  entier en ligne JSON, horodatage `@timestamp` en nanosecondes, flux
+  triés, multi-tenant `X-Scope-OrgID`, insertions seules, accusé sur
+  le statut HTTP global. Banc de conformité contre Grafana Loki 3.7.9
+  en conteneur (`conformite-loki.yml`) et fixture du banc commun.
+
 ### Corrections
 
 - Client _bulk, produits à statut HTTP global seul
@@ -13,6 +23,40 @@ le projet suit SemVer.
   indexé — le lot est désormais rendu à l'appelant (#14).
 
 ### Évolutions
+
+- Sortie `openobserve` (issue #16) : sous-classe du client _bulk commun
+  (`/api/{organization}/_bulk`, option `organization`), actions `index`
+  et `create`, appariement prudent des éléments de réponse dont l'ordre
+  n'est pas garanti (amont #15716 : par contenu `originalRecord` ;
+  échecs sans contenu — listés en tête par OpenObserve 1.1.2 —
+  attribués s'ils couvrent tous les documents restants, sinon renvoi un
+  par un), santé `/healthz`. Nouveau crochet
+  `_apparier` du client commun. Banc de conformité contre OpenObserve
+  v1.1.2 en conteneur et fixture du banc commun.
+
+- Sortie `manticore` (issue #17) : `/_bulk` compatible Elasticsearch,
+  accusé par élément ; `create` en doublon (HTTP 409 + élément 400 avant
+  29.9.0, élément 409 depuis) compté indexé et non envoyé en DLQ ; les
+  `create` annulés par Manticore avant un doublon sont rendus à
+  l'appelant. Banc de conformité contre Manticore 29.9.0 en conteneur.
+
+- Sortie `quickwit` (issue #15) : sous-classe du client _bulk commun
+  (`/api/v1/_elastic/_bulk`), action `create` seule (défaut, toute autre
+  refusée dès la compilation), `_id` ignoré, accusé par élément (relu sous
+  l'action envoyée : Quickwit répond sous la clé `index`), requête
+  ≤ 10 Mio, option `refresh` (délai porté à 30 s), santé `/api/v1/version`. Banc de
+  conformité contre Quickwit 0.9.3 en conteneur
+  (`conformite-quickwit.yml`) et fixture du banc commun.
+
+- Métriques des sorties (issue #10) : protocole `ObservateurSortie`
+  porté par chaque sortie (nul par défaut), prévenu des documents par
+  issue (`indexed`, `dead_lettered`, `retryable`, `rejected`), des
+  retentes, de la latence des requêtes et de la taille du tampon ;
+  branché dans le client HTTP commun et la sortie `file`.
+  `CompteursSortie` : compteurs en mémoire et exposition texte
+  Prometheus, sans dépendance. Vérifiées pour chaque sortie du banc
+  commun de conformité. Documentées dans `docs/sorties.md` (adaptateur
+  RsysLogstach à noms inchangés).
 
 - Banc commun de conformité des sorties (issue #9) : une même suite
   (lot simple, erreur partielle, 429, coupure réseau, arrêt propre)
@@ -47,6 +91,22 @@ le projet suit SemVer.
   `dlq.read_entries()` (JSONL et `.gz`) et rejeu
   `outputs.rejeu.rejouer_dlq()` vers n'importe quelle sortie, les refus
   conservés dans le fichier. Documenté dans `docs/sorties.md`.
+- Schéma de configuration commun des sorties (issue #8) :
+  `pystashtemplate.outputs.schema` déclare une seule fois les options
+  communes à toutes les sorties (`hosts`, authentification, `ssl_*`,
+  `compression`, `batch_size`, `batch_bytes`, `flush_interval`,
+  `max_concurrency`, `retry_max`, `retry_backoff`, `dlq_path`) avec
+  types, bornes et défauts documentés ; chaque sortie ajoute ses
+  options propres (`OPTIONS_PROPRES` : `index`/`action`… pour la
+  famille `_bulk`, `path`/`codec` pour `file`, `codec` pour `stdout`,
+  `refresh` pour `quickwit` — migrée au schéma commun).
+  Validation **à la compilation** du pipeline (via `Output.__init__`) :
+  option inconnue (faute de frappe), type inattendu, valeur hors
+  bornes ou hors énumération, option requise absente — échec franc,
+  message traduit nommant le plugin, avant toute connexion. Noms
+  d'options alignés sur les plugins Logstash correspondants ;
+  documentation : tableau des options communes dans
+  `docs/sorties.md`.
 
 - Sorties locales `file` et `stdout` (issue #32, chantier sorties #2) :
   plugins `output{}` sans client — `file` écrit une ligne JSON par
