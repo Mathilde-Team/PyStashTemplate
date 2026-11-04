@@ -131,6 +131,31 @@ async with TransportHTTP(essais_max=5, delai_initial=0.5) as transport:
         ...
 ```
 
+## Service autonome (#39)
+
+`pystashtemplate.service` fait tourner le pipeline en service asynchrone,
+à l'écoute d'un ou plusieurs ports — sans rsyslog au milieu (décision
+#111) :
+
+```python
+from pystashtemplate.interpreter import PipelineInterpreter
+from pystashtemplate.service import EntreeHttp, EntreeSyslogTcp, Service
+
+service = Service(PipelineInterpreter("filter { } output { null {} }"))
+await service.demarrer([EntreeSyslogTcp("0.0.0.0", 514), EntreeHttp("0.0.0.0", 8080)])
+await service.arreter()  # arrêt propre : écoutes fermées, file vidée, sorties poussées
+```
+
+- **entrées** : `EntreeSyslogTcp` (cadrage RFC 6587 octet-counting ou
+  LF), `EntreeSyslogUdp`, `EntreeHttp` (`POST` JSON ou NDJSON) ;
+  l'analyse RFC 5424/3164 produit les champs `message`, `host`,
+  `facility`, `severity`, `appname`… ;
+- **contre-pression** : file bornée (`file_max`) entre réception et
+  sorties — pleine, le récepteur TCP cesse de lire (la fenêtre TCP se
+  referme) ; en UDP les datagrammes sont perdus ;
+- **arrêt propre** : `arreter()` ferme les écoutes, vide la file,
+  pousse les tampons et ferme les sorties.
+
 ## Internationalisation
 
 Domaine gettext `pystashtemplate`, catalogues dans `lang/` (29 langues,
@@ -140,7 +165,7 @@ et compile les `.mo`. La locale se force par `$LANGUAGE` ou
 
 ## Feuille de route
 
-- Service autonome asynchrone à l'écoute d'un port (sflow notamment)
+- Entrée sflow du service autonome (#39) : sous-issue dédiée
 - Fonctions SNMP : un prochain dépôt livrera un client SNMP ultra rapide
   (décision #111)
 
