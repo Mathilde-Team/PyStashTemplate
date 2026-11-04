@@ -7,6 +7,15 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- Service autonome asynchrone (issue #39) : `pystashtemplate.service`
+  fait tourner le pipeline à l'écoute d'un port — entrées syslog TCP
+  (cadrage RFC 6587 octet-counting/LF), syslog UDP et HTTP (`POST` JSON
+  ou NDJSON), analyse RFC 5424/3164 en champs `message`/`host`/
+  `facility`/`severity`, file bornée entre réception et sorties
+  (contre-pression : le récepteur TCP cesse de lire, en UDP les
+  datagrammes sont perdus), arrêt propre qui vide la file et pousse les
+  sorties. sFlow attend sa sous-issue dédiée.
+
 - Sortie `syslog` (issue #30) : émetteur RFC 5424/3164 vers UDP, TCP
   ou TCP+TLS, options de la sortie `syslog` de Logstash (défauts
   compris), cadrage TCP RFC 6587 (octet-counting/LF), document dans le

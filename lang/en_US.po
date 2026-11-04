@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 20:16+0000\n"
+"POT-Creation-Date: 2026-11-04 20:32+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: deusyv\n"
 "Language-Team: English\n"
@@ -442,6 +442,23 @@ msgstr "victorialogs output: list of fields expected, got {}"
 #: src/pystashtemplate/outputs/victorialogs.py
 msgid "sortie victorialogs : mode {} inconnu (bulk ou jsonline)"
 msgstr "victorialogs output: unknown mode {} (bulk or jsonline)"
+
+#: src/pystashtemplate/service.py
+#, python-brace-format
+msgid "entrée syslog udp : datagramme perdu erreur={error}"
+msgstr "syslog udp input: datagram lost error={error}"
+
+#: src/pystashtemplate/service.py
+msgid "service : sortie « {} » absente du pipeline"
+msgstr "service: output « {} » missing from the pipeline"
+
+#: src/pystashtemplate/service.py
+msgid "service : trame json illisible écartée"
+msgstr "service: unreadable json frame discarded"
+
+#: src/pystashtemplate/service.py
+msgid "service : trame syslog illisible écartée"
+msgstr "service: unreadable syslog frame discarded"
 
 #: src/pystashtemplate/simples.py
 msgid "cidr : lecture impossible de {} : {}"
