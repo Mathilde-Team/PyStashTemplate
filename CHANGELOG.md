@@ -7,6 +7,14 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- Sortie `splunk_hec` (issue #28) : protocole HTTP Event Collector,
+  enveloppes JSON concaténées vers `/services/collector/event`, en-tête
+  `Authorization: Splunk <jeton>` (`token` requis, `user`/`password`
+  refusés), `sourcetype`, `source`, `host`, `index`, `time_field`
+  (secondes epoch), `fields` (champs indexés), `channel`
+  (`X-Splunk-Request-Channel`), statut HTTP global, santé
+  `/services/collector/health`. Banc de conformité contre SigLens 1.0.57.
+
 - Sortie `kafka` (issue #29) : producteur asynchrone `aiokafka` vers
   Apache Kafka et compatibles, options du plugin `kafka` de Logstash
   (`bootstrap_servers`/`topic_id` requis, `message_key`, `codec`,
