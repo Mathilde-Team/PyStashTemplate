@@ -1,0 +1,58 @@
+# Banc de conformité redis (issue #33) : la sortie `redis` contre un vrai
+# serveur Redis, en conteneur éphémère. Liste (RPUSH), flux (XADD) et canal
+# (PUBLISH) relus par un client indépendant ; refus WRONGTYPE en DLQ
+# (`tests/test_integration_redis.py`). Complète les tests unitaires.
+#
+# Runner hébergé GitHub (ubuntu-latest, autorisé par la MISSION) : Docker
+# y est garanti, contrairement aux runners maison.
+name: Banc de conformité redis
+
+"on":
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conformite:
+    name: "Sortie redis contre un vrai Redis"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v7
+
+      - name: Installation de uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Installation de Python
+        run: uv python install
+
+      - name: Installation des dépendances
+        run: uv sync --extra dev
+
+      - name: Redis éphémère
+        run: |
+          docker run -d --name redis -p 6379:6379 redis:8.4-alpine
+          for i in $(seq 1 30); do
+            if docker exec redis redis-cli ping 2>/dev/null | grep -q PONG; then
+              echo "Redis prêt"; exit 0
+            fi
+            sleep 1
+          done
+          docker logs redis
+          echo "::error::Redis n'a pas démarré" && exit 1
+
+      - name: Banc de conformité
+        env:
+          PYSTASHTEMPLATE_REDIS_HOST: localhost:6379
+        run: uv run pytest tests/test_integration_redis.py -v
+
+      - name: Nettoyage du conteneur
+        if: always()
+        run: docker rm -f redis || true

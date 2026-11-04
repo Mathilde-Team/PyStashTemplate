@@ -100,6 +100,46 @@ msgstr "unknown output \"{}\" — available outputs: {}"
 msgid "action « {} » non supportée par cette sortie (supportées : {})"
 msgstr "action \"{}\" not supported by this output (supported: {})"
 
+#: src/pystashtemplate/outputs/courtier.py
+#, python-brace-format
+msgid "envoi {plugin} : réessais épuisés documents={nombre} erreur={error}"
+msgstr "{plugin} send: retries exhausted documents={nombre} error={error}"
+
+#: src/pystashtemplate/outputs/courtier.py
+#, python-brace-format
+msgid "envoi {plugin} échoué erreur={error} documents={nombre}"
+msgstr "{plugin} send failed error={error} documents={nombre}"
+
+#: src/pystashtemplate/outputs/courtier.py
+#, python-brace-format
+msgid "{plugin} : message refusé définitivement erreur={error}"
+msgstr "{plugin}: message permanently rejected error={error}"
+
+#: src/pystashtemplate/outputs/courtier_rabbitmq.py
+msgid "sortie rabbitmq : aucun nœud joignable ({})"
+msgstr "rabbitmq output: no reachable node ({})"
+
+#: src/pystashtemplate/outputs/courtier_rabbitmq.py
+msgid "sortie rabbitmq : host ne peut pas être une liste vide"
+msgstr "rabbitmq output: host cannot be an empty list"
+
+#: src/pystashtemplate/outputs/courtier_rabbitmq.py
+#, python-brace-format
+msgid "sortie rabbitmq : propriété(s) de message inconnue(s) {inconnues} (connues : {connues})"
+msgstr "rabbitmq output: unknown message propert(y/ies) {inconnues} (known: {connues})"
+
+#: src/pystashtemplate/outputs/courtier_redis.py
+msgid "sortie redis : aucun nœud joignable ({})"
+msgstr "redis output: no reachable node ({})"
+
+#: src/pystashtemplate/outputs/courtier_redis.py
+msgid "sortie redis : host ne peut pas être une liste vide"
+msgstr "redis output: host cannot be an empty list"
+
+#: src/pystashtemplate/outputs/courtier_redis.py
+msgid "sortie redis : nœud {noeud!r} invalide (hôte ou hôte:port)"
+msgstr "redis output: invalid node {noeud!r} (host or host:port)"
+
 #: src/pystashtemplate/outputs/doris.py
 #, python-brace-format
 msgid "doris : label {label} déjà pris (état {etat}), lot rendu à l'appelant"
