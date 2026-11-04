@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 18:00+0000\n"
+"POT-Creation-Date: 2026-11-04 18:14+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: deusyv\n"
 "Language-Team: English\n"
@@ -211,11 +211,6 @@ msgstr "metrics: unknown outcome {issue}"
 
 #: src/pystashtemplate/outputs/quickwit.py
 #, python-brace-format
-msgid "réponse _bulk quickwit non normalisée erreur={error}"
-msgstr "quickwit _bulk response not normalised error={error}"
-
-#: src/pystashtemplate/outputs/quickwit.py
-#, python-brace-format
 msgid "sortie quickwit : action {action} refusée (create seule)"
 msgstr "quickwit output: action {action} refused (create only)"
 
@@ -246,6 +241,11 @@ msgstr "DLQ replay: {} already exists, it would be overwritten"
 msgid "rejeu DLQ terminé rejouées={rejouees} conservées={conservees}"
 msgstr "DLQ replay finished replayed={rejouees} kept={conservees}"
 
+#: src/pystashtemplate/outputs/relecture.py
+#, python-brace-format
+msgid "réponse _bulk {produit} non relue erreur={error}"
+msgstr "{produit} _bulk response not re-read error={error}"
+
 #: src/pystashtemplate/outputs/schema.py
 msgid "option « {} » inconnue pour la sortie « {} » (options valides : {})"
 msgstr "unknown option \"{}\" for output \"{}\" (valid options: {})"
@@ -265,6 +265,11 @@ msgstr "output \"{}\": option \"{}\" — expected type {} (got: {})"
 #: src/pystashtemplate/outputs/schema.py
 msgid "sortie « {} » : option « {} » — valeurs valides : {} (reçu : {})"
 msgstr "output \"{}\": option \"{}\" — valid values: {} (got: {})"
+
+#: src/pystashtemplate/outputs/siglens.py
+#, python-brace-format
+msgid "sortie siglens : action {action} refusée (index, create seules)"
+msgstr "siglens output: action {action} refused (index, create only)"
 
 #: src/pystashtemplate/outputs/transport.py
 msgid "transport : échec réseau après {} essai(s)"

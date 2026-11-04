@@ -24,6 +24,7 @@ coupure réseau, arrêt propre).
 | `null` | toutes | oui | oui | — | non | oui | non |
 | `opensearch` | toutes | oui | oui | — | oui | oui | oui |
 | `quickwit` | `create` | non | oui | 10 Mio | oui | oui | oui |
+| `siglens` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `stdout` | `index`, `create` | non | oui | — | non | oui | non |
 | `victorialogs` | `index`, `create` | non | non | — | oui | oui | oui |
 <!-- matrice-sorties:fin -->
@@ -277,6 +278,44 @@ Banc de conformité contre Quickwit 0.9.3 en conteneur
 (`.github/workflows/conformite-quickwit.yml`,
 `tests/test_integration_quickwit.py`) : lot `create` indexé puis
 retrouvé par la recherche, `_id` ignoré, index absent parti en DLQ.
+
+## Sortie `siglens` (issue #20)
+
+API `_bulk` compatible Elasticsearch de SigLens, sur le port
+d'ingestion (8081 par défaut) : `POST /elastic/_bulk`. La recherche est
+servie par un autre port (5122).
+
+```
+output {
+  siglens {
+    hosts => ["http://siglens:8081"]
+    index => "logs"
+  }
+}
+```
+
+Compatibilité Elasticsearch partielle (observée contre SigLens 1.0.57) :
+
+- actions `index` et `create` seules : `update` et `delete` font
+  rejeter tout le lot (HTTP 400 « request body is required ») et sont
+  refusées à la compilation ;
+- `_id` ignoré : SigLens l'accepte sans le conserver (deux documents de
+  même `_id` sont gardés tous deux, un `create` en double n'est pas
+  refusé) — la sortie n'envoie donc pas d'`_id` et le signale ;
+- accusé par élément : `items[]` (201, ou 400 `mapper_parse_exception`
+  pour une ligne illisible), chaque élément rapporté sous la clé `index`
+  même pour un `create`, le `status` d'un élément en échec placé hors de
+  l'objet de l'action. La sortie relit chaque élément sous l'action
+  envoyée, statut compris (`outputs/relecture.py`, partagé avec
+  `quickwit`) ;
+- conflit de type (un champ numérique puis texte) accepté et conservé ;
+- index créé à l'ingestion ; santé : `GET /elastic/` (fiche
+  « Elasticsearch » 7.9.3 de SigLens).
+
+Banc de conformité : `tests/test_integration_siglens.py`, workflow
+`conformite-siglens.yml` (SigLens 1.0.57 en conteneur) — lots `index`
+et `create`, `_id` ignoré, ligne illisible seule en DLQ, relus par l'API
+de recherche (`POST /api/search` du port 5122).
 
 ## Sorties `file` et `stdout` (issue #32)
 

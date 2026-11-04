@@ -34,6 +34,7 @@ from pystashtemplate.outputs.manticore import ManticoreOutput
 from pystashtemplate.outputs.metriques import CompteursSortie
 from pystashtemplate.outputs.opensearch import OpenSearchOutput
 from pystashtemplate.outputs.quickwit import QuickwitOutput
+from pystashtemplate.outputs.siglens import SigLensOutput
 from pystashtemplate.outputs.victorialogs import VictoriaLogsOutput
 
 
@@ -76,6 +77,7 @@ FIXTURES: list[FixtureSortie] = [
     FixtureSortie(ElasticsearchOutput, {"data_stream": True}),
     FixtureSortie(QuickwitOutput),
     FixtureSortie(ManticoreOutput),
+    FixtureSortie(SigLensOutput),
     FixtureSortie(VictoriaLogsOutput),
     FixtureSortie(VictoriaLogsOutput, {"mode": "jsonline"}, compter=_lignes_json),
 ]

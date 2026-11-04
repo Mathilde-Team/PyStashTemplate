@@ -14,6 +14,14 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- Sortie `siglens` (issue #20) : `/elastic/_bulk` du port d'ingestion,
+  actions `index`/`create` (`update`/`delete` refusées à la
+  compilation), `_id` ignoré (SigLens ne le conserve pas), accusé par
+  élément relu sous l'action envoyée avec le statut d'échec replacé dans
+  l'élément, santé `/elastic/`. Relecture des éléments factorisée
+  (`outputs/relecture.py`) et partagée avec `quickwit`. Banc de
+  conformité contre SigLens 1.0.57 en conteneur.
+
 - Sortie `manticore` (issue #17) : `/_bulk` compatible Elasticsearch,
   accusé par élément ; `create` en doublon (HTTP 409 + élément 400 avant
   29.9.0, élément 409 depuis) compté indexé et non envoyé en DLQ ; les
