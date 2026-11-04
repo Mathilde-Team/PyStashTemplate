@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 17:50+0000\n"
+"POT-Creation-Date: 2026-11-04 17:52+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: deusyv\n"
 "Language-Team: English\n"
@@ -47,7 +47,6 @@ msgstr "unreadable translate dictionary: {} ({})"
 msgid "exception pendant l'application du filtre mutate, opérations restantes ignorées : {}"
 msgstr "exception while applying the mutate filter, remaining operations skipped: {}"
 
-#
 #: src/pystashtemplate/interpreter.py
 msgid "dissect : conversion impossible de {} en {}"
 msgstr "dissect: cannot convert {} to {}"
@@ -201,6 +200,15 @@ msgstr "output matrix markers missing or out of order"
 msgid "matrice des sorties : marqueurs introuvables debut={debut} fin={fin}"
 msgstr "output matrix: markers not found start={debut} end={fin}"
 
+#: src/pystashtemplate/outputs/metriques.py
+msgid "issue de métrique inconnue : {} (attendu : {})"
+msgstr "unknown metric outcome: {} (expected: {})"
+
+#: src/pystashtemplate/outputs/metriques.py
+#, python-brace-format
+msgid "métriques : issue inconnue {issue}"
+msgstr "metrics: unknown outcome {issue}"
+
 #: src/pystashtemplate/outputs/quickwit.py
 #, python-brace-format
 msgid "réponse _bulk quickwit non normalisée erreur={error}"
@@ -250,29 +258,22 @@ msgstr "victorialogs output: list of fields expected, got {}"
 msgid "sortie victorialogs : mode {} inconnu (bulk ou jsonline)"
 msgstr "victorialogs output: unknown mode {} (bulk or jsonline)"
 
-#
-#
 #: src/pystashtemplate/simples.py
 msgid "cidr : lecture impossible de {} : {}"
 msgstr "cidr: cannot read {}: {}"
 
-#
 #: src/pystashtemplate/simples.py
 msgid "cidr : réseau invalide ignoré : {}"
 msgstr "cidr: invalid network ignored: {}"
 
-#
 #: src/pystashtemplate/simples.py
 msgid "csv : analyse impossible du champ {} : {}"
 msgstr "csv: cannot parse field {}: {}"
 
-#
-#
 #: src/pystashtemplate/simples.py
 msgid "csv : conversion impossible de {} en {}"
 msgstr "csv: cannot convert {} to {}"
 
-#
 #: src/pystashtemplate/simples.py
 msgid "csv : type {} inconnu pour convert"
 msgstr "csv: unknown type {} for convert"
@@ -285,13 +286,10 @@ msgstr "syslog_pri: invalid value {}"
 msgid "truncate ignoré : length_bytes doit être un entier positif"
 msgstr "truncate ignored: length_bytes must be a positive integer"
 
-#
-#
 #: src/pystashtemplate/simples.py
 msgid "urldecode : décodage impossible : {}"
 msgstr "urldecode: cannot decode: {}"
 
-#
 #: src/pystashtemplate/simples.py
 msgid "uuid ignoré : option target manquante"
 msgstr "uuid ignored: missing target option"

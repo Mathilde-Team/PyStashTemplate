@@ -124,6 +124,7 @@ class FileOutput(Output):
                 self._ecrire(chemin_rendu, document)
             except OSError as erreur:  # échec permanent : disque plein, droits…
                 logger.warning("échec d'écriture sur {} : {}", chemin_rendu, erreur)
+                self.observateur.evenements(self.nom, "rejected")
                 if self._dlq is None:
                     raise
                 await self._dlq.write(
@@ -133,6 +134,9 @@ class FileOutput(Output):
                     output=self.nom,
                     reason=REASON_PERMANENT,
                 )
+                self.observateur.evenements(self.nom, "dead_lettered")
+                continue
+            self.observateur.evenements(self.nom, "indexed")
 
     @atraced
     async def flush(self) -> None:
