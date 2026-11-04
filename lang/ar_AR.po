@@ -87,6 +87,46 @@ msgstr ""
 msgid "action « {} » non supportée par cette sortie (supportées : {})"
 msgstr ""
 
+#: src/pystashtemplate/outputs/courtier.py
+#, python-brace-format
+msgid "envoi {plugin} : réessais épuisés documents={nombre} erreur={error}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/courtier.py
+#, python-brace-format
+msgid "envoi {plugin} échoué erreur={error} documents={nombre}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/courtier.py
+#, python-brace-format
+msgid "{plugin} : message refusé définitivement erreur={error}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/courtier_rabbitmq.py
+msgid "sortie rabbitmq : aucun nœud joignable ({})"
+msgstr ""
+
+#: src/pystashtemplate/outputs/courtier_rabbitmq.py
+msgid "sortie rabbitmq : host ne peut pas être une liste vide"
+msgstr ""
+
+#: src/pystashtemplate/outputs/courtier_rabbitmq.py
+#, python-brace-format
+msgid "sortie rabbitmq : propriété(s) de message inconnue(s) {inconnues} (connues : {connues})"
+msgstr ""
+
+#: src/pystashtemplate/outputs/courtier_redis.py
+msgid "sortie redis : aucun nœud joignable ({})"
+msgstr ""
+
+#: src/pystashtemplate/outputs/courtier_redis.py
+msgid "sortie redis : host ne peut pas être une liste vide"
+msgstr ""
+
+#: src/pystashtemplate/outputs/courtier_redis.py
+msgid "sortie redis : nœud {noeud!r} invalide (hôte ou hôte:port)"
+msgstr ""
+
 #: src/pystashtemplate/outputs/doris.py
 #, python-brace-format
 msgid "doris : label {label} déjà pris (état {etat}), lot rendu à l'appelant"

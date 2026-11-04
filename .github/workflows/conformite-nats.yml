@@ -1,0 +1,58 @@
+# Banc de conformité nats (issue #33) : la sortie `nats` contre un vrai
+# serveur NATS (JetStream activé), en conteneur éphémère. NATS cœur : un
+# abonné reçoit les messages ; JetStream : accusés, flux relu, sujet sans
+# flux en DLQ (`tests/test_integration_nats.py`).
+#
+# Runner hébergé GitHub (ubuntu-latest, autorisé par la MISSION) : Docker
+# y est garanti, contrairement aux runners maison.
+name: Banc de conformité nats
+
+"on":
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conformite:
+    name: "Sortie nats contre un vrai NATS (JetStream)"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v7
+
+      - name: Installation de uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Installation de Python
+        run: uv python install
+
+      - name: Installation des dépendances
+        run: uv sync --extra dev
+
+      - name: NATS éphémère
+        run: |
+          docker run -d --name nats -p 4222:4222 -p 8222:8222 nats:2.15-alpine -js -m 8222
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:8222/healthz?js-enabled-only=true >/dev/null; then
+              echo "NATS prêt"; exit 0
+            fi
+            sleep 1
+          done
+          docker logs nats
+          echo "::error::NATS n'a pas démarré" && exit 1
+
+      - name: Banc de conformité
+        env:
+          PYSTASHTEMPLATE_NATS_URL: nats://localhost:4222
+        run: uv run pytest tests/test_integration_nats.py -v
+
+      - name: Nettoyage du conteneur
+        if: always()
+        run: docker rm -f nats || true
