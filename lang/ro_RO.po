@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 18:11+0000\n"
+"POT-Creation-Date: 2026-11-04 18:26+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -170,6 +170,10 @@ msgstr ""
 msgid "réponse greptimedb sans raison lisible erreur={error}"
 msgstr ""
 
+#: src/pystashtemplate/outputs/loki.py
+msgid "@timestamp {} illisible, heure d'envoi utilisée"
+msgstr ""
+
 #: src/pystashtemplate/outputs/lotisseur.py
 msgid "arrêt demandé mais le lotisseur n'a jamais démarré"
 msgstr ""
@@ -222,6 +226,18 @@ msgstr ""
 #: src/pystashtemplate/outputs/metriques.py
 #, python-brace-format
 msgid "métriques : issue inconnue {issue}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/openobserve.py
+msgid "réponse openobserve : {} échec(s) sans contenu pour {} document(s), renvoi un par un"
+msgstr ""
+
+#: src/pystashtemplate/outputs/openobserve.py
+msgid "sortie openobserve : option « organization » vide"
+msgstr ""
+
+#: src/pystashtemplate/outputs/openobserve.py
+msgid "sortie openobserve : organisation vide"
 msgstr ""
 
 #: src/pystashtemplate/outputs/quickwit.py

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 18:11+0000\n"
+"POT-Creation-Date: 2026-11-04 18:26+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: deusyv\n"
 "Language-Team: English\n"
@@ -169,6 +169,10 @@ msgstr "greptimedb _bulk response not normalised error={error}"
 msgid "réponse greptimedb sans raison lisible erreur={error}"
 msgstr "greptimedb response without readable reason error={error}"
 
+#: src/pystashtemplate/outputs/loki.py
+msgid "@timestamp {} illisible, heure d'envoi utilisée"
+msgstr "unreadable @timestamp {}, send time used instead"
+
 #: src/pystashtemplate/outputs/lotisseur.py
 msgid "arrêt demandé mais le lotisseur n'a jamais démarré"
 msgstr "shutdown requested but the lotisseur was never started"
@@ -222,6 +226,18 @@ msgstr "unknown metric outcome: {} (expected: {})"
 #, python-brace-format
 msgid "métriques : issue inconnue {issue}"
 msgstr "metrics: unknown outcome {issue}"
+
+#: src/pystashtemplate/outputs/openobserve.py
+msgid "réponse openobserve : {} échec(s) sans contenu pour {} document(s), renvoi un par un"
+msgstr "openobserve response: {} failure(s) without content for {} document(s), resending one by one"
+
+#: src/pystashtemplate/outputs/openobserve.py
+msgid "sortie openobserve : option « organization » vide"
+msgstr "openobserve output: empty \"organization\" option"
+
+#: src/pystashtemplate/outputs/openobserve.py
+msgid "sortie openobserve : organisation vide"
+msgstr "openobserve output: empty organization"
 
 #: src/pystashtemplate/outputs/quickwit.py
 #, python-brace-format

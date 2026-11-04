@@ -5,6 +5,25 @@ le projet suit SemVer.
 
 ## [Non publié]
 
+### Évolutions
+
+- Sortie `clickhouse` (issue #23) : interface HTTP
+  (`POST /?query=INSERT … FORMAT JSONEachRow`, corps JSON Each Row),
+  correspondance champ → colonne côté serveur, `table` requise,
+  `database`, `async_insert`, `champs_inconnus` (`ignorer` par défaut,
+  `erreur` pour faire échouer le lot), insertions seules, accusé sur
+  le statut HTTP global (lot entier en DLQ sur rejet). Banc de
+  conformité contre ClickHouse 26.3.62 en conteneur
+  (`conformite-clickhouse.yml`) et fixture du banc commun.
+
+- Sortie `loki` (issue #21) : API push de Grafana Loki
+  (`POST /loki/api/v1/push`, JSON), modèle par labels — labels rendus
+  par document (gabarits sprintf, valeurs vides écartées), document
+  entier en ligne JSON, horodatage `@timestamp` en nanosecondes, flux
+  triés, multi-tenant `X-Scope-OrgID`, insertions seules, accusé sur
+  le statut HTTP global. Banc de conformité contre Grafana Loki 3.7.9
+  en conteneur (`conformite-loki.yml`) et fixture du banc commun.
+
 ### Corrections
 
 - Client _bulk, produits à statut HTTP global seul
@@ -20,6 +39,16 @@ le projet suit SemVer.
   renvoyé document par document pour n'écarter que le fautif, santé
   `/health`. Perte silencieuse sur conflit de type documentée. Banc de
   conformité contre GreptimeDB 1.3.0 en conteneur.
+
+- Sortie `openobserve` (issue #16) : sous-classe du client _bulk commun
+  (`/api/{organization}/_bulk`, option `organization`), actions `index`
+  et `create`, appariement prudent des éléments de réponse dont l'ordre
+  n'est pas garanti (amont #15716 : par contenu `originalRecord` ;
+  échecs sans contenu — listés en tête par OpenObserve 1.1.2 —
+  attribués s'ils couvrent tous les documents restants, sinon renvoi un
+  par un), santé `/healthz`. Nouveau crochet
+  `_apparier` du client commun. Banc de conformité contre OpenObserve
+  v1.1.2 en conteneur et fixture du banc commun.
 
 - Sortie `manticore` (issue #17) : `/_bulk` compatible Elasticsearch,
   accusé par élément ; `create` en doublon (HTTP 409 + élément 400 avant
