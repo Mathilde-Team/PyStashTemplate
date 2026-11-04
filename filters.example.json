@@ -1,0 +1,31 @@
+[
+  {
+    "type": "drop",
+    "source": "msg",
+    "words_file": "/etc/omprog/blocklist.txt",
+    "mode": "contains",
+    "case_sensitive": false,
+    "_comment": "Bloque (n'indexe pas) tout message contenant un des mots de blocklist.txt (ex. bruit connu : keepalive, heartbeat). Voir blocklist.example.txt."
+  },
+  {
+    "type": "regex",
+    "source": "msg",
+    "pattern": "^%%\\d+(?P<module>[A-Z_]+)/(?P<severity_code>\\d+)/(?P<event_name>[A-Z_]+): ?(?P<detail>.*)$",
+    "_comment": "Illustratif : format typique HPE Comware '%%10MODULE/sévérité/ÉVÉNEMENT: détail'. Le préfixe numérique collé au nom de module ('10IFNET') empêche un dissect positionnel pur, d'où la regex."
+  },
+  {
+    "type": "kv",
+    "source": "detail",
+    "field_split": " ",
+    "value_split": "=",
+    "prefix": "kv_",
+    "_comment": "Si 'detail' contient des paires clé=valeur (ex. 'user=admin action=login'), ajuster/retirer sinon."
+  },
+  {
+    "type": "mutate",
+    "convert": {"severity_code": "integer"},
+    "uppercase": ["module"],
+    "remove_field": ["msg"],
+    "_comment": "Nouveauté session 14 : cast severity_code (texte extrait par la regex ci-dessus) en entier, puis retire le champ 'msg' brut devenu redondant une fois parsé. 'uppercase' (nouveauté session 20) normalise la casse de 'module', déjà en majuscules chez HPE Comware mais illustratif d'une des nouvelles options officielles Logstash (uppercase/lowercase/capitalize/split/join/merge/copy/update/coerce). Pas de 'source'/'target' ici : mutate opère sur tout le document."
+  }
+]

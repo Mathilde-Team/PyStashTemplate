@@ -26,6 +26,22 @@ outil (…beat) pourrait le faire).
   `opensearch`, banc de conformité en conteneur en CI) — voir
   [docs/sorties.md](docs/sorties.md)
 
+## Documentation
+
+- [docs/pipeline-logstash.md](docs/pipeline-logstash.md) : référence de la
+  chaîne de filtres JSON, de l'enrichissement et des pipelines `.conf`
+  (translate, grok, useragent, xml, dns, clone/split…)
+- [docs/audit-fonctions-logstash.md](docs/audit-fonctions-logstash.md) :
+  état fonction par fonction (fait, partiel, pas fait)
+- [docs/sorties.md](docs/sorties.md) : sorties agnostiques
+- [FEATURES.md](FEATURES.md) : fonctionnalités et limites connues
+- [PATTERNS.md](PATTERNS.md) : conventions (traçabilité, graphe acyclique)
+- Exemples : `filters.example.json`, `blocklist.example.txt`,
+  `enrich-dict.example.json`, `pipeline.example.d/`
+
+Rapatriés de RsysLogstach par #57 (découpage
+[#111](https://github.com/Mathilde-Team/RsysLogstach/issues/111)).
+
 ## Utilisation
 
 ```bash
@@ -131,3 +147,11 @@ et compile les `.mo`. La locale se force par `$LANGUAGE` ou
 GPL-3.0-or-later. Crédits et historique complet : projet
 [RsysLogstach](https://github.com/Mathilde-Team/RsysLogstach) (sources
 d'origine, issues #25, #40, #73, #111...).
+
+La bibliothèque des motifs `grok` de base (`patterns/legacy/grok-patterns`
+de [logstash-patterns-core](https://github.com/logstash-plugins/logstash-patterns-core),
+Copyright 2012-2015 Elasticsearch, Apache-2.0) est recopiée sans
+modification dans `src/pystashtemplate/grok.py`, avec attribution ; le texte
+de la licence Apache-2.0 et la notice d'origine sont dans
+[`LICENSES/`](LICENSES/) (rapatriés de RsysLogstach par #57). Cette licence
+est compatible avec la GPLv3.
