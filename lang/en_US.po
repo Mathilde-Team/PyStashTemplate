@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 18:46+0000\n"
+"POT-Creation-Date: 2026-11-04 19:08+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: deusyv\n"
 "Language-Team: English\n"
@@ -244,6 +244,83 @@ msgstr "openobserve output: empty \"organization\" option"
 msgid "sortie openobserve : organisation vide"
 msgstr "openobserve output: empty organization"
 
+#: src/pystashtemplate/outputs/otlp.py
+#, python-brace-format
+msgid "réponse OTLP : lot entier refusé message={message}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/otlp.py
+#, python-brace-format
+msgid "réponse OTLP : {rejetes} journal(aux) refusé(s) sur {total}, non identifiables message={message}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/otlp.py
+#, fuzzy, python-brace-format
+#| msgid "réponse _bulk illisible erreur={error}"
+msgid "réponse OTLP illisible, lot compté accepté erreur={error}"
+msgstr "unreadable _bulk response error={error}"
+
+#: src/pystashtemplate/outputs/otlp.py
+#, python-brace-format
+msgid "sortie otlp : cible {cible} inconnue pour {champ}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/otlp.py
+#, fuzzy
+#| msgid "option « {} » inconnue pour la sortie « {} » (options valides : {})"
+msgid "sortie otlp : cible « {} » inconnue pour le champ « {} » (attendu : {})"
+msgstr "unknown option \"{}\" for output \"{}\" (valid options: {})"
+
+#: src/pystashtemplate/outputs/otlp.py
+#, python-brace-format
+msgid "sortie otlp : lot impossible à coder erreur={error}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/otlp_codec.py
+#, fuzzy, python-brace-format
+#| msgid "Message JSON invalide ignoré erreur={error}"
+msgid "codage OTLP JSON impossible erreur={error}"
+msgstr "Invalid JSON message skipped error={error}"
+
+#: src/pystashtemplate/outputs/otlp_codec.py
+msgid "réponse OTLP JSON : objet attendu"
+msgstr ""
+
+#: src/pystashtemplate/outputs/otlp_codec.py
+msgid "réponse OTLP JSON : partialSuccess n'est pas un objet"
+msgstr ""
+
+#: src/pystashtemplate/outputs/otlp_codec.py
+msgid "réponse OTLP protobuf : champ tronqué"
+msgstr ""
+
+#: src/pystashtemplate/outputs/otlp_codec.py
+#, python-brace-format
+msgid "réponse OTLP protobuf : type de fil {type_fil} non pris en charge"
+msgstr ""
+
+#: src/pystashtemplate/outputs/otlp_codec.py
+msgid "réponse OTLP protobuf : varint tronqué"
+msgstr ""
+
+#: src/pystashtemplate/outputs/parseable.py
+msgid "sortie parseable : nom d'étiquette invalide {!r} (lettres, chiffres, _ et -)"
+msgstr ""
+
+#: src/pystashtemplate/outputs/parseable.py
+#, fuzzy
+#| msgid "json ignoré : option source manquante"
+msgid "sortie parseable : option stream manquante"
+msgstr "json ignored: missing source option"
+
+#: src/pystashtemplate/outputs/parseable.py
+msgid "sortie parseable : stream est requis (jeu de données Parseable)"
+msgstr ""
+
+#: src/pystashtemplate/outputs/parseable.py
+msgid "sortie parseable : étiquette {} refusée"
+msgstr ""
+
 #: src/pystashtemplate/outputs/quickwit.py
 #, python-brace-format
 msgid "sortie quickwit : action {action} refusée (create seule)"
@@ -432,10 +509,6 @@ msgstr "uuid ignored: missing target option"
 
 #~ msgid "Index template à installer au démarrage"
 #~ msgstr "Index template to install at startup"
-
-#, python-brace-format
-#~ msgid "Message JSON invalide ignoré erreur={error}"
-#~ msgstr "Invalid JSON message skipped error={error}"
 
 #~ msgid "Message JSON qui n'est pas un objet, ignoré"
 #~ msgstr "JSON message that is not an object, skipped"

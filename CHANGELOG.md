@@ -14,6 +14,12 @@ le projet suit SemVer.
   d'envoi paramétrable dans le client commun. Banc de conformité contre
   Vector 0.59.0 en conteneur (`conformite-http.yml`) et fixture du
   banc commun.
+- Sortie `parseable` (issue #25) : tableau JSON vers `/api/v1/ingest`,
+  jeu de données en `X-P-Stream` (créé à la volée), `api_key`
+  (`X-API-Key`), `tenant_id` (`X-P-Tenant-ID`), `tags` (`X-P-Tag-*`),
+  statut HTTP global (401/403 rendus à l'appelant), lot vide jamais
+  envoyé (panique de Parseable 3.2.6), santé `readiness` + `about`.
+  Banc de conformité contre Parseable 3.2.6.
 
 - Sortie `clickhouse` (issue #23) : interface HTTP
   (`POST /?query=INSERT … FORMAT JSONEachRow`, corps JSON Each Row),
@@ -40,6 +46,15 @@ le projet suit SemVer.
   indexé — le lot est désormais rendu à l'appelant (#14).
 
 ### Évolutions
+
+- Sortie `otlp` (issue #22) : OpenTelemetry OTLP/HTTP `/v1/logs`, en
+  protobuf (défaut, codé sans nouvelle dépendance) ou JSON, gzip en
+  option ; table de correspondance champ → `LogRecord` (`body`, `time`,
+  `severity`, `trace_id`/`span_id`, `resource.*`, `attributes.*`,
+  `drop`), journaux groupés par ressource ; accusé global et
+  `partial_success` (lot entier refusé → DLQ, refus partiel compté en
+  métrique). Banc de conformité contre OpenTelemetry Collector 0.164.0
+  en conteneur.
 
 - Sortie `siglens` (issue #20) : `/elastic/_bulk` du port d'ingestion,
   actions `index`/`create` (`update`/`delete` refusées à la

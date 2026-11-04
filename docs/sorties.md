@@ -28,6 +28,8 @@ coupure réseau, arrêt propre).
 | `null` | toutes | oui | oui | — | non | oui | non |
 | `openobserve` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `opensearch` | toutes | oui | oui | — | oui | oui | oui |
+| `otlp` | `index`, `create` | non | non | — | oui | oui | oui |
+| `parseable` | `index` | non | non | 10 Mio | oui | oui | oui |
 | `quickwit` | `create` | non | oui | 10 Mio | oui | oui | oui |
 | `siglens` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `stdout` | `index`, `create` | non | oui | — | non | oui | non |
