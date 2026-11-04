@@ -20,6 +20,7 @@ coupure réseau, arrêt propre).
 |---|---|---|---|---|---|---|---|
 | `elasticsearch` | toutes | oui | oui | — | oui | oui | oui |
 | `file` | `index`, `create` | non | oui | — | oui | oui | non |
+| `loki` | `index` | non | non | — | oui | oui | oui |
 | `manticore` | toutes | oui | oui | — | oui | oui | oui |
 | `null` | toutes | oui | oui | — | non | oui | non |
 | `opensearch` | toutes | oui | oui | — | oui | oui | oui |
@@ -277,6 +278,55 @@ Banc de conformité contre Quickwit 0.9.3 en conteneur
 (`.github/workflows/conformite-quickwit.yml`,
 `tests/test_integration_quickwit.py`) : lot `create` indexé puis
 retrouvé par la recherche, `_id` ignoré, index absent parti en DLQ.
+
+## Sortie `loki` (issue #21)
+
+API push de Grafana Loki (port 3100 par défaut), modèle **par labels** :
+`POST /loki/api/v1/push` en JSON (`Content-Type: application/json`), le
+protocole accepté aussi par VictoriaLogs, GreptimeDB, OpenObserve, SigLens
+et Alloy.
+
+```
+output {
+  loki {
+    hosts => ["http://loki:3100"]
+    labels => { "job" => "rsyslog" "host" => "%{host}" }
+    tenant_id => "${LOKI_TENANT}"
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `labels` | Dictionnaire label → valeur (gabarit sprintf `%{host}`), faible cardinalité ; `{}` par défaut |
+| `tenant_id` | Locataire multi-tenant (en-tête `X-Scope-OrgID`) ; absent par défaut |
+
+Particularités :
+
+- **labels par flux** : la valeur de chaque label est rendue contre
+  chaque document (gabarit sprintf) ; un label rendu vide est écarté
+  (Loki refuse les valeurs vides) ; les documents sont regroupés en un
+  flux par jeu de labels ;
+- **ligne de log** : le document entier part en ligne (JSON, sans
+  perte) ; l'horodatage vient du champ `@timestamp` du document (ISO
+  8601), l'heure d'envoi sinon, en nanosecondes ; les lignes d'un même
+  flux sont triées par horodatage ;
+- **insertions seules** : `index` est la seule action acceptée (les
+  options `index`, `pipeline`, `routing`, `doc_as_upsert` de la famille
+  `_bulk` sont refusées à la compilation) ; `_id` refusé ;
+- **accusé global** : Loki répond `204 No Content` sans détail par
+  élément (`accuse_par_evenement=False`) : 2xx = lot ingéré ; 400 =
+  permanent (DLQ si configurée) ; réseau, 429, 5xx = transitoire,
+  retenté puis rendu à l'appelant (ou DLQ avec `dlq_transitoires`) ;
+- **multi-tenant** : `tenant_id` devient l'en-tête `X-Scope-OrgID`.
+
+Santé : `health()` interroge `GET /ready` (200 quand Loki accepte des
+écritures).
+
+Banc de conformité contre Grafana Loki 3.7.9 en conteneur
+(`.github/workflows/conformite-loki.yml`, `tests/test_integration_loki.py`) :
+documents retrouvés par LogQL avec leurs labels de flux, horodatage du
+document respecté. Fixture du banc commun (#9) en plus.
 
 ## Sorties `file` et `stdout` (issue #32)
 

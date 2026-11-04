@@ -94,7 +94,7 @@ sorties = sorties_du_pipeline(interp)  # [NullOutput(...)]
 
 Suit : lots et contre-pression (#6), DLQ et réessais génériques (#7),
 schéma de configuration commun (#8), puis les sorties une à une
-(`opensearch` #12, `elasticsearch` #13, `victorialogs` #14…).
+(`opensearch` #12, `elasticsearch` #13, `victorialogs` #14, `loki` #21…).
 
 ### Transport HTTP commun (#5)
 
