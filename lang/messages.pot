@@ -309,11 +309,6 @@ msgstr ""
 msgid "sortie quickwit : refresh {} inconnu (attendu : {})"
 msgstr ""
 
-#: src/pystashtemplate/outputs/quickwit.py
-#, python-brace-format
-msgid "réponse _bulk quickwit non normalisée erreur={error}"
-msgstr ""
-
 #: src/pystashtemplate/outputs/rejeu.py
 #, python-brace-format
 msgid "rejeu DLQ : document conservé erreur={error}"
@@ -330,6 +325,11 @@ msgstr ""
 #: src/pystashtemplate/outputs/rejeu.py
 #, python-brace-format
 msgid "rejeu DLQ terminé rejouées={rejouees} conservées={conservees}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/relecture.py
+#, python-brace-format
+msgid "réponse _bulk {produit} non relue erreur={error}"
 msgstr ""
 
 #: src/pystashtemplate/outputs/schema.py
@@ -350,6 +350,11 @@ msgstr ""
 
 #: src/pystashtemplate/outputs/schema.py
 msgid "sortie « {} » : option « {} » — valeurs valides : {} (reçu : {})"
+msgstr ""
+
+#: src/pystashtemplate/outputs/siglens.py
+#, python-brace-format
+msgid "sortie siglens : action {action} refusée (index, create seules)"
 msgstr ""
 
 #: src/pystashtemplate/outputs/transport.py
