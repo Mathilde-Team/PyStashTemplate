@@ -230,10 +230,9 @@ msgid "sortie fluent_forward : accusé inattendu {recu}"
 msgstr "fluent_forward output: unexpected acknowledgement {recu}"
 
 #: src/pystashtemplate/outputs/fluent_forward.py
-#, fuzzy, python-brace-format
-#| msgid "sortie splunk_hec : authentification basique refusée"
+#, python-brace-format
 msgid "sortie fluent_forward : authentification refusée ({raison})"
-msgstr "splunk_hec output: basic authentication refused"
+msgstr "fluent_forward output: authentication refused ({raison})"
 
 #: src/pystashtemplate/outputs/fluent_forward.py
 msgid "sortie fluent_forward : connexion fermée par le serveur"
