@@ -240,6 +240,7 @@ class KafkaOutput(Output):
         standard dans Kafka).
         """
         producteur = self._producteur()
+        await self.open()  # le client n'interroge le cluster que démarré
         metadata = await producteur.client.fetch_metadata()
         return {"brokers": [f"{broker.host}:{broker.port}" for broker in metadata.brokers.values()]}
 
@@ -346,6 +347,7 @@ class KafkaOutput(Output):
         sont jamais renvoyés (pas de double). Kafka n'a pas de rejet
         définitif de message : tout échec est transitoire.
         """
+        await self.open()  # producteur démarré paresseusement au premier envoi
         essai = 0
         reste = list(pendings)
         erreur = _("sortie kafka : aucun envoi")
