@@ -32,6 +32,8 @@ ENTETE = (
 )
 
 
+MIO = 1024 * 1024
+
 # Cellule « oui » / « non » d'une fonctionnalité booléenne.
 OUI_NON = {True: "oui", False: "non"}
 
@@ -52,7 +54,13 @@ def ligne(classe: type[Output], *, banc: bool) -> str:
         actions = "toutes"
     else:
         actions = ", ".join(f"`{a}`" for a in ACTIONS if a in capacites.actions)
-    taille = "—" if capacites.taille_max_requete is None else f"{capacites.taille_max_requete} o"
+    taille_max = capacites.taille_max_requete
+    if taille_max is None:
+        taille = "—"
+    elif taille_max % MIO == 0:
+        taille = f"{taille_max // MIO} Mio"
+    else:
+        taille = f"{taille_max} o"
     dlq = "dlq" in inspect.signature(classe.__init__).parameters
     reessais = "retry_max" in getattr(classe, "OPTIONS_CONNUES", frozenset())
     cellules = [

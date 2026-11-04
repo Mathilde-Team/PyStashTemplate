@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 17:46+0000\n"
+"POT-Creation-Date: 2026-11-04 18:00+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -207,6 +207,34 @@ msgstr ""
 
 #: src/pystashtemplate/outputs/matrice.py
 msgid "marqueurs de la matrice des sorties absents ou dans le désordre"
+msgstr ""
+
+#: src/pystashtemplate/outputs/metriques.py
+#, python-brace-format
+msgid "métriques : issue inconnue {issue}"
+msgstr ""
+
+#: src/pystashtemplate/outputs/metriques.py
+msgid "issue de métrique inconnue : {} (attendu : {})"
+msgstr ""
+
+#: src/pystashtemplate/outputs/quickwit.py
+#, python-brace-format
+msgid "sortie quickwit : action {action} refusée (create seule)"
+msgstr ""
+
+#: src/pystashtemplate/outputs/quickwit.py
+#, python-brace-format
+msgid "sortie quickwit : refresh {valeur} inconnu"
+msgstr ""
+
+#: src/pystashtemplate/outputs/quickwit.py
+msgid "sortie quickwit : refresh {} inconnu (attendu : {})"
+msgstr ""
+
+#: src/pystashtemplate/outputs/quickwit.py
+#, python-brace-format
+msgid "réponse _bulk quickwit non normalisée erreur={error}"
 msgstr ""
 
 #: src/pystashtemplate/outputs/rejeu.py

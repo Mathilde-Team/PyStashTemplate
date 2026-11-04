@@ -20,6 +20,24 @@ le projet suit SemVer.
   `create` annulés par Manticore avant un doublon sont rendus à
   l'appelant. Banc de conformité contre Manticore 29.9.0 en conteneur.
 
+- Sortie `quickwit` (issue #15) : sous-classe du client _bulk commun
+  (`/api/v1/_elastic/_bulk`), action `create` seule (défaut, toute autre
+  refusée dès la compilation), `_id` ignoré, accusé par élément (relu sous
+  l'action envoyée : Quickwit répond sous la clé `index`), requête
+  ≤ 10 Mio, option `refresh` (délai porté à 30 s), santé `/api/v1/version`. Banc de
+  conformité contre Quickwit 0.9.3 en conteneur
+  (`conformite-quickwit.yml`) et fixture du banc commun.
+
+- Métriques des sorties (issue #10) : protocole `ObservateurSortie`
+  porté par chaque sortie (nul par défaut), prévenu des documents par
+  issue (`indexed`, `dead_lettered`, `retryable`, `rejected`), des
+  retentes, de la latence des requêtes et de la taille du tampon ;
+  branché dans le client HTTP commun et la sortie `file`.
+  `CompteursSortie` : compteurs en mémoire et exposition texte
+  Prometheus, sans dépendance. Vérifiées pour chaque sortie du banc
+  commun de conformité. Documentées dans `docs/sorties.md` (adaptateur
+  RsysLogstach à noms inchangés).
+
 - Banc commun de conformité des sorties (issue #9) : une même suite
   (lot simple, erreur partielle, 429, coupure réseau, arrêt propre)
   rejouée sans réseau contre chaque sortie HTTP par un faux serveur

@@ -23,6 +23,7 @@ coupure réseau, arrêt propre).
 | `manticore` | toutes | oui | oui | — | oui | oui | oui |
 | `null` | toutes | oui | oui | — | non | non | non |
 | `opensearch` | toutes | oui | oui | — | oui | oui | oui |
+| `quickwit` | `create` | non | oui | 10 Mio | oui | oui | oui |
 | `stdout` | `index`, `create` | non | oui | — | non | non | non |
 | `victorialogs` | `index`, `create` | non | non | — | oui | oui | oui |
 <!-- matrice-sorties:fin -->
@@ -203,6 +204,37 @@ Banc de conformité : `tests/test_integration_manticore.py`, workflow
 `conformite-manticore.yml` (Manticore 29.9.0 en conteneur) — lot
 indexé, doublon `create` et renvoi convergent, relus par SQL.
 
+## Sortie `quickwit` (issue #15)
+
+Sous-classe du client commun sur l'API compatible Elasticsearch de
+Quickwit : `POST /api/v1/_elastic/_bulk` (port 7280 par défaut).
+
+- **`create` seule** : c'est l'action par défaut ; toute autre action
+  (`index`, `update`, `delete`) est refusée dès la compilation du
+  pipeline (message traduit) et par `envoyer`.
+- **Pas de `_id`** : ignoré avec un avertissement.
+- **Accusé par élément** : la réponse porte un `items[]` (201, 404
+  index absent, 400 document illisible…), mais chaque élément est
+  rapporté sous la clé `index` même pour un `create` ; la sortie le
+  relit sous l'action envoyée. Erreur d'élément 400/404 = permanente,
+  DLQ si configurée ; réseau, 429, 5xx = transitoire.
+- **Requête ≤ 10 Mio** (limite de Quickwit, déclarée dans les capacités).
+- L'index doit exister : Quickwit ne le crée pas à l'ingestion.
+
+| Option propre | Rôle |
+|---|---|
+| `refresh` | `true` (commit forcé), `wait_for` (attend le prochain commit), `false` ; absent par défaut |
+
+Avec `refresh => "true"` ou `"wait_for"`, la requête attend le commit
+(2 à 5 s observées) : sans `timeout` explicite, le délai passe à 30 s.
+
+Santé : `health()` interroge `GET /api/v1/version`.
+
+Banc de conformité contre Quickwit 0.9.3 en conteneur
+(`.github/workflows/conformite-quickwit.yml`,
+`tests/test_integration_quickwit.py`) : lot `create` indexé puis
+retrouvé par la recherche, `_id` ignoré, index absent parti en DLQ.
+
 ## Sorties `file` et `stdout` (issue #32)
 
 Sorties locales, sans client : chaque document part en texte, rendu par
@@ -304,3 +336,79 @@ docker run -d -p 9200:9200 -e DISABLE_SECURITY_PLUGIN=true \
 PYSTASHTEMPLATE_OPENSEARCH_URL=http://localhost:9200 \
   uv run pytest tests/test_integration_opensearch.py
 ```
+
+## Métriques des sorties (issue #10)
+
+Chaque sortie prévient son `observateur` (attribut d'instance, nul par
+défaut : aucun coût sans métriques) — protocole
+`pystashtemplate.outputs.metriques.ObservateurSortie` :
+
+| Appel | Quand | Sorties |
+|---|---|---|
+| `evenements(sortie, "indexed", n)` | documents acceptés par la cible | HTTP, `file` |
+| `evenements(sortie, "dead_lettered", n)` | documents écrits en DLQ | HTTP, `file` |
+| `evenements(sortie, "retryable", n)` | documents rendus à l'appelant (transitoire épuisé) | HTTP |
+| `evenements(sortie, "rejected", n)` | refus définitif de la cible (compté en plus de l'issue finale) | HTTP, `file` |
+| `reessai(sortie)` | chaque retente d'une requête (429, 5xx, réseau) | HTTP |
+| `latence(sortie, secondes)` | chaque requête vers la cible, réussie ou non | HTTP |
+| `file(sortie, taille)` | taille du tampon (`batch_size`) après chaque ajout / envoi | HTTP |
+
+`sortie` est `Output.nom` (option `id`, sinon le nom du plugin).
+`CompteursSortie` tient ces compteurs en mémoire (`instantane()`) et les
+expose au format texte Prometheus (`exposition()`, contenu d'un
+`/metrics`) : `pystashtemplate_output_events_total{output,outcome}`,
+`pystashtemplate_output_retries_total{output}`,
+`pystashtemplate_output_request_duration_seconds{output}` (résumé
+`_count`/`_sum`) et `pystashtemplate_output_queue_size{output}`. Le banc
+commun de conformité vérifie ces métriques pour chaque sortie HTTP.
+
+```python
+from pystashtemplate.outputs.metriques import CompteursSortie
+
+compteurs = CompteursSortie()
+for sortie in compiler_sorties(pipeline):
+    sortie.observateur = compteurs
+...
+print(compteurs.exposition())
+```
+
+### Connecteur RsysLogstach : mêmes métriques qu'aujourd'hui
+
+Le connecteur compte déjà l'issue de chaque message
+(`rsyslogstach_messages_total{outcome}`) et la durée de l'appel
+`indexer.send` (`rsyslogstach_index_latency_seconds`). Pour n'en changer
+aucun nom, il branche un adaptateur sur ses compteurs `prometheus_client`
+existants plutôt que `CompteursSortie` :
+
+```python
+from prometheus_client import Counter, Gauge
+
+
+class ObservateurRsyslogstach:
+    """Mesures de la sortie sur le registre de `metrics.Metrics`, sous de nouveaux noms."""
+
+    def __init__(self, metrics: Metrics) -> None:
+        r = metrics.registry
+        self.retries = Counter("rsyslogstach_output_retries", "Retentes de la sortie", registry=r)
+        self.rejected = Counter("rsyslogstach_output_rejected", "Refus définitifs de la cible", registry=r)
+        self.queue = Gauge("rsyslogstach_output_queue_size", "Tampon de la sortie", registry=r)
+
+    def evenements(self, sortie: str, issue: str, nombre: int = 1) -> None:
+        # indexed / dead_lettered / retryable : déjà comptés par message
+        # par omprog (rsyslogstach_messages_total{outcome}) — pas de double compte.
+        if issue == "rejected":
+            self.rejected.inc(nombre)
+
+    def reessai(self, sortie: str) -> None:
+        self.retries.inc()
+
+    def latence(self, sortie: str, secondes: float) -> None:
+        pass  # rsyslogstach_index_latency_seconds reste observée autour de send
+
+    def file(self, sortie: str, taille: int) -> None:
+        self.queue.set(taille)
+```
+
+Les métriques existantes ne changent ni de nom ni de valeur ; les
+nouvelles mesures (retentes, refus définitifs, taille du tampon)
+s'ajoutent sous de nouveaux noms.
