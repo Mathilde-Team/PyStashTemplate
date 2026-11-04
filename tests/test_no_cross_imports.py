@@ -11,10 +11,10 @@ Vérifie en plus les invariants cités par les docstrings :
   que `tracing` ;
 - `enrichment` ne dépend que de `tracing` ;
 - `i18n` ne dépend que de `tracing` ;
-- aucun module de la bibliothèque n'importe le connecteur
-  (omprog, indexer, dlq, metrics, opensearchconf) : c'est le sens du
-  découpage #111 — le connecteur dépend de la bibliothèque, jamais
-  l'inverse.
+- aucun module de la bibliothèque n'importe le connecteur rsyslog
+  (`omprog`, seul module resté dans RsysLogstach après la correction du
+  découpage #111, issue #110) : le connecteur dépend de la bibliothèque,
+  jamais l'inverse.
 """
 
 from __future__ import annotations
@@ -28,9 +28,10 @@ SRC = Path(__file__).resolve().parents[1] / "src" / "pystashtemplate"
 MODULES = sorted(
     ".".join(p.relative_to(SRC).with_suffix("").parts) for p in SRC.rglob("*.py") if p.name != "__init__.py"
 )
-# `dlq` est passé dans la bibliothèque (chantier sorties #2) : il n'est
-# plus un module du connecteur.
-MODULES_CONNECTEUR = {"omprog", "indexer", "metrics", "opensearchconf"}
+# Découpage #111 corrigé (#110) : dlq, indexer, metrics et opensearchconf
+# sont dans la bibliothèque ; seul `omprog` (propre à rsyslog) reste au
+# connecteur.
+MODULES_CONNECTEUR = {"omprog"}
 
 
 def _path_of(module_name: str) -> Path:
@@ -97,9 +98,8 @@ def test_i18n_ne_depend_que_de_tracing() -> None:
 
 
 def test_bibliotheque_n_importe_jamais_le_connecteur() -> None:
-    # Découpage #111 : le connecteur (omprog, indexer, dlq, metrics,
-    # opensearchconf) reste dans RsysLogstach et dépend de la bibliothèque —
-    # jamais l'inverse.
+    # Découpage #111 corrigé (#110) : le connecteur (omprog) reste dans
+    # RsysLogstach et dépend de la bibliothèque — jamais l'inverse.
     for m in MODULES:
         arbre = ast.parse(_path_of(m).read_text(encoding="utf-8"))
         for node in ast.walk(arbre):

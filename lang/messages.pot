@@ -8,7 +8,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 21:35+0000\n"
+"POT-Creation-Date: 2026-11-04 21:47+0000\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
@@ -47,6 +47,16 @@ msgstr ""
 msgid "date : fuseau {name} devenu inconnu, UTC retenu erreur={error}"
 msgstr ""
 
+#: src/pystashtemplate/indexer.py
+#, python-brace-format
+msgid "Plusieurs nœuds configurés ({hosts}), seul le premier est utilisé"
+msgstr ""
+
+#: src/pystashtemplate/indexer.py
+#, python-brace-format
+msgid "Indexation OpenSearch échouée définitivement erreur={error}"
+msgstr ""
+
 #: src/pystashtemplate/interpreter.py
 msgid "dissect : type {} inconnu pour convert_datatype"
 msgstr ""
@@ -73,6 +83,11 @@ msgstr ""
 
 #: src/pystashtemplate/interpreter.py
 msgid "dissect : échec sur le champ {}"
+msgstr ""
+
+#: src/pystashtemplate/metrics.py
+#, python-brace-format
+msgid "Métriques Prometheus sur http://{addr}:{port}/metrics"
 msgstr ""
 
 #: src/pystashtemplate/outputs/__init__.py

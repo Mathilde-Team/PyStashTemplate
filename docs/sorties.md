@@ -99,9 +99,9 @@ aux mêmes instants : `opensearch` (`index`, `action`, `pipeline`,
 
 Sous-classe de référence du client commun : chemin `_bulk` natif
 (`POST /_bulk`, sans préfixe), capacités complètes (les quatre actions,
-`_id` accepté, accusé par élément). Le connecteur RsysLogstach y
-migre son `indexer` (issue #160) : mêmes documents, même DLQ, mêmes
-métriques.
+`_id` accepté, accusé par élément). `pystashtemplate.indexer`
+(`OpenSearchIndexer`, rapatrié de RsysLogstach par #110) s'appuie dessus :
+voir [indexation-metriques.md](indexation-metriques.md).
 
 ### Gabarit de pipeline d'exemple
 
@@ -1153,43 +1153,24 @@ for sortie in compiler_sorties(pipeline):
 print(compteurs.exposition())
 ```
 
-### Connecteur RsysLogstach : mêmes métriques qu'aujourd'hui
+### Outil qui utilise déjà `prometheus_client`
 
-Le connecteur compte déjà l'issue de chaque message
-(`rsyslogstach_messages_total{outcome}`) et la durée de l'appel
-`indexer.send` (`rsyslogstach_index_latency_seconds`). Pour n'en changer
-aucun nom, il branche un adaptateur sur ses compteurs `prometheus_client`
-existants plutôt que `CompteursSortie` :
+`pystashtemplate.metrics.Metrics` (issue #110) implémente
+`ObservateurSortie` sur son propre registre Prometheus : il suffit de le
+passer comme `observateur` des sorties. Les métriques des sorties
+(`<prefixe>_output_events_total{output,outcome}`,
+`<prefixe>_output_retries_total`, `<prefixe>_output_request_duration_seconds`,
+`<prefixe>_output_queue_size`) rejoignent alors celles de l'outil, sous le
+même préfixe (`pystashtemplate` par défaut, `rsyslogstach` pour le
+connecteur rsyslog, dont les noms historiques ne changent pas).
 
 ```python
-from prometheus_client import Counter, Gauge
+from pystashtemplate.metrics import Metrics
 
-
-class ObservateurRsyslogstach:
-    """Mesures de la sortie sur le registre de `metrics.Metrics`, sous de nouveaux noms."""
-
-    def __init__(self, metrics: Metrics) -> None:
-        r = metrics.registry
-        self.retries = Counter("rsyslogstach_output_retries", "Retentes de la sortie", registry=r)
-        self.rejected = Counter("rsyslogstach_output_rejected", "Refus définitifs de la cible", registry=r)
-        self.queue = Gauge("rsyslogstach_output_queue_size", "Tampon de la sortie", registry=r)
-
-    def evenements(self, sortie: str, issue: str, nombre: int = 1) -> None:
-        # indexed / dead_lettered / retryable : déjà comptés par message
-        # par omprog (rsyslogstach_messages_total{outcome}) — pas de double compte.
-        if issue == "rejected":
-            self.rejected.inc(nombre)
-
-    def reessai(self, sortie: str) -> None:
-        self.retries.inc()
-
-    def latence(self, sortie: str, secondes: float) -> None:
-        pass  # rsyslogstach_index_latency_seconds reste observée autour de send
-
-    def file(self, sortie: str, taille: int) -> None:
-        self.queue.set(taille)
+metrics = Metrics(prefixe="rsyslogstach")
+for sortie in compiler_sorties(pipeline):
+    sortie.observateur = metrics
+metrics.serve(9464)
 ```
 
-Les métriques existantes ne changent ni de nom ni de valeur ; les
-nouvelles mesures (retentes, refus définitifs, taille du tampon)
-s'ajoutent sous de nouveaux noms.
+Voir [indexation-metriques.md](indexation-metriques.md).

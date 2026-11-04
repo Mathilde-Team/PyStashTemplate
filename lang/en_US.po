@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 21:35+0000\n"
+"POT-Creation-Date: 2026-11-04 21:47+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: deusyv\n"
 "Language-Team: English\n"
@@ -47,6 +47,16 @@ msgstr "unreadable translate dictionary: {} ({})"
 msgid "exception pendant l'application du filtre mutate, opérations restantes ignorées : {}"
 msgstr "exception while applying the mutate filter, remaining operations skipped: {}"
 
+#: src/pystashtemplate/indexer.py
+#, python-brace-format
+msgid "Indexation OpenSearch échouée définitivement erreur={error}"
+msgstr "OpenSearch indexing failed permanently error={error}"
+
+#: src/pystashtemplate/indexer.py
+#, python-brace-format
+msgid "Plusieurs nœuds configurés ({hosts}), seul le premier est utilisé"
+msgstr "Several nodes configured ({hosts}), only the first one is used"
+
 #: src/pystashtemplate/interpreter.py
 msgid "dissect : conversion impossible de {} en {}"
 msgstr "dissect: cannot convert {} to {}"
@@ -74,6 +84,11 @@ msgstr "json: a non-object JSON requires the target option"
 #: src/pystashtemplate/interpreter.py
 msgid "json ignoré : option source manquante"
 msgstr "json ignored: missing source option"
+
+#: src/pystashtemplate/metrics.py
+#, python-brace-format
+msgid "Métriques Prometheus sur http://{addr}:{port}/metrics"
+msgstr "Prometheus metrics on http://{addr}:{port}/metrics"
 
 #: src/pystashtemplate/outputs/__init__.py
 msgid "sortie « {} » déjà inscrite au registre"
@@ -782,10 +797,6 @@ msgstr "uuid ignored: missing target option"
 #, python-brace-format
 #~ msgid "Motif strftime de l'index quotidien (défaut : {pattern})"
 #~ msgstr "strftime pattern of the daily index (default: {pattern})"
-
-#, python-brace-format
-#~ msgid "Métriques Prometheus sur http://{addr}:{port}/metrics"
-#~ msgstr "Prometheus metrics on http://{addr}:{port}/metrics"
 
 #~ msgid "Ne pas compresser les fichiers rotatés"
 #~ msgstr "Do not compress rotated files"

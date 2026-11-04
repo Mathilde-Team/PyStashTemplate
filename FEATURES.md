@@ -64,6 +64,18 @@ chemin `%{+YYYY-MM-dd}`, DLQ sur échec d'écriture) et `stdout` (codecs
 `outputs/codecs.py`. Sortie `gelf` (#26) : Graylog GELF 1.1 en HTTP
 (réception par lot), TCP/TLS (octet nul) et UDP (gzip, morceaux).
 
+### Indexation, connexion, métriques et DLQ (#110)
+
+Rapatriés de RsysLogstach (découpage RsysLogstach#111 corrigé) :
+`indexer` (`OpenSearchIndexer`, `_id` par gabarit, empreinte ou HMAC,
+actions `index`/`create`/`update`/`delete`, trois issues `SendOutcome`),
+`opensearchconf` (options de connexion de logstash-output-opensearch lues
+dans le `.conf`, mTLS), `metrics` (Prometheus, préfixe paramétrable,
+observateur des sorties) et `dlq` (rotation, purge, gzip). Détails :
+[docs/indexation-metriques.md](docs/indexation-metriques.md). Limite : un
+seul nœud OpenSearch utilisé (le premier), le failover revient à
+l'appelant.
+
 ## Limites connues
 
 ### Fingerprint (`fingerprint.py`)
