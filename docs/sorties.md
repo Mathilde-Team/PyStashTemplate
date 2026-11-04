@@ -19,6 +19,7 @@ coupure réseau, arrêt propre).
 | Plugin | Actions | `_id` | Accusé par élément | Taille max. de requête | DLQ | Réessais | Banc en conteneur |
 |---|---|---|---|---|---|---|---|
 | `clickhouse` | `index` | non | non | — | oui | oui | oui |
+| `doris` | `index` | non | non | — | oui | oui | oui |
 | `elasticsearch` | toutes | oui | oui | — | oui | oui | oui |
 | `file` | `index`, `create` | non | oui | — | oui | oui | non |
 | `greptimedb` | `index`, `create` | non | oui | — | oui | oui | oui |
@@ -33,6 +34,7 @@ coupure réseau, arrêt propre).
 | `parseable` | `index` | non | non | 10 Mio | oui | oui | oui |
 | `quickwit` | `create` | non | oui | 10 Mio | oui | oui | oui |
 | `siglens` | `index`, `create` | non | oui | — | oui | oui | oui |
+| `splunk_hec` | `index` | non | non | — | oui | oui | oui |
 | `stdout` | `index`, `create` | non | oui | — | non | oui | non |
 | `syslog` | `index` | non | non | — | oui | oui | oui |
 | `victorialogs` | `index`, `create` | non | non | — | oui | oui | oui |
@@ -417,6 +419,153 @@ Banc de conformité contre ClickHouse 26.3.62 en conteneur
 `tests/test_integration_clickhouse.py`) : documents relus colonne par
 colonne, champ sans colonne écarté, `async_insert` visible à la
 lecture, table absente jamais comptée comme indexée. Fixture du banc
+commun (#9) en plus.
+
+## Sortie `doris` (issue #27)
+
+Stream Load d'Apache Doris : `PUT /api/<database>/<table>/_stream_load`
+sur le FE (port HTTP 8030 par défaut), qui redirige (`307`) vers un BE.
+Chaque lot est **un** Stream Load : un tableau JSON (`format: json`,
+`strip_outer_array: true`), dont les clés sont appariées aux colonnes
+de la table par leur nom (les colonnes absentes du document prennent
+leur défaut, les champs sans colonne sont ignorés).
+
+```
+output {
+  doris {
+    hosts => ["http://doris-fe:8030"]
+    database => "logs"
+    table => "evenements"
+    user => "${DORIS_USER}"
+    password => "${DORIS_PASSWORD}"
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `database` | Base de la table — **requise** |
+| `table` | Table cible — **requise**, elle doit exister (Doris ne la crée pas) |
+| `label_prefix` | Préfixe du label de chaque lot (`pystashtemplate` par défaut ; lettres, chiffres, `-`, `_`) |
+| `max_filter_ratio` | Part de lignes invalides tolérée par lot, de 0 (défaut : lot refusé dès une ligne) à 1 |
+
+Particularités :
+
+- **redirection FE → BE avec authentification** : httpx retire
+  `Authorization` d'une requête redirigée vers un autre hôte (comme
+  `curl` sans `--location-trusted`) ; la sortie suit elle-même les
+  `307`/`308` (trois sauts au plus) en gardant l'authentification.
+  `hosts` peut aussi viser un BE directement (port 8040). Le BE doit
+  être joignable à l'adresse sous laquelle le FE le connaît ;
+- **label par lot, rejeu sans doublon** : chaque lot porte un label
+  `<label_prefix>_<32 chiffres hexadécimaux>`, réutilisé à chaque
+  retente du même lot. Si un chargement a abouti sans que la réponse
+  arrive (coupure), la retente répond `Label Already Exists` avec
+  `ExistingJobStatus: FINISHED` : le lot est compté comme indexé, sans
+  ligne en double. Un lot rendu à l'appelant (`retryable`) puis renvoyé
+  repart, lui, avec un nouveau label ;
+- **statut dans le corps** : Doris répond HTTP 200 même quand le
+  chargement échoue ; la sortie lit `Status` : `Success` et
+  `Publish Timeout` (données validées, visibles sous peu) = indexé ;
+  `Label Already Exists` = indexé si `FINISHED`, rendu à l'appelant
+  sinon ; `Fail` = refus ; corps illisible ou statut inconnu = rendu à
+  l'appelant. Statuts HTTP : 400/404 = permanent, 429/5xx/réseau =
+  transitoire (options communes de retente), autres (401, 403…) =
+  rendu à l'appelant ;
+- **lot atomique, ligne fautive isolée** : avec `max_filter_ratio => 0`,
+  une seule ligne invalide fait échouer tout le lot sans rien écrire.
+  La sortie renvoie alors chaque document **seul** : les bons sont
+  chargés, le fautif est refusé définitivement (DLQ si configurée) avec
+  le `Message` et l'`ErrorURL` du serveur ;
+- **lignes filtrées** : avec `max_filter_ratio` > 0, Doris peut écarter
+  des lignes et répondre `Success` sans dire lesquelles : le lot est
+  compté comme indexé, un avertissement donne `NumberFilteredRows` et
+  l'`ErrorURL` ;
+- **insertions seules** : ni `_id`, ni `update`/`delete` ; les options
+  `index`, `action`, `pipeline`, `routing`, `doc_as_upsert` sont
+  refusées à la compilation. Les en-têtes Stream Load additionnels
+  (`columns`, `timezone`, `strict_mode`…) passent par `headers`.
+
+StarRocks expose la même interface Stream Load ; la sortie n'a été
+vérifiée qu'au banc Doris.
+
+Santé : `health()` interroge `GET /api/health` du FE (nombre de BE en
+ligne).
+
+Banc de conformité contre Doris 4.1.3 (image `all-in-one`, un FE et un
+BE) en conteneur (`.github/workflows/conformite-doris.yml`,
+`tests/test_integration_doris.py`) : lot chargé par le FE et relu
+colonne par colonne, envoi direct au BE, même label rejoué sans
+doublon, table absente en DLQ, ligne invalide isolée du lot. Fixture du
+banc commun (#9) en plus.
+
+## Sortie `splunk_hec` (issue #28)
+
+Protocole **HTTP Event Collector** : `POST /services/collector/event`
+(port 8088 chez Splunk, 8081 chez SigLens), en-tête
+`Authorization: Splunk <jeton>`. Splunk n'est pas open source : la
+sortie vise le **protocole**, accepté aussi par des systèmes open source
+comme SigLens. Chaque document devient une enveloppe HEC ; les
+enveloppes du lot sont concaténées, une par ligne.
+
+```
+output {
+  splunk_hec {
+    hosts => ["https://siglens:8088"]
+    token => "${HEC_TOKEN}"
+    sourcetype => "syslog"
+  }
+}
+```
+
+| Option propre | Champ HEC | Rôle |
+|---|---|---|
+| `token` | en-tête `Authorization: Splunk <jeton>` | jeton HEC ; **obligatoire** |
+| `sourcetype` | `sourcetype` | type de source ; absent par défaut |
+| `source` | `source` | source ; absente par défaut |
+| `host` | `host` | hôte fixe ; sinon le champ `host` du document (chaîne, ou `host.name` ECS) |
+| `index` | `index` | index Splunk (gabarit admis) ; absent : index par défaut du jeton |
+| `time_field` | `time` | champ ISO 8601 converti en secondes epoch (à la milliseconde) ; `@timestamp` par défaut ; illisible ou absent : `time` omis, le serveur date l'événement |
+| `fields` | `fields` | liste de champs du document recopiés en champs indexés (valeurs en chaînes) ; `[]` par défaut |
+| `channel` | en-tête `X-Splunk-Request-Channel` | canal, exigé par Splunk quand l'accusé d'indexation est actif |
+
+Enveloppe produite :
+
+```
+{"event": {...document...}, "time": 1793786400.123, "host": "h1",
+ "source": "rsyslog", "sourcetype": "syslog", "index": "main",
+ "fields": {"severity": "info"}}
+```
+
+Particularités :
+
+- **jeton seul** : `user`/`password` sont refusés à la compilation
+  (l'authentification basique remplacerait l'en-tête du jeton) ; un
+  en-tête `Authorization` passé dans `headers` prime ;
+- **insertions seules** : `index` est la seule action ; `pipeline`,
+  `routing`, `doc_as_upsert` (propres à `_bulk`) refusés ; `_id` refusé ;
+- **accusé global** : HEC répond pour le lot entier
+  (`{"text": "Success", "code": 0}`), sans détail par événement
+  (`invalid-event-number` ne désigne que le premier fautif) :
+  `accuse_par_evenement=False`. 2xx = lot ingéré ; 400 (format invalide,
+  pas de données) = permanent pour tout le lot, DLQ si configurée ;
+  réseau, 429, 503 (serveur occupé) = transitoire, retenté puis rendu à
+  l'appelant ; 401/403 (jeton absent ou refusé) = lot rendu à
+  l'appelant, jamais en DLQ ;
+- **non suivi** : l'accusé d'indexation différé
+  (`/services/collector/ack`) et le point d'entrée brut
+  (`/services/collector/raw`).
+
+Santé : `health()` interroge `GET /services/collector/health` (rend le
+corps JSON du serveur, ou `None`).
+
+Banc de conformité contre SigLens 1.0.57 en conteneur
+(`.github/workflows/conformite-splunk_hec.yml`,
+`tests/test_integration_splunk_hec.py`) : santé, lot de trois
+enveloppes relu par la recherche (`event.message`, `sourcetype`,
+`source`, `host`, `fields`), caractères non ASCII. SigLens range
+l'enveloppe entière et n'impose pas de jeton : le refus d'un jeton
+(401/403) n'est couvert que par les tests unitaires. Fixture du banc
 commun (#9) en plus.
 
 ## Sortie `http` générique (issue #24)
