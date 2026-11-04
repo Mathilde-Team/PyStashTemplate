@@ -19,7 +19,7 @@ import json
 import os
 import time
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 import httpx
 import pytest
@@ -90,8 +90,11 @@ def test_documents_ingeres_sont_retrouvables(mode: str) -> None:
 
 
 def test_time_field_est_utilise() -> None:
+    # Date passée mais dans la rétention par défaut (7 jours) : un document
+    # plus ancien serait écarté par VictoriaLogs.
     marque = f"conformitetemps{uuid.uuid4().hex[:8]}"
-    document = {"message": marque, "@timestamp": "2026-01-02T03:04:05Z", "app": marque}
+    date = (datetime.now(timezone.utc) - timedelta(hours=1)).replace(microsecond=0)
+    document = {"message": marque, "@timestamp": date.isoformat(), "app": marque}
     assert _envoyer_tous(VictoriaLogsOutput({"hosts": URL}), [document]) == ["indexed"]
-    lignes = _chercher(f"app:{marque} _time:2026-01-02", 1)
-    assert lignes and lignes[0]["_time"].startswith("2026-01-02T03:04:05")
+    lignes = _chercher(f"app:{marque}", 1)
+    assert lignes and lignes[0]["_time"].startswith(date.strftime("%Y-%m-%dT%H:%M:%S"))
