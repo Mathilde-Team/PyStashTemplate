@@ -28,6 +28,7 @@ coupure réseau, arrêt propre).
 | `openobserve` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `opensearch` | toutes | oui | oui | — | oui | oui | oui |
 | `otlp` | `index`, `create` | non | non | — | oui | oui | oui |
+| `parseable` | `index` | non | non | 10 Mio | oui | oui | oui |
 | `quickwit` | `create` | non | oui | 10 Mio | oui | oui | oui |
 | `siglens` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `stdout` | `index`, `create` | non | oui | — | non | oui | non |
@@ -363,6 +364,67 @@ Banc de conformité contre Quickwit 0.9.3 en conteneur
 (`.github/workflows/conformite-quickwit.yml`,
 `tests/test_integration_quickwit.py`) : lot `create` indexé puis
 retrouvé par la recherche, `_id` ignoré, index absent parti en DLQ.
+
+## Sortie `parseable` (issue #25)
+
+API d'ingestion JSON de Parseable (port 8000 par défaut) :
+`POST /api/v1/ingest`, corps **tableau JSON** des documents du lot
+(`Content-Type: application/json`), jeu de données visé dans l'en-tête
+`X-P-Stream` — créé automatiquement s'il n'existe pas.
+
+```
+output {
+  parseable {
+    hosts => ["http://parseable:8000"]
+    stream => "rsyslog"
+    user => "${PARSEABLE_USER}"
+    password => "${PARSEABLE_PASSWORD}"
+    tags => { "env" => "prod" }
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `stream` | Jeu de données Parseable (en-tête `X-P-Stream`) ; **obligatoire** |
+| `api_key` | Clé d'API (en-tête `X-API-Key`, Parseable Cloud / Enterprise) ; absente par défaut |
+| `tenant_id` | Locataire multi-tenant (en-tête `X-P-Tenant-ID`) ; absent par défaut |
+| `tags` | Étiquettes ajoutées à chaque événement (en-têtes `X-P-Tag-<nom>`, nom en lettres, chiffres, `_`, `-`) ; `{}` par défaut |
+
+Particularités :
+
+- **authentification** : basique (`user`/`password`) pour l'édition
+  open source, `api_key` sinon ;
+- **schéma souple** : Parseable aplatit les champs imbriqués
+  (`host.name` → colonne `host_name`) et ajoute `p_timestamp`
+  (horodatage d'ingestion) ; un **conflit de type** n'est pas une
+  erreur : la valeur est rangée dans une colonne suffixée (`n`
+  numérique puis `"texte"` → colonne `n_utf8`), sans perte ;
+- **insertions seules** : `index` est la seule action acceptée (les
+  options `index`, `pipeline`, `routing`, `doc_as_upsert` de la famille
+  `_bulk` sont refusées à la compilation) ; `_id` refusé ;
+- **accusé global** : Parseable répond 200 sans corps, sans détail par
+  élément (`accuse_par_evenement=False`) : 2xx = lot ingéré ; 400 (JSON
+  invalide, élément qui n'est pas un objet, nom de jeu de données
+  invalide) = permanent, DLQ si configurée ; réseau, 429, 5xx =
+  transitoire, retenté puis rendu à l'appelant ; 401/403 (clé ou mot de
+  passe refusés) = lot rendu à l'appelant, jamais en DLQ ;
+- **taille** : 10 Mio au plus par requête (limite documentée de
+  Parseable, à respecter avec `batch_bytes`) ;
+- **lot vide jamais envoyé** : Parseable 3.2.6 panique et s'arrête sur
+  un tableau vide `[]` (constaté au banc) — le client n'envoie jamais
+  de lot vide.
+
+Santé : `health()` interroge `GET /api/v1/readiness` puis
+`GET /api/v1/about` (rend la version).
+
+Banc de conformité contre Parseable 3.2.6 (binaire officiel, empreinte
+vérifiée, dans un conteneur Debian éphémère : Parseable 3.x n'est pas
+publié sur Docker Hub) (`.github/workflows/conformite-parseable.yml`,
+`tests/test_integration_parseable.py`) : lot relu par l'API SQL, jeu de
+données créé à la volée, champs aplatis, conflit de type rangé en
+colonne suffixée, nom invalide en DLQ, mauvais mot de passe rendu à
+l'appelant. Fixture du banc commun (#9) en plus.
 
 ## Sortie `otlp` (issue #22)
 
