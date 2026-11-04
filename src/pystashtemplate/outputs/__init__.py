@@ -109,8 +109,14 @@ class SortieInconnueError(ValueError):
 # moment de leur import — le registre doit exister (définitions ci-dessus)
 # avant que ce module ne soit chargé.
 from pystashtemplate.outputs.clickhouse import ClickHouseOutput  # noqa: E402
+from pystashtemplate.outputs.courtier_nats import NatsOutput  # noqa: E402
+from pystashtemplate.outputs.courtier_rabbitmq import RabbitMqOutput  # noqa: E402
+from pystashtemplate.outputs.courtier_redis import RedisOutput  # noqa: E402
+from pystashtemplate.outputs.doris import DorisOutput  # noqa: E402
 from pystashtemplate.outputs.elasticsearch import ElasticsearchOutput  # noqa: E402
 from pystashtemplate.outputs.fichier import FileOutput  # noqa: E402
+from pystashtemplate.outputs.fluent_forward import FluentForwardOutput  # noqa: E402
+from pystashtemplate.outputs.gelf import GelfOutput  # noqa: E402
 from pystashtemplate.outputs.greptimedb import GreptimeDbOutput  # noqa: E402
 from pystashtemplate.outputs.http_generique import HttpOutput  # noqa: E402
 from pystashtemplate.outputs.kafka import KafkaOutput  # noqa: E402
@@ -123,6 +129,7 @@ from pystashtemplate.outputs.otlp import OtlpOutput  # noqa: E402
 from pystashtemplate.outputs.parseable import ParseableOutput  # noqa: E402
 from pystashtemplate.outputs.quickwit import QuickwitOutput  # noqa: E402
 from pystashtemplate.outputs.siglens import SigLensOutput  # noqa: E402
+from pystashtemplate.outputs.splunk_hec import SplunkHecOutput  # noqa: E402
 from pystashtemplate.outputs.stdout import StdoutOutput  # noqa: E402
 from pystashtemplate.outputs.syslog import SyslogOutput  # noqa: E402
 from pystashtemplate.outputs.victorialogs import VictoriaLogsOutput  # noqa: E402
@@ -133,11 +140,15 @@ __all__ = [
     "Capacites",
     "ClickHouseOutput",
     "Document",
+    "DorisOutput",
     "ElasticsearchOutput",
     "FileOutput",
+    "FluentForwardOutput",
+    "GelfOutput",
     "GreptimeDbOutput",
     "HttpOutput",
     "KafkaOutput",
+    "NatsOutput",
     "LokiOutput",
     "ManticoreOutput",
     "NullOutput",
@@ -148,9 +159,12 @@ __all__ = [
     "SyslogOutput",
     "Output",
     "QuickwitOutput",
+    "RabbitMqOutput",
     "REGISTRY",
+    "RedisOutput",
     "SigLensOutput",
     "SortieInconnueError",
+    "SplunkHecOutput",
     "StdoutOutput",
     "VictoriaLogsOutput",
     "ZincSearchOutput",

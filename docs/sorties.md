@@ -19,20 +19,27 @@ coupure réseau, arrêt propre).
 | Plugin | Actions | `_id` | Accusé par élément | Taille max. de requête | DLQ | Réessais | Banc en conteneur |
 |---|---|---|---|---|---|---|---|
 | `clickhouse` | `index` | non | non | — | oui | oui | oui |
+| `doris` | `index` | non | non | — | oui | oui | oui |
 | `elasticsearch` | toutes | oui | oui | — | oui | oui | oui |
 | `file` | `index`, `create` | non | oui | — | oui | oui | non |
+| `fluent_forward` | `index` | non | non | — | oui | oui | oui |
+| `gelf` | `index` | non | non | — | oui | oui | oui |
 | `greptimedb` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `http` | `index` | non | non | — | oui | oui | oui |
 | `kafka` | `index` | non | non | — | oui | oui | oui |
 | `loki` | `index` | non | non | — | oui | oui | oui |
 | `manticore` | toutes | oui | oui | — | oui | oui | oui |
+| `nats` | `index` | non | non | — | oui | oui | oui |
 | `null` | toutes | oui | oui | — | non | oui | non |
 | `openobserve` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `opensearch` | toutes | oui | oui | — | oui | oui | oui |
 | `otlp` | `index`, `create` | non | non | — | oui | oui | oui |
 | `parseable` | `index` | non | non | 10 Mio | oui | oui | oui |
 | `quickwit` | `create` | non | oui | 10 Mio | oui | oui | oui |
+| `rabbitmq` | `index` | non | non | — | oui | oui | oui |
+| `redis` | `index` | non | non | — | oui | oui | oui |
 | `siglens` | `index`, `create` | non | oui | — | oui | oui | oui |
+| `splunk_hec` | `index` | non | non | — | oui | oui | oui |
 | `stdout` | `index`, `create` | non | oui | — | non | oui | non |
 | `syslog` | `index` | non | non | — | oui | oui | oui |
 | `victorialogs` | `index`, `create` | non | non | — | oui | oui | oui |
@@ -419,6 +426,153 @@ colonne, champ sans colonne écarté, `async_insert` visible à la
 lecture, table absente jamais comptée comme indexée. Fixture du banc
 commun (#9) en plus.
 
+## Sortie `doris` (issue #27)
+
+Stream Load d'Apache Doris : `PUT /api/<database>/<table>/_stream_load`
+sur le FE (port HTTP 8030 par défaut), qui redirige (`307`) vers un BE.
+Chaque lot est **un** Stream Load : un tableau JSON (`format: json`,
+`strip_outer_array: true`), dont les clés sont appariées aux colonnes
+de la table par leur nom (les colonnes absentes du document prennent
+leur défaut, les champs sans colonne sont ignorés).
+
+```
+output {
+  doris {
+    hosts => ["http://doris-fe:8030"]
+    database => "logs"
+    table => "evenements"
+    user => "${DORIS_USER}"
+    password => "${DORIS_PASSWORD}"
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `database` | Base de la table — **requise** |
+| `table` | Table cible — **requise**, elle doit exister (Doris ne la crée pas) |
+| `label_prefix` | Préfixe du label de chaque lot (`pystashtemplate` par défaut ; lettres, chiffres, `-`, `_`) |
+| `max_filter_ratio` | Part de lignes invalides tolérée par lot, de 0 (défaut : lot refusé dès une ligne) à 1 |
+
+Particularités :
+
+- **redirection FE → BE avec authentification** : httpx retire
+  `Authorization` d'une requête redirigée vers un autre hôte (comme
+  `curl` sans `--location-trusted`) ; la sortie suit elle-même les
+  `307`/`308` (trois sauts au plus) en gardant l'authentification.
+  `hosts` peut aussi viser un BE directement (port 8040). Le BE doit
+  être joignable à l'adresse sous laquelle le FE le connaît ;
+- **label par lot, rejeu sans doublon** : chaque lot porte un label
+  `<label_prefix>_<32 chiffres hexadécimaux>`, réutilisé à chaque
+  retente du même lot. Si un chargement a abouti sans que la réponse
+  arrive (coupure), la retente répond `Label Already Exists` avec
+  `ExistingJobStatus: FINISHED` : le lot est compté comme indexé, sans
+  ligne en double. Un lot rendu à l'appelant (`retryable`) puis renvoyé
+  repart, lui, avec un nouveau label ;
+- **statut dans le corps** : Doris répond HTTP 200 même quand le
+  chargement échoue ; la sortie lit `Status` : `Success` et
+  `Publish Timeout` (données validées, visibles sous peu) = indexé ;
+  `Label Already Exists` = indexé si `FINISHED`, rendu à l'appelant
+  sinon ; `Fail` = refus ; corps illisible ou statut inconnu = rendu à
+  l'appelant. Statuts HTTP : 400/404 = permanent, 429/5xx/réseau =
+  transitoire (options communes de retente), autres (401, 403…) =
+  rendu à l'appelant ;
+- **lot atomique, ligne fautive isolée** : avec `max_filter_ratio => 0`,
+  une seule ligne invalide fait échouer tout le lot sans rien écrire.
+  La sortie renvoie alors chaque document **seul** : les bons sont
+  chargés, le fautif est refusé définitivement (DLQ si configurée) avec
+  le `Message` et l'`ErrorURL` du serveur ;
+- **lignes filtrées** : avec `max_filter_ratio` > 0, Doris peut écarter
+  des lignes et répondre `Success` sans dire lesquelles : le lot est
+  compté comme indexé, un avertissement donne `NumberFilteredRows` et
+  l'`ErrorURL` ;
+- **insertions seules** : ni `_id`, ni `update`/`delete` ; les options
+  `index`, `action`, `pipeline`, `routing`, `doc_as_upsert` sont
+  refusées à la compilation. Les en-têtes Stream Load additionnels
+  (`columns`, `timezone`, `strict_mode`…) passent par `headers`.
+
+StarRocks expose la même interface Stream Load ; la sortie n'a été
+vérifiée qu'au banc Doris.
+
+Santé : `health()` interroge `GET /api/health` du FE (nombre de BE en
+ligne).
+
+Banc de conformité contre Doris 4.1.3 (image `all-in-one`, un FE et un
+BE) en conteneur (`.github/workflows/conformite-doris.yml`,
+`tests/test_integration_doris.py`) : lot chargé par le FE et relu
+colonne par colonne, envoi direct au BE, même label rejoué sans
+doublon, table absente en DLQ, ligne invalide isolée du lot. Fixture du
+banc commun (#9) en plus.
+
+## Sortie `splunk_hec` (issue #28)
+
+Protocole **HTTP Event Collector** : `POST /services/collector/event`
+(port 8088 chez Splunk, 8081 chez SigLens), en-tête
+`Authorization: Splunk <jeton>`. Splunk n'est pas open source : la
+sortie vise le **protocole**, accepté aussi par des systèmes open source
+comme SigLens. Chaque document devient une enveloppe HEC ; les
+enveloppes du lot sont concaténées, une par ligne.
+
+```
+output {
+  splunk_hec {
+    hosts => ["https://siglens:8088"]
+    token => "${HEC_TOKEN}"
+    sourcetype => "syslog"
+  }
+}
+```
+
+| Option propre | Champ HEC | Rôle |
+|---|---|---|
+| `token` | en-tête `Authorization: Splunk <jeton>` | jeton HEC ; **obligatoire** |
+| `sourcetype` | `sourcetype` | type de source ; absent par défaut |
+| `source` | `source` | source ; absente par défaut |
+| `host` | `host` | hôte fixe ; sinon le champ `host` du document (chaîne, ou `host.name` ECS) |
+| `index` | `index` | index Splunk (gabarit admis) ; absent : index par défaut du jeton |
+| `time_field` | `time` | champ ISO 8601 converti en secondes epoch (à la milliseconde) ; `@timestamp` par défaut ; illisible ou absent : `time` omis, le serveur date l'événement |
+| `fields` | `fields` | liste de champs du document recopiés en champs indexés (valeurs en chaînes) ; `[]` par défaut |
+| `channel` | en-tête `X-Splunk-Request-Channel` | canal, exigé par Splunk quand l'accusé d'indexation est actif |
+
+Enveloppe produite :
+
+```
+{"event": {...document...}, "time": 1793786400.123, "host": "h1",
+ "source": "rsyslog", "sourcetype": "syslog", "index": "main",
+ "fields": {"severity": "info"}}
+```
+
+Particularités :
+
+- **jeton seul** : `user`/`password` sont refusés à la compilation
+  (l'authentification basique remplacerait l'en-tête du jeton) ; un
+  en-tête `Authorization` passé dans `headers` prime ;
+- **insertions seules** : `index` est la seule action ; `pipeline`,
+  `routing`, `doc_as_upsert` (propres à `_bulk`) refusés ; `_id` refusé ;
+- **accusé global** : HEC répond pour le lot entier
+  (`{"text": "Success", "code": 0}`), sans détail par événement
+  (`invalid-event-number` ne désigne que le premier fautif) :
+  `accuse_par_evenement=False`. 2xx = lot ingéré ; 400 (format invalide,
+  pas de données) = permanent pour tout le lot, DLQ si configurée ;
+  réseau, 429, 503 (serveur occupé) = transitoire, retenté puis rendu à
+  l'appelant ; 401/403 (jeton absent ou refusé) = lot rendu à
+  l'appelant, jamais en DLQ ;
+- **non suivi** : l'accusé d'indexation différé
+  (`/services/collector/ack`) et le point d'entrée brut
+  (`/services/collector/raw`).
+
+Santé : `health()` interroge `GET /services/collector/health` (rend le
+corps JSON du serveur, ou `None`).
+
+Banc de conformité contre SigLens 1.0.57 en conteneur
+(`.github/workflows/conformite-splunk_hec.yml`,
+`tests/test_integration_splunk_hec.py`) : santé, lot de trois
+enveloppes relu par la recherche (`event.message`, `sourcetype`,
+`source`, `host`, `fields`), caractères non ASCII. SigLens range
+l'enveloppe entière et n'impose pas de jeton : le refus d'un jeton
+(401/403) n'est couvert que par les tests unitaires. Fixture du banc
+commun (#9) en plus.
+
 ## Sortie `http` générique (issue #24)
 
 Repli pour **tout récepteur HTTP** — Vector (source `http_server`),
@@ -516,6 +670,194 @@ Banc de conformité contre Redpanda en conteneur
 `tests/test_integration_kafka.py`) : messages relus par un
 consommateur `aiokafka`, sujet, clé et valeur vérifiés.
 
+## Sortie `fluent_forward` (issue #31)
+
+Client du **protocole forward v1** de Fluentd et Fluent Bit (TCP,
+24224 par défaut, messages MessagePack), pour relayer vers un pipeline
+Fluentd / Fluent Bit existant — comme `out_forward` de Fluentd.
+
+```
+output {
+  fluent_forward {
+    host => "fluentbit"
+    port => 24224
+    tag => "rsyslog.%{app}"
+    require_ack => true
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `host` / `port` | Serveur forward (`localhost`:`24224` par défaut) |
+| `tag` | Étiquette des évènements, gabarit sprintf — **requise** |
+| `mode` | `forward` (défaut : `[tag, [[temps, doc], …], option]`) ou `packed_forward` (entrées concaténées dans un binaire) |
+| `require_ack` | Ajoute un `chunk` à chaque message et attend `{"ack": chunk}` (au moins une fois) |
+| `ack_response_timeout` | Secondes d'attente de l'accusé (190 par défaut, comme Fluentd) |
+| `time_key` | Champ du temps de l'évènement (`@timestamp` par défaut : ISO 8601, `datetime` ou nombre) |
+| `time_as_integer` | Temps en secondes entières au lieu d'`EventTime` (anciens Fluentd) |
+| `shared_key` | Clé partagée : poignée de main HELO/PING/PONG (avec `user`/`password` si le serveur authentifie) |
+| `self_hostname` | Nom annoncé dans le PING (nom d'hôte local par défaut) |
+| `tls` | Chiffre la connexion (options communes `ssl`, `cacert`, `ssl_certificate`, `ssl_key`) |
+| `connect_timeout` | Secondes d'attente de la connexion et de la poignée de main (10 par défaut) |
+
+L'option commune `compression => true` envoie le binaire compressé en
+gzip (`CompressedPackedForward`, implique `packed_forward`).
+
+Particularités :
+
+- **un message par étiquette** : un lot est regroupé par étiquette
+  rendue, dans l'ordre d'arrivée ; une connexion TCP est réutilisée
+  d'un lot à l'autre ;
+- **temps exact** : `EventTime` (extension MessagePack 0, secondes et
+  nanosecondes) calculé sans passer par un flottant — à la microseconde
+  près pour une date ISO 8601 ;
+- **tout échec est transitoire** : le protocole ne rejette pas un
+  évènement pour son contenu ; connexion refusée, coupure, accusé
+  absent ou faux, poignée de main refusée → retentes exponentielles
+  (`retry_max`/`retry_backoff`) des seuls messages non acquittés, sur
+  une connexion neuve, puis lot rendu à l'appelant (`RETRYABLE`) ou en
+  DLQ avec `dlq_transitoires` (#7). Sans `require_ack`, un message
+  écrit est réputé livré ;
+- **clé partagée** : Fluent Bit **ferme la connexion** sur une clé
+  fausse (pas de PONG refusé) et attend un sel de type *str*
+  MessagePack ; un mauvais mot de passe rend un PONG refusé
+  (« username/password mismatch ») ;
+- **insertions seules** : `index`, `_id` refusé ;
+- **santé** : `health()` ouvre la connexion (poignée de main comprise)
+  — le protocole n'a pas de requête de santé.
+
+Banc de conformité contre Fluent Bit 5.1.5 en conteneur
+(`.github/workflows/conformite-fluent_forward.yml`,
+`tests/test_integration_fluent_forward.py`) : entrées `forward` ouverte
+et authentifiée, évènements relus dans les fichiers de la sortie `file`
+(étiquette, temps en nanosecondes, document), modes Forward,
+PackedForward et gzip, clé partagée, mot de passe refusé.
+
+## Sorties courtiers de messages : `redis`, `rabbitmq`, `nats` (issue #33)
+
+Trois éditeurs asynchrones sur un **socle commun**
+(`pystashtemplate.outputs.courtier`) : seul le `output{}` change d'un
+courtier à l'autre, le cycle d'envoi est le même que celui de `kafka`.
+
+- chaque document est préparé à l'arrivée (destination rendue par
+  gabarit sprintf, charge utile encodée selon `codec` : `json` par
+  défaut, `json_lines` ou `rubydebug`) puis tamponné jusqu'à
+  `batch_size` ;
+- le lot part d'un bloc ; l'issue est analysée **message par message**
+  quand le courtier le permet ;
+- seuls les messages en échec transitoire sont retentés
+  (`retry_max`/`retry_backoff`), puis rendus à l'appelant (`RETRYABLE`)
+  ou mis en DLQ avec `dlq_transitoires` (#7) ; une erreur de connexion
+  vaut pour tout le lot et fait rouvrir la connexion au prochain essai ;
+- un **refus définitif** d'un message (voir chaque courtier) part en DLQ
+  si elle est configurée, sinon il est rendu à l'appelant ;
+- sémantique **au moins une fois** ; `index` seulement, `_id` refusé ;
+- TLS commun : `ssl_enabled` (faux par défaut) chiffre la connexion,
+  `ssl` (vérification du certificat, vrai par défaut), `cacert`,
+  `ssl_certificate`/`ssl_key` comme les autres sorties.
+
+### `redis`
+
+```
+output {
+  redis {
+    host => ["redis-1:6379", "redis-2"]
+    key => "logs-%{app}"
+    data_type => "list"
+    batch_size => 100
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `host` | Nœud(s) `hôte` ou `hôte:port` (`[::1]:6379` en IPv6), essayés dans l'ordre (`127.0.0.1` par défaut, à défaut `hosts`) |
+| `port` | Port des nœuds sans port explicite (6379) |
+| `db` | Base Redis (0) |
+| `key` | Liste, canal ou flux, gabarit sprintf — **requise** |
+| `data_type` | `list` (défaut, `RPUSH`), `channel` (`PUBLISH`), `stream` (`XADD`, champ `message`, extension absente de Logstash) |
+| `stream_maxlen` | Longueur maximale approximative du flux (`MAXLEN ~`) |
+| `timeout` | Délai réseau en secondes (5) |
+
+`user`/`password` portent l'authentification (ACL Redis 6+, ou mot de
+passe seul). Un lot = **un pipeline** Redis (sans transaction) ; une
+erreur de commande (`WRONGTYPE` : la clé existe avec un autre type) est
+un refus définitif de ce seul document. `channel` est feu-et-oubli :
+sans abonné, le message est perdu. Santé : `PING` et version du serveur.
+
+### `rabbitmq`
+
+```
+output {
+  rabbitmq {
+    host => "rabbitmq"
+    exchange => "logs"
+    exchange_type => "topic"
+    key => "%{app}"
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `host` | Nœud(s) `hôte` ou `hôte:port`, essayés dans l'ordre (`localhost`) |
+| `port` | Port AMQP (5672) |
+| `vhost` | Hôte virtuel (`/`) |
+| `exchange` | Échange de destination — **requis** (`""` : échange par défaut) |
+| `exchange_type` | `direct`, `fanout`, `topic`, `headers`, `x-consistent-hash`, `x-modulus-hash` — **requis** |
+| `key` | Clé de routage, gabarit sprintf (`logstash`) |
+| `durable` | Échange déclaré durable (vrai) |
+| `passive` | Vérifier l'échange sans le déclarer (faux) |
+| `persistent` | Messages en livraison persistante (vrai) |
+| `message_properties` | Propriétés AMQP : `content_type` (`application/json` par défaut), `priority`, `app_id`, `type`… |
+| `heartbeat`, `timeout` | Battement de cœur AMQP ; délai de connexion (5 s) |
+
+`user`/`password` valent `guest`/`guest` par défaut, comme Logstash. Le
+canal utilise les **confirmations d'éditeur** : un `nack` est
+transitoire, une erreur de canal ou de connexion aussi (la connexion est
+rouverte). Comme Logstash, `mandatory` n'est pas positionné : un message
+qu'aucune file ne reçoit est écarté par le courtier. Santé : produit et
+version annoncés, échange vérifié.
+
+### `nats`
+
+Pas de sortie NATS officielle dans Logstash : options du plugin
+communautaire `logstash-output-nats` et du client `nats-py`.
+
+```
+output {
+  nats {
+    url => ["nats://nats-1:4222", "nats://nats-2:4222"]
+    subject => "logs.%{app}"
+    jetstream => true
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `url` | Serveur(s) du groupe, essayés dans l'ordre (`nats://127.0.0.1:4222`, à défaut `hosts`) |
+| `subject` | Sujet, gabarit sprintf — **requis** |
+| `token` | Jeton d'authentification (sinon `user`/`password`) |
+| `jetstream` | Publier en JetStream, avec accusé par message (faux) |
+| `stream` | Flux JetStream attendu pour le sujet |
+| `name`, `timeout` | Nom du client vu par le serveur ; délai réseau (5 s) |
+
+NATS cœur ne stocke rien : le lot est confirmé par un `flush`
+(aller-retour PING/PONG), qui prouve seulement que le serveur a tout
+reçu. En JetStream, un sujet couvert par aucun flux, un message plus
+gros que `max_payload` ou une erreur d'API autre que 503 sont des refus
+définitifs ; un délai dépassé ou un 503 sont transitoires. Santé : URL
+et version du serveur, plus le nombre de flux du compte en JetStream.
+
+Bancs de conformité en conteneur : Redis 8.4
+(`conformite-redis.yml`, `tests/test_integration_redis.py`),
+RabbitMQ 4.2 (`conformite-rabbitmq.yml`,
+`tests/test_integration_rabbitmq.py`) et NATS 2.15 avec JetStream
+(`conformite-nats.yml`, `tests/test_integration_nats.py`) : messages
+relus par un client indépendant, refus définitifs vérifiés en DLQ.
+
 ## Sortie `syslog` (issue #30)
 
 Émetteur syslog — **RFC 5424 ou RFC 3164**, vers UDP, TCP ou TCP+TLS
@@ -563,6 +905,67 @@ Banc de conformité contre Vector 0.59.0 en conteneur (sources
 `syslog` TCP et UDP, `.github/workflows/conformite-syslog.yml`,
 `tests/test_integration_syslog.py`) : cadrage octet-counting et LF,
 UDP, RFC 5424 et 3164 vérifiés dans les journaux du sink `console`.
+
+## Sortie `gelf` (issue #26)
+
+Messages **Graylog GELF 1.1**, comme le plugin `logstash-output-gelf`,
+par trois transports au choix (`transport`) :
+
+```
+output {
+  gelf {
+    hosts => ["http://graylog:12201"]   # tcp://, tls://, udp://
+    transport => "http"                 # défaut ; ou "tcp", "udp"
+    batch_size => 100                   # HTTP : exige « Enable Bulk Receiving »
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `transport` | `http` (défaut, `POST /gelf`), `tcp` (octet nul, TLS avec `tls://`) ou `udp` (morceaux GELF) |
+| `sender` | Gabarit du champ `host` (`%{host}` par défaut, `host.name` si `host` est un objet, nom de la machine en repli) |
+| `short_message` | Champ porté en `short_message` (`short_message` par défaut, repli sur `message`, puis `-`) |
+| `full_message` | Gabarit de `full_message` (`%{message}` par défaut ; vide : omis) |
+| `level` | Gabarit(s) du niveau, essayés dans l'ordre (`["%{level}", "info"]`) : nom syslog (`emerg`…`debug`) ou nombre ramené à 0-7 |
+| `custom_fields` | Champs fixes ajoutés à chaque message (`_xxx`) |
+| `ship_metadata` | Autres champs du document en `_xxx` (vrai par défaut) |
+| `ship_tags` | `tags` en `_tags`, joints par `, ` (vrai par défaut) |
+| `chunksize` | UDP : taille maximale d'un datagramme (1420 par défaut) |
+
+Particularités :
+
+- **champs additionnels** : objets aplatis (`service.name` →
+  `_service_name`), listes jointes par `, `, booléens `true`/`false`,
+  noms ramenés à `[A-Za-z0-9_.-]`, `id` envoyé en `__id` (`_id` est
+  réservé par GELF), champs `@…` non envoyés ; `timestamp` vient de
+  `@timestamp` (secondes depuis l'epoch) ;
+- **HTTP** : un message par requête avec `batch_size => 1` ; au-delà,
+  NDJSON (chaque message terminé par un saut de ligne, sinon Graylog
+  colle le dernier message d'une requête au premier de la suivante sur
+  la même connexion), à condition d'activer **Enable Bulk Receiving**
+  sur l'entrée GELF HTTP. Graylog répond 202 sans détail :
+  statut HTTP global (`accuse_par_evenement=False`), 400/404 en DLQ,
+  429/5xx/réseau retentés, 401/403 rendus à l'appelant ;
+- **TCP** : connexion persistante, messages terminés par un octet nul,
+  jamais compressés (limite de GELF TCP) ; TLS avec `tls://` (`ssl`,
+  `cacert`, `ssl_certificate`/`ssl_key`). Coupure : reconnexion et
+  renvoi du reste du lot — sémantique **au moins une fois** ;
+- **UDP** : gzip avec `compression => true` (ignorée en HTTP et TCP),
+  découpage en morceaux GELF au-delà de `chunksize`, 128 morceaux au
+  plus (au-delà : échec permanent, DLQ). Sans accusé : un datagramme
+  parti est compté reçu, une erreur de socket signalée est retentée ;
+- **insertions seules** : `index`, `_id` refusé ; `index`, `pipeline`,
+  `routing`, `doc_as_upsert` refusées ;
+- **santé** : `HEAD /gelf` (HTTP, erreur si 5xx), ouverture de la
+  connexion (TCP) ; UDP non vérifiable (`unchecked`).
+
+Banc de conformité contre Graylog 7.0 (MongoDB 7, OpenSearch 2.19) en
+conteneurs (`.github/workflows/conformite-gelf.yml`,
+`tests/test_integration_gelf.py`) : entrées GELF HTTP (réception par
+lot), TCP et UDP créées par l'API, messages relus dans les index
+`graylog_*` (champs `source`, `level`, `full_message`, champs
+additionnels, morceaux UDP et gzip).
 
 ## Sortie `loki` (issue #21)
 

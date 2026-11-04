@@ -61,7 +61,8 @@ Voir [docs/sorties.md](docs/sorties.md) et l'épopée #3. Sorties locales
 ajoutées par l'issue #32 : `file` (NDJSON avec rotation par gabarit de
 chemin `%{+YYYY-MM-dd}`, DLQ sur échec d'écriture) et `stdout` (codecs
 `rubydebug` par défaut et `json_lines`), codecs partagés dans
-`outputs/codecs.py`.
+`outputs/codecs.py`. Sortie `gelf` (#26) : Graylog GELF 1.1 en HTTP
+(réception par lot), TCP/TLS (octet nul) et UDP (gzip, morceaux).
 
 ## Limites connues
 

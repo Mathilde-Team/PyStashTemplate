@@ -7,6 +7,59 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- Sorties `redis`, `rabbitmq` et `nats` (issue #33) : courtiers de
+  messages sur un socle commun (`outputs/courtier.py` : tampon, retentes
+  des seuls messages en échec, refus définitif par message en DLQ,
+  transitoires épuisés rendus ou en DLQ avec `dlq_transitoires`).
+  `redis` : options du plugin Logstash (`host`, `port`, `db`, `key`,
+  `data_type` `list`/`channel`, plus `stream` avec `stream_maxlen`), un
+  pipeline par lot, `WRONGTYPE` refusé document par document.
+  `rabbitmq` : AMQP 0-9-1 `aio-pika`, options du plugin Logstash
+  (`exchange`, `exchange_type`, `key`, `durable`, `persistent`,
+  `passive`, `message_properties`, `vhost`), confirmations d'éditeur,
+  `nack` transitoire. `nats` : cœur (`flush` par lot) ou JetStream
+  (`PubAck` par message, sujet sans flux en DLQ), `user`/`password` ou
+  `token`. TLS commun (`ssl_enabled`). Bancs de conformité contre
+  Redis 8.4, RabbitMQ 4.2 et NATS 2.15 en conteneur
+  (`conformite-redis.yml`, `conformite-rabbitmq.yml`,
+  `conformite-nats.yml`).
+- Sortie `gelf` (issue #26) : messages Graylog GELF 1.1 (options du
+  plugin `gelf` de Logstash : `sender`, `short_message`,
+  `full_message`, `level`, `custom_fields`, `ship_metadata`,
+  `ship_tags`), transports HTTP (`/gelf`, NDJSON en réception par lot),
+  TCP (octet nul, TLS/mTLS) et UDP (gzip, morceaux GELF, `chunksize`),
+  champs additionnels aplatis, retentes et DLQ du socle. Banc de
+  conformité contre Graylog 7.0 en conteneurs (`conformite-gelf.yml`).
+- Sortie `fluent_forward` (issue #31) : client asynchrone du protocole
+  forward v1 de Fluentd / Fluent Bit (MessagePack sur TCP), modes
+  `forward` et `packed_forward` (gzip avec `compression`), étiquette
+  rendue par gabarit sprintf (un message par étiquette), `EventTime`
+  exact ou secondes entières (`time_as_integer`), accusés `chunk`/`ack`
+  (`require_ack`, `ack_response_timeout`), clé partagée et utilisateur
+  (poignée de main HELO/PING/PONG), TLS et mTLS ; échec toujours
+  transitoire, retentes des seuls messages non acquittés, DLQ des
+  transitoires avec `dlq_transitoires`. Banc de conformité contre
+  Fluent Bit 5.1.5 en conteneur (`conformite-fluent_forward.yml`).
+  Nouvelle dépendance : `msgpack`.
+
+- Sortie `splunk_hec` (issue #28) : protocole HTTP Event Collector,
+  enveloppes JSON concaténées vers `/services/collector/event`, en-tête
+  `Authorization: Splunk <jeton>` (`token` requis, `user`/`password`
+  refusés), `sourcetype`, `source`, `host`, `index`, `time_field`
+  (secondes epoch), `fields` (champs indexés), `channel`
+  (`X-Splunk-Request-Channel`), statut HTTP global, santé
+  `/services/collector/health`. Banc de conformité contre SigLens 1.0.57.
+
+- Sortie `doris` (issue #27) : Stream Load d'Apache Doris
+  (`PUT /api/<database>/<table>/_stream_load`, tableau JSON), redirection
+  FE → BE suivie avec l'authentification, label par lot stable d'une
+  retente à l'autre (rejeu sans doublon : `Label Already Exists`
+  `FINISHED` compté comme indexé), statut lu dans le corps (`Success`,
+  `Publish Timeout`, `Fail`), lot refusé renvoyé document par document
+  pour isoler la ligne fautive, `max_filter_ratio`, `label_prefix`,
+  santé `GET /api/health`. Client commun : en-têtes par lot
+  (`_entetes_requete`). Banc de conformité contre Doris 4.1.3
+  (`conformite-doris.yml`) et fixture du banc commun.
 - Sortie `syslog` (issue #30) : émetteur RFC 5424/3164 vers UDP, TCP
   ou TCP+TLS, options de la sortie `syslog` de Logstash (défauts
   compris), cadrage TCP RFC 6587 (octet-counting/LF), document dans le

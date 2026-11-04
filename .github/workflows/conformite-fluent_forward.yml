@@ -1,0 +1,94 @@
+# Banc de conformité fluent_forward (issue #31) : la sortie
+# `fluent_forward` contre un vrai Fluent Bit, en conteneur éphémère.
+# Deux entrées `forward` : ouverte (24224) et avec clé partagée et
+# utilisateur (24225, étiquettes préfixées `auth.`) ; la sortie `file`
+# écrit un fichier par étiquette, relu par
+# `tests/test_integration_fluent_forward.py` (étiquette, temps en
+# nanosecondes, document). Complète les tests unitaires (faux serveur).
+#
+# Runner hébergé GitHub (ubuntu-latest, autorisé par la MISSION) : Docker
+# y est garanti, contrairement aux runners maison.
+name: Banc de conformité fluent_forward
+
+"on":
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conformite:
+    name: "Sortie fluent_forward contre un vrai Fluent Bit"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v7
+
+      - name: Installation de uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Installation de Python
+        run: uv python install
+
+      - name: Installation des dépendances
+        run: uv sync --extra dev
+
+      - name: Fluent Bit éphémère
+        run: |
+          mkdir -p "$RUNNER_TEMP/fb/out"
+          chmod 777 "$RUNNER_TEMP/fb/out"
+          cat > "$RUNNER_TEMP/fb/fluent-bit.conf" <<'CONF'
+          [SERVICE]
+              Flush 1
+              Log_Level info
+
+          [INPUT]
+              Name forward
+              Listen 0.0.0.0
+              Port 24224
+
+          [INPUT]
+              Name forward
+              Listen 0.0.0.0
+              Port 24225
+              Shared_Key banc-secret
+              Self_Hostname fluentbit-banc
+              Security.Users banc BancConformite1
+              Tag_Prefix auth.
+
+          [OUTPUT]
+              Name file
+              Match *
+              Path /out
+          CONF
+          docker run -d --name fluentbit -p 24224:24224 -p 24225:24225 \
+            -v "$RUNNER_TEMP/fb/fluent-bit.conf:/fluent-bit/etc/fluent-bit.conf:ro" \
+            -v "$RUNNER_TEMP/fb/out:/out" \
+            fluent/fluent-bit:5.1.5
+          for i in $(seq 1 60); do
+            if (exec 3<>/dev/tcp/127.0.0.1/24224) 2>/dev/null && (exec 3<>/dev/tcp/127.0.0.1/24225) 2>/dev/null; then
+              echo "Fluent Bit prêt"; exit 0
+            fi
+            sleep 1
+          done
+          docker logs fluentbit
+          echo "::error::Fluent Bit n'a pas démarré" && exit 1
+
+      - name: Banc de conformité
+        run: |
+          PYSTASHTEMPLATE_FLUENT_OUT="$RUNNER_TEMP/fb/out" \
+            uv run pytest tests/test_integration_fluent_forward.py -v
+
+      - name: Journal de Fluent Bit
+        if: failure()
+        run: docker logs fluentbit || true
+
+      - name: Nettoyage du conteneur
+        if: always()
+        run: docker rm -f fluentbit || true
