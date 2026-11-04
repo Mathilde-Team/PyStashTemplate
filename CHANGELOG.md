@@ -35,6 +35,10 @@ le projet suit SemVer.
 
 ### Documentation
 
+- Gabarits d'exemple ajoutés aux sections `openobserve` (#16),
+  `quickwit` (#15) et `stdout` (#32) de `docs/sorties.md` (audit du
+  04/11). Nouveau garde-fou `tests/test_docs_sorties.py` : chaque sortie
+  du registre doit avoir sa section et un gabarit `output { … }`.
 - README largement repris (#117, suite de #115) : architecture, démarrage
   rapide (filtres JSON, enrichissement, pipelines `.conf`, plusieurs
   événements, `${VAR}`, échappement, DNS), indexation/DLQ/métriques/connexion,

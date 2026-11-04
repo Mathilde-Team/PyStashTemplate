@@ -269,6 +269,18 @@ d'OpenObserve : `POST /api/{organization}/_bulk` (port 5080 par défaut),
 le `_index` de chaque ligne étant le stream. Authentification basic
 (`user`/`password` via `${VAR}`).
 
+```
+output {
+  openobserve {
+    hosts => ["http://openobserve:5080"]
+    organization => "default"
+    index => "logs"
+    user => "${OO_USER}"
+    password => "${OO_PASSWORD}"
+  }
+}
+```
+
 | Option propre | Rôle |
 |---|---|
 | `organization` | organisation, dans le chemin (défaut : `default`) |
@@ -348,6 +360,15 @@ indexé, doublon `create` et renvoi convergent, relus par SQL.
 
 Sous-classe du client commun sur l'API compatible Elasticsearch de
 Quickwit : `POST /api/v1/_elastic/_bulk` (port 7280 par défaut).
+
+```
+output {
+  quickwit {
+    hosts => ["http://quickwit:7280"]
+    index => "logs"
+  }
+}
+```
 
 - **`create` seule** : c'est l'action par défaut ; toute autre action
   (`index`, `update`, `delete`) est refusée dès la compilation du
@@ -1252,6 +1273,14 @@ l'appelant.
 connecteur). `codec` : `rubydebug` par défaut (comme le plugin
 Logstash) ou `json_lines`. `flush()` vide la sortie ; `close()` ne
 ferme pas la sortie standard.
+
+```
+output {
+  stdout {
+    codec => "rubydebug"          # ou json_lines
+  }
+}
+```
 
 ## Dead letter queue et rejeu (issue #7)
 
