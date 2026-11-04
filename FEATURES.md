@@ -57,7 +57,11 @@ sorties : [docs/sorties.md](docs/sorties.md).
 
 ### Sorties (paquet `outputs`)
 
-Voir [docs/sorties.md](docs/sorties.md) et l'épopée #3.
+Voir [docs/sorties.md](docs/sorties.md) et l'épopée #3. Sorties locales
+ajoutées par l'issue #32 : `file` (NDJSON avec rotation par gabarit de
+chemin `%{+YYYY-MM-dd}`, DLQ sur échec d'écriture) et `stdout` (codecs
+`rubydebug` par défaut et `json_lines`), codecs partagés dans
+`outputs/codecs.py`.
 
 ## Limites connues
 

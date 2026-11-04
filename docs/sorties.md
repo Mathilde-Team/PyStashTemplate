@@ -10,6 +10,8 @@ une sortie inconnue échoue dès la compilation, avant toute connexion.
 | Plugin | Produit | Actions | `_id` | Accusé par élément |
 |---|---|---|---|---|
 | `opensearch` | OpenSearch | toutes | oui | oui (`items[]`) |
+| `file` | fichier local (NDJSON) | `index`, `create` | non | oui |
+| `stdout` | sortie standard | `index`, `create` | non | oui |
 | `null` | (puits, tests) | toutes | oui | oui |
 
 La famille « API _bulk Elasticsearch » (issue #11) partage le client
@@ -65,9 +67,51 @@ Les options rendues par document (`index` sprintf, `document_id`)
 passent par l'API `envoyer()` du client — c'est celle qu'utilise le
 connecteur (#160).
 
+## Sorties `file` et `stdout` (issue #32)
+
+Sorties locales, sans client : chaque document part en texte, rendu par
+un codec partagé — `json_lines` (une ligne JSON par document, NDJSON) ou
+`rubydebug` (rendu « inspect Ruby » multi-lignes, celui du plugin
+Logstash, simplifié : tableaux et sous-hachages restent sur une ligne).
+
+### Sortie `file`
+
+Écrit une ligne par document dans le fichier rendu par le gabarit
+`path` — la rotation est le gabarit lui-même (rendu contre
+`@timestamp`, comme `index_pattern`) : `%{+YYYY-MM-dd}` change de
+fichier chaque jour, le précédent est fermé à la rotation. Le dossier
+parent est créé au besoin ; un seul fichier reste ouvert.
+
+```
+output {
+  file {
+    path   => "/var/log/pystash/%{+YYYY-MM-dd}.ndjson"
+    codec  => "json_lines"        # ou rubydebug
+    # dlq_path => "/var/lib/dlq/file.jsonl"
+  }
+}
+```
+
+| Option | Rôle | Équivalent Logstash |
+|---|---|---|
+| `path` | gabarit du fichier (sprintf + date Joda) | `path` |
+| `codec` | `json_lines` (défaut) ou `rubydebug` | `codec` |
+| `dlq_path` | DLQ locale des échecs d'écriture (`OSError`) | — |
+
+Échec d'écriture (disque plein, droits) : permanent — le document part
+au DLQ si `dlq_path` est configuré, sinon l'exception remonte à
+l'appelant.
+
+### Sortie `stdout`
+
+Écrit une ligne par document sur la sortie standard (injectable par le
+connecteur). `codec` : `rubydebug` par défaut (comme le plugin
+Logstash) ou `json_lines`. `flush()` vide la sortie ; `close()` ne
+ferme pas la sortie standard.
+
 ### Banc de conformité
 
-`tests/test_integration_opensearch.py` exerce la sortie contre un vrai
+`tests/test_integration_opensearch.py` exerce la sortie `opensearch` contre un vrai
 OpenSearch (conteneur éphémère en CI, workflow
 `conformite-opensearch.yml`) : indexation effective, recherche, `_id`
 déterministe, rejet de mapping parti en DLQ. Localement :
