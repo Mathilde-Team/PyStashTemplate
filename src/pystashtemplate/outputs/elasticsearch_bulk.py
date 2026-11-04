@@ -64,6 +64,7 @@ import asyncio
 import enum
 import json
 import ssl
+import time
 from datetime import datetime, timezone
 from typing import Any, ClassVar
 
@@ -381,6 +382,7 @@ class ElasticsearchBulkOutput(Output):
             "doc_as_upsert": doc_as_upsert,
         }
         self._pending.append(pending)
+        self.observateur.file(self.nom, len(self._pending))
         if len(self._pending) < self._batch_size:
             logger.debug("ElasticsearchBulkOutput.envoyer | document tamponné ({})", len(self._pending))
             logger.debug("ElasticsearchBulkOutput.envoyer | sortie")
@@ -438,6 +440,18 @@ class ElasticsearchBulkOutput(Output):
         pendings = self._pending
         self._pending = []
         logger.debug("_flush | {} document(s)", len(pendings))
+        self.observateur.file(self.nom, 0)
+        outcomes = await self._issues_du_lot(pendings)
+        for outcome in (SendOutcome.INDEXED, SendOutcome.DEAD_LETTERED, SendOutcome.RETRYABLE):
+            nombre = outcomes.count(outcome)
+            if nombre:
+                self.observateur.evenements(self.nom, outcome.value, nombre)
+        logger.debug("_flush | sortie")
+        return outcomes
+
+    @atraced
+    async def _issues_du_lot(self, pendings: list[dict[str, Any]]) -> list[SendOutcome]:
+        """Envoie un lot (retentes comprises) et renvoie l'issue de chaque document."""
         response = await self._envoyer_lot(pendings)
         if response is None:
             # Échec transitoire épuisé : rendu à l'appelant (docstring),
@@ -477,6 +491,7 @@ class ElasticsearchBulkOutput(Output):
             params["pipeline"] = next(iter(pipelines))
         essai = 0
         while True:
+            debut = time.perf_counter()
             try:
                 response = await self._client_http().post(
                     self._chemin_envoi(),
@@ -484,12 +499,15 @@ class ElasticsearchBulkOutput(Output):
                     params=params or None,
                 )
             except httpx.HTTPError as exc:
+                self.observateur.latence(self.nom, time.perf_counter() - debut)
                 logger.warning(_("envoi _bulk échoué (réseau) erreur={error}"), error=exc)
                 if essai >= self._retry_max:
                     return None
                 essai += 1
+                self.observateur.reessai(self.nom)
                 await asyncio.sleep(self._retry_backoff * 2 ** (essai - 1))
                 continue
+            self.observateur.latence(self.nom, time.perf_counter() - debut)
             if response.status_code in _STATUTS_PERMANENTS:
                 logger.warning(_("envoi _bulk refusé définitivement statut={statut}"), statut=response.status_code)
                 return response
@@ -498,6 +516,7 @@ class ElasticsearchBulkOutput(Output):
                 if essai >= self._retry_max:
                     return response
                 essai += 1
+                self.observateur.reessai(self.nom)
                 await asyncio.sleep(self._retry_backoff * 2 ** (essai - 1))
                 continue
             return response
@@ -551,6 +570,7 @@ class ElasticsearchBulkOutput(Output):
     async def _permanent(self, pending: dict[str, Any], erreur: str) -> SendOutcome:
         """Échec définitif d'un document : DLQ si configurée, sinon RETRYABLE."""
         logger.warning(_("envoi _bulk échoué définitivement erreur={error}"), error=erreur)
+        self.observateur.evenements(self.nom, "rejected")
         if self._dlq is None:
             return SendOutcome.RETRYABLE
         await self._dlq.write(

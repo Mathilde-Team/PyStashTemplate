@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 17:16+0000\n"
+"POT-Creation-Date: 2026-11-04 17:21+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: deusyv\n"
 "Language-Team: English\n"
@@ -200,6 +200,15 @@ msgstr "output matrix markers missing or out of order"
 #, python-brace-format
 msgid "matrice des sorties : marqueurs introuvables debut={debut} fin={fin}"
 msgstr "output matrix: markers not found start={debut} end={fin}"
+
+#: src/pystashtemplate/outputs/metriques.py
+msgid "issue de métrique inconnue : {} (attendu : {})"
+msgstr "unknown metric outcome: {} (expected: {})"
+
+#: src/pystashtemplate/outputs/metriques.py
+#, python-brace-format
+msgid "métriques : issue inconnue {issue}"
+msgstr "metrics: unknown outcome {issue}"
 
 #: src/pystashtemplate/outputs/rejeu.py
 #, python-brace-format
