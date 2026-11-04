@@ -40,6 +40,7 @@ output {
 from __future__ import annotations
 
 import json
+import re
 import time
 from datetime import datetime, timezone
 from typing import Any, ClassVar
@@ -57,6 +58,51 @@ from pystashtemplate.tracing import atraced, traced
 # Champ du document lu comme horodatage (ISO 8601) ; l'heure d'envoi
 # sinon (Loki veut des nanosecondes).
 CHAMP_HORODATAGE = "@timestamp"
+
+# Champs dont la valeur change à (presque) chaque document : en faire un
+# label crée un flux Loki par valeur (index qui explose, requêtes lentes).
+# Un label qui en référence un (`%{message}`) déclenche un avertissement
+# au démarrage — la configuration reste acceptée (#21).
+CHAMPS_FORTE_CARDINALITE = frozenset(
+    {
+        "@timestamp",
+        "timestamp",
+        "message",
+        "msg",
+        "_id",
+        "id",
+        "uuid",
+        "trace_id",
+        "span_id",
+        "request_id",
+        "session_id",
+        "user_id",
+        "src_port",
+        "dst_port",
+        "client_ip",
+        "src_ip",
+        "dst_ip",
+        "pid",
+    }
+)
+_REFERENCE_CHAMP = re.compile(r"%\{([^}]+)\}")
+
+
+@traced
+def champs_forte_cardinalite(modele: Any) -> list[str]:
+    """Champs à forte cardinalité référencés par un gabarit de label.
+
+    `%{[log][level]}` est ramené à son dernier segment (`level`) ; une
+    valeur non textuelle (constante) n'en référence aucun.
+    """
+    if not isinstance(modele, str):
+        return []
+    trouves: list[str] = []
+    for reference in _REFERENCE_CHAMP.findall(modele):
+        champ = reference.strip().strip("[]").split("][")[-1]
+        if champ in CHAMPS_FORTE_CARDINALITE and champ not in trouves:
+            trouves.append(champ)
+    return trouves
 
 
 @traced
@@ -143,6 +189,13 @@ class LokiOutput(ElasticsearchBulkOutput):
         self._labels_modele: dict[str, Any] = dict(options.get("labels") or {})
         self._tenant = str(options["tenant_id"]) if options.get("tenant_id") else None
         super().__init__(options, dlq=dlq, transport=transport)
+        for nom, modele in self._labels_modele.items():
+            for champ in champs_forte_cardinalite(modele):
+                logger.warning(
+                    _("sortie loki : label {} sur le champ {} à forte cardinalité (un flux par valeur)"),
+                    nom,
+                    champ,
+                )
         logger.debug("LokiOutput : labels {}, tenant {}", self._labels_modele, bool(self._tenant))
 
     @traced

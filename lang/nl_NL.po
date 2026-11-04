@@ -381,6 +381,10 @@ msgstr ""
 msgid "@timestamp {} illisible, heure d'envoi utilisée"
 msgstr ""
 
+#: src/pystashtemplate/outputs/loki.py
+msgid "sortie loki : label {} sur le champ {} à forte cardinalité (un flux par valeur)"
+msgstr ""
+
 #: src/pystashtemplate/outputs/lotisseur.py
 msgid "arrêt demandé mais le lotisseur n'a jamais démarré"
 msgstr ""
