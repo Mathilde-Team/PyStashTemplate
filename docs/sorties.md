@@ -23,6 +23,7 @@ coupure réseau, arrêt propre).
 | `elasticsearch` | toutes | oui | oui | — | oui | oui | oui |
 | `file` | `index`, `create` | non | oui | — | oui | oui | non |
 | `fluent_forward` | `index` | non | non | — | oui | oui | oui |
+| `gelf` | `index` | non | non | — | oui | oui | oui |
 | `greptimedb` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `http` | `index` | non | non | — | oui | oui | oui |
 | `kafka` | `index` | non | non | — | oui | oui | oui |
@@ -904,6 +905,67 @@ Banc de conformité contre Vector 0.59.0 en conteneur (sources
 `syslog` TCP et UDP, `.github/workflows/conformite-syslog.yml`,
 `tests/test_integration_syslog.py`) : cadrage octet-counting et LF,
 UDP, RFC 5424 et 3164 vérifiés dans les journaux du sink `console`.
+
+## Sortie `gelf` (issue #26)
+
+Messages **Graylog GELF 1.1**, comme le plugin `logstash-output-gelf`,
+par trois transports au choix (`transport`) :
+
+```
+output {
+  gelf {
+    hosts => ["http://graylog:12201"]   # tcp://, tls://, udp://
+    transport => "http"                 # défaut ; ou "tcp", "udp"
+    batch_size => 100                   # HTTP : exige « Enable Bulk Receiving »
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `transport` | `http` (défaut, `POST /gelf`), `tcp` (octet nul, TLS avec `tls://`) ou `udp` (morceaux GELF) |
+| `sender` | Gabarit du champ `host` (`%{host}` par défaut, `host.name` si `host` est un objet, nom de la machine en repli) |
+| `short_message` | Champ porté en `short_message` (`short_message` par défaut, repli sur `message`, puis `-`) |
+| `full_message` | Gabarit de `full_message` (`%{message}` par défaut ; vide : omis) |
+| `level` | Gabarit(s) du niveau, essayés dans l'ordre (`["%{level}", "info"]`) : nom syslog (`emerg`…`debug`) ou nombre ramené à 0-7 |
+| `custom_fields` | Champs fixes ajoutés à chaque message (`_xxx`) |
+| `ship_metadata` | Autres champs du document en `_xxx` (vrai par défaut) |
+| `ship_tags` | `tags` en `_tags`, joints par `, ` (vrai par défaut) |
+| `chunksize` | UDP : taille maximale d'un datagramme (1420 par défaut) |
+
+Particularités :
+
+- **champs additionnels** : objets aplatis (`service.name` →
+  `_service_name`), listes jointes par `, `, booléens `true`/`false`,
+  noms ramenés à `[A-Za-z0-9_.-]`, `id` envoyé en `__id` (`_id` est
+  réservé par GELF), champs `@…` non envoyés ; `timestamp` vient de
+  `@timestamp` (secondes depuis l'epoch) ;
+- **HTTP** : un message par requête avec `batch_size => 1` ; au-delà,
+  NDJSON (chaque message terminé par un saut de ligne, sinon Graylog
+  colle le dernier message d'une requête au premier de la suivante sur
+  la même connexion), à condition d'activer **Enable Bulk Receiving**
+  sur l'entrée GELF HTTP. Graylog répond 202 sans détail :
+  statut HTTP global (`accuse_par_evenement=False`), 400/404 en DLQ,
+  429/5xx/réseau retentés, 401/403 rendus à l'appelant ;
+- **TCP** : connexion persistante, messages terminés par un octet nul,
+  jamais compressés (limite de GELF TCP) ; TLS avec `tls://` (`ssl`,
+  `cacert`, `ssl_certificate`/`ssl_key`). Coupure : reconnexion et
+  renvoi du reste du lot — sémantique **au moins une fois** ;
+- **UDP** : gzip avec `compression => true` (ignorée en HTTP et TCP),
+  découpage en morceaux GELF au-delà de `chunksize`, 128 morceaux au
+  plus (au-delà : échec permanent, DLQ). Sans accusé : un datagramme
+  parti est compté reçu, une erreur de socket signalée est retentée ;
+- **insertions seules** : `index`, `_id` refusé ; `index`, `pipeline`,
+  `routing`, `doc_as_upsert` refusées ;
+- **santé** : `HEAD /gelf` (HTTP, erreur si 5xx), ouverture de la
+  connexion (TCP) ; UDP non vérifiable (`unchecked`).
+
+Banc de conformité contre Graylog 7.0 (MongoDB 7, OpenSearch 2.19) en
+conteneurs (`.github/workflows/conformite-gelf.yml`,
+`tests/test_integration_gelf.py`) : entrées GELF HTTP (réception par
+lot), TCP et UDP créées par l'API, messages relus dans les index
+`graylog_*` (champs `source`, `level`, `full_message`, champs
+additionnels, morceaux UDP et gzip).
 
 ## Sortie `loki` (issue #21)
 

@@ -116,6 +116,7 @@ from pystashtemplate.outputs.doris import DorisOutput  # noqa: E402
 from pystashtemplate.outputs.elasticsearch import ElasticsearchOutput  # noqa: E402
 from pystashtemplate.outputs.fichier import FileOutput  # noqa: E402
 from pystashtemplate.outputs.fluent_forward import FluentForwardOutput  # noqa: E402
+from pystashtemplate.outputs.gelf import GelfOutput  # noqa: E402
 from pystashtemplate.outputs.greptimedb import GreptimeDbOutput  # noqa: E402
 from pystashtemplate.outputs.http_generique import HttpOutput  # noqa: E402
 from pystashtemplate.outputs.kafka import KafkaOutput  # noqa: E402
@@ -143,6 +144,7 @@ __all__ = [
     "ElasticsearchOutput",
     "FileOutput",
     "FluentForwardOutput",
+    "GelfOutput",
     "GreptimeDbOutput",
     "HttpOutput",
     "KafkaOutput",
