@@ -39,7 +39,9 @@ jobs:
 
       - name: ClickHouse éphémère
         run: |
-          docker run -d --name clickhouse -p 8123:8123 clickhouse/clickhouse-server:26.3.62
+          docker run -d --name clickhouse -p 8123:8123 \
+            -e CLICKHOUSE_USER=banc -e CLICKHOUSE_PASSWORD=banc \
+            clickhouse/clickhouse-server:26.3.62
           for i in $(seq 1 60); do
             if curl -sf http://localhost:8123/ping >/dev/null; then echo "ClickHouse prêt"; exit 0; fi
             sleep 1
@@ -50,6 +52,8 @@ jobs:
       - name: Banc de conformité
         env:
           PYSTASHTEMPLATE_CLICKHOUSE_URL: http://localhost:8123
+          PYSTASHTEMPLATE_CLICKHOUSE_USER: banc
+          PYSTASHTEMPLATE_CLICKHOUSE_PASSWORD: banc
         run: uv run pytest tests/test_integration_clickhouse.py -v
 
       - name: Nettoyage du conteneur
