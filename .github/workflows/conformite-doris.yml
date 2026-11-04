@@ -45,9 +45,21 @@ jobs:
             apache/doris:all-in-one-4.1.3
           for i in $(seq 1 300); do
             etat=$(docker inspect -f '{{.State.Health.Status}}' doris)
-            if [ "$etat" = healthy ]; then echo "Doris prêt (${i} s)"; exit 0; fi
+            if [ "$etat" = healthy ]; then echo "Doris sain (${i} s)"; break; fi
             sleep 1
           done
+          # « healthy » ne garantit pas encore un BE inscrit et vivant : la
+          # première création de table peut échouer (« no available
+          # backends »). On attend qu'une table de sonde se crée.
+          sql="docker exec -i doris mysql -uroot -h127.0.0.1 -P9030 -N -B -e"
+          for i in $(seq 1 180); do
+            if $sql "CREATE DATABASE IF NOT EXISTS sonde; CREATE TABLE IF NOT EXISTS sonde.t (k INT) DUPLICATE KEY(k) DISTRIBUTED BY HASH(k) BUCKETS 1 PROPERTIES (\"replication_num\" = \"1\"); DROP DATABASE sonde FORCE" 2>/tmp/sonde.err; then
+              echo "Doris prêt, BE vivant (${i} s de plus)"; exit 0
+            fi
+            sleep 1
+          done
+          cat /tmp/sonde.err
+          $sql "SHOW BACKENDS" || true
           docker logs doris | tail -100
           echo "::error::Doris n'a pas démarré" && exit 1
 
