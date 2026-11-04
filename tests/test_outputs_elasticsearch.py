@@ -118,7 +118,8 @@ def test_une_seule_authentification(auths: dict[str, str]) -> None:
 
 
 def test_option_inconnue_refusee() -> None:
-    with pytest.raises(ValueError, match="options inconnues"):
+    # Schéma commun (#8) : option inconnue = faute de frappe, échec franc.
+    with pytest.raises(ValueError, match="option « apikey » inconnue pour la sortie « elasticsearch »"):
         sortie(FauxServeur(), apikey="faute-de-frappe")
 
 

@@ -53,6 +53,7 @@ from pystashtemplate.dlq import LocalDeadLetterQueue
 from pystashtemplate.i18n import _
 from pystashtemplate.outputs import Capacites, enregistrer
 from pystashtemplate.outputs.elasticsearch_bulk import ElasticsearchBulkOutput, SendOutcome
+from pystashtemplate.outputs.schema import OptionSpec
 from pystashtemplate.tracing import atraced, traced
 
 # Valeurs du paramètre `refresh` de l'API `_bulk` de Quickwit.
@@ -77,7 +78,14 @@ class QuickwitOutput(ElasticsearchBulkOutput):
         accuse_par_evenement=True,
         taille_max_requete=TAILLE_MAX_REQUETE,
     )
-    OPTIONS_CONNUES: ClassVar[frozenset[str]] = ElasticsearchBulkOutput.OPTIONS_CONNUES | frozenset({"refresh"})
+    OPTIONS_PROPRES: ClassVar[dict[str, OptionSpec]] = dict(
+        ElasticsearchBulkOutput.OPTIONS_PROPRES,
+        refresh=OptionSpec(
+            "refresh",
+            (str, bool),
+            description="Paramètre refresh de Quickwit (true, wait_for, false)",
+        ),
+    )
 
     @traced
     def __init__(

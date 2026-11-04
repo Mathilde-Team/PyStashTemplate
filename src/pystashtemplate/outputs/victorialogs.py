@@ -56,6 +56,7 @@ from pystashtemplate.dlq import LocalDeadLetterQueue
 from pystashtemplate.i18n import _
 from pystashtemplate.outputs import Capacites, enregistrer
 from pystashtemplate.outputs.elasticsearch_bulk import ElasticsearchBulkOutput
+from pystashtemplate.outputs.schema import OptionSpec
 from pystashtemplate.tracing import atraced, traced
 
 MODES = ("bulk", "jsonline")
@@ -80,7 +81,28 @@ class VictoriaLogsOutput(ElasticsearchBulkOutput):
         accuse_par_evenement=False,
         taille_max_requete=None,
     )
-    OPTIONS_CONNUES: ClassVar[frozenset[str]] = ElasticsearchBulkOutput.OPTIONS_CONNUES | frozenset({"mode", *_CHAMPS})
+    # Options propres, en plus de celles de la famille _bulk et des
+    # communes du schéma (issue #8) : mode d'ingestion et champs de
+    # VictoriaLogs.
+    OPTIONS_PROPRES: ClassVar[dict[str, OptionSpec]] = dict(
+        ElasticsearchBulkOutput.OPTIONS_PROPRES,
+        mode=OptionSpec(
+            "mode",
+            (str,),
+            "bulk",
+            valeurs=MODES,
+            description="Ingestion _bulk ou jsonline (bulk par défaut)",
+        ),
+        **{
+            option: OptionSpec(
+                option,
+                (str, list, tuple) if option == "stream_fields" else (str,),
+                defaut,
+                description=f"Paramètre d'URL {parametre} ({defaut} par défaut)",
+            )
+            for option, (parametre, defaut) in _CHAMPS.items()
+        },
+    )
 
     @traced
     def __init__(

@@ -34,6 +34,7 @@ from pystashtemplate.dlq import REASON_PERMANENT, LocalDeadLetterQueue
 from pystashtemplate.i18n import _
 from pystashtemplate.outputs import Capacites, Output, enregistrer
 from pystashtemplate.outputs.codecs import CODECS
+from pystashtemplate.outputs.schema import OptionSpec
 from pystashtemplate.tracing import atraced, traced
 
 __all__ = ["FileOutput"]
@@ -51,6 +52,24 @@ class FileOutput(Output):
         accuse_par_evenement=True,
         taille_max_requete=None,
     )
+
+    # Options propres, en plus des communes du schéma (issue #8) : `path`
+    # est requis, `codec` énuméré — la base valide types et énumération.
+    OPTIONS_PROPRES: ClassVar[dict[str, OptionSpec]] = {
+        "path": OptionSpec(
+            "path",
+            (str,),
+            requis=True,
+            description="Gabarit du chemin de sortie (obligatoire, Joda autorisée)",
+        ),
+        "codec": OptionSpec(
+            "codec",
+            (str,),
+            "json_lines",
+            valeurs=tuple(CODECS),
+            description="Encodage d'un document par ligne (json_lines par défaut)",
+        ),
+    }
 
     @traced
     def __init__(
@@ -71,13 +90,13 @@ class FileOutput(Output):
         super().__init__(options)
         chemin = options.get("path")
         if not chemin:
+            # Le schéma (#8) exige `path` ; il reste à refuser la
+            # chaîne vide, qui y échappe.
             logger.debug("__init__ : option path manquante")
             raise ValueError(_("sortie file : option « path » manquante (chemin du fichier de sortie)"))
         self._chemin = str(chemin)
+        # Codec validé par le schéma (énumération, OPTIONS_PROPRES).
         codec = str(options.get("codec", "json_lines"))
-        if codec not in CODECS:
-            logger.debug("__init__ : codec {} inconnu", codec)
-            raise ValueError(_("codec {} inconnu (codecs disponibles : json_lines, rubydebug)").format(codec))
         self._encoder = CODECS[codec]
         self._fichiers: dict[str, IO[str]] = {}
         self._dlq: LocalDeadLetterQueue | None = dlq or (
