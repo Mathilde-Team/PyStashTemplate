@@ -1,0 +1,62 @@
+# Banc de conformité ZincSearch (issue #18) : la sortie `zincsearch`
+# contre un vrai ZincSearch en conteneur éphémère (API `_bulk` native),
+# `_id` et `delete`, relecture par l'API de recherche. Complète les tests unitaires
+# (faux serveur `httpx.MockTransport`).
+#
+# Runner hébergé GitHub (ubuntu-latest, autorisé par la MISSION) : Docker
+# y est garanti, contrairement aux runners maison.
+name: Banc de conformité ZincSearch
+
+"on":
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conformite:
+    name: "Sortie zincsearch contre un vrai ZincSearch"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v7
+
+      - name: Installation de uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Installation de Python
+        run: uv python install
+
+      - name: Installation des dépendances
+        run: uv sync --extra dev
+
+      - name: ZincSearch éphémère
+        # Image distroless sans répertoire inscriptible pour l'utilisateur
+        # par défaut : root dans le conteneur éphémère, données sous /data.
+        run: |
+          docker run -d --name zincsearch --user 0 -p 4080:4080 \
+            -e ZINC_FIRST_ADMIN_USER=admin -e ZINC_FIRST_ADMIN_PASSWORD=BancConformite1 \
+            -e ZINC_DATA_PATH=/data public.ecr.aws/zinclabs/zincsearch:0.4.10
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:4080/healthz >/dev/null; then echo "ZincSearch prêt"; exit 0; fi
+            sleep 1
+          done
+          docker logs zincsearch
+          echo "::error::ZincSearch n'a pas démarré" && exit 1
+
+      - name: Banc de conformité
+        env:
+          PYSTASHTEMPLATE_ZINCSEARCH_URL: http://localhost:4080
+          PYSTASHTEMPLATE_ZINCSEARCH_USER: admin
+          PYSTASHTEMPLATE_ZINCSEARCH_PASSWORD: BancConformite1
+        run: uv run pytest tests/test_integration_zincsearch.py -v
+
+      - name: Nettoyage du conteneur
+        if: always()
+        run: docker rm -f zincsearch || true

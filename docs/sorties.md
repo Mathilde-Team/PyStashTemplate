@@ -30,6 +30,7 @@ coupure réseau, arrêt propre).
 | `quickwit` | `create` | non | oui | 10 Mio | oui | oui | oui |
 | `stdout` | `index`, `create` | non | oui | — | non | oui | non |
 | `victorialogs` | `index`, `create` | non | non | — | oui | oui | oui |
+| `zincsearch` | `index`, `create`, `delete` | oui | non | — | oui | oui | oui |
 <!-- matrice-sorties:fin -->
 
 La famille « API _bulk Elasticsearch » (issue #11) partage le client
@@ -210,6 +211,43 @@ par le produit (`_id` refusé par la sortie). `health()` lit
 Banc de conformité : `tests/test_integration_victorialogs.py`, workflow
 `conformite-victorialogs.yml` (VictoriaLogs v1.53.0 en conteneur) —
 modes `bulk` et `jsonline`, champs de flux et de date relus par LogsQL.
+
+## Sortie `zincsearch` (issue #18)
+
+API `_bulk` native de ZincSearch (port 4080 par défaut) :
+`POST /api/_bulk`, authentification basic.
+
+```
+output {
+  zincsearch {
+    hosts => ["http://zincsearch:4080"]
+    index => "logs"
+    user => "${ZINC_USER}"
+    password => "${ZINC_PASSWORD}"
+  }
+}
+```
+
+Compatibilité Elasticsearch partielle (lue dans le code de ZincSearch
+0.4.10) :
+
+- actions `index`, `create` et `delete` ; `update` est refusée à la
+  compilation, car ZincSearch enregistre la ligne de données comme
+  document complet (pas de mise à jour partielle `{"doc": …}`) ;
+- `_id` transmis : un `index`/`create` avec le même `_id` remplace le
+  document ;
+- statut HTTP global seul : la réponse ne porte que `record_count`.
+  Une erreur arrête le lot en HTTP 500 — les documents précédents sont
+  déjà indexés ; le lot est retenté puis rendu à l'appelant. Sans
+  `document_id`, un réessai peut donc créer des doublons. Une ligne JSON
+  illisible est ignorée sans erreur par le serveur.
+
+`health()` lit `GET /version`. Aucune option propre.
+
+Banc de conformité : `tests/test_integration_zincsearch.py`, workflow
+`conformite-zincsearch.yml` (ZincSearch 0.4.10 en conteneur) — lot
+indexé, remplacement par `_id` et `delete`, relus par l'API de
+recherche.
 
 ## Sortie `openobserve` (issue #16)
 
