@@ -110,6 +110,7 @@ class SortieInconnueError(ValueError):
 # avant que ce module ne soit chargé.
 from pystashtemplate.outputs.elasticsearch import ElasticsearchOutput  # noqa: E402
 from pystashtemplate.outputs.fichier import FileOutput  # noqa: E402
+from pystashtemplate.outputs.greptimedb import GreptimeDbOutput  # noqa: E402
 from pystashtemplate.outputs.null import NullOutput  # noqa: E402
 from pystashtemplate.outputs.opensearch import OpenSearchOutput  # noqa: E402
 from pystashtemplate.outputs.quickwit import QuickwitOutput  # noqa: E402
@@ -122,6 +123,7 @@ __all__ = [
     "Document",
     "ElasticsearchOutput",
     "FileOutput",
+    "GreptimeDbOutput",
     "NullOutput",
     "OpenSearchOutput",
     "Output",

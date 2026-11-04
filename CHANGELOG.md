@@ -14,6 +14,13 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- Sortie `greptimedb` (issue #19) : `/v1/elasticsearch/_bulk`,
+  insertions seules (`index`, `create`), éléments relus sous l'action
+  envoyée (GreptimeDB les rapporte sous `create`), lot rejeté en 400
+  renvoyé document par document pour n'écarter que le fautif, santé
+  `/health`. Perte silencieuse sur conflit de type documentée. Banc de
+  conformité contre GreptimeDB 1.3.0 en conteneur.
+
 - Sortie `quickwit` (issue #15) : sous-classe du client _bulk commun
   (`/api/v1/_elastic/_bulk`), action `create` seule (défaut, toute autre
   refusée dès la compilation), `_id` ignoré, accusé par élément (relu sous

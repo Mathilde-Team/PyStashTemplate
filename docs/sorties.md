@@ -20,6 +20,7 @@ coupure réseau, arrêt propre).
 |---|---|---|---|---|---|---|---|
 | `elasticsearch` | toutes | oui | oui | — | oui | oui | oui |
 | `file` | `index`, `create` | non | oui | — | oui | non | non |
+| `greptimedb` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `null` | toutes | oui | oui | — | non | non | non |
 | `opensearch` | toutes | oui | oui | — | oui | oui | oui |
 | `quickwit` | `create` | non | oui | 10 Mio | oui | oui | oui |
@@ -162,6 +163,44 @@ par le produit (`_id` refusé par la sortie). `health()` lit
 Banc de conformité : `tests/test_integration_victorialogs.py`, workflow
 `conformite-victorialogs.yml` (VictoriaLogs v1.53.0 en conteneur) —
 modes `bulk` et `jsonline`, champs de flux et de date relus par LogsQL.
+
+## Sortie `greptimedb` (issue #19)
+
+API d'ingestion compatible Elasticsearch de GreptimeDB (port HTTP 4000
+par défaut) : `POST /v1/elasticsearch/_bulk`, le `_index` de chaque ligne
+étant la table (créée à la première écriture).
+
+```
+output {
+  greptimedb {
+    hosts => ["http://greptimedb:4000"]
+    index => "logs"
+  }
+}
+```
+
+Particularités, observées contre GreptimeDB 1.3.0 :
+
+- **insertions seules** : `index` (défaut) et `create` ; `update` et
+  `delete` refusées dès la compilation ; `_id` ignoré avec un
+  avertissement (non stocké) ;
+- **éléments sous `create`** : chaque élément de `items[]` est rapporté
+  sous `create`, même pour un `index` ; la sortie le relit sous l'action
+  envoyée (sinon une erreur d'élément serait comptée indexée) ;
+- **lot atomique** : une ligne invalide fait rejeter tout le lot en
+  HTTP 400, sans rien écrire. La sortie renvoie alors chaque document
+  seul — sans doublon possible — : seul le document fautif est refusé
+  (DLQ si configurée), avec la raison donnée par le serveur ;
+- **perte silencieuse sur conflit de type** : un document dont un champ
+  contredit le type déjà connu de la colonne n'est pas écrit, alors que
+  le serveur répond `201` ; indétectable dans la réponse. Garder des
+  types stables par champ (`mutate { convert => … }`).
+
+`health()` lit `GET /health` (`{}`). Aucune option propre.
+
+Banc de conformité : `tests/test_integration_greptimedb.py`, workflow
+`conformite-greptimedb.yml` (GreptimeDB 1.3.0 standalone en conteneur) —
+lot relu par SQL, lot rejeté dont seul le document fautif part en DLQ.
 
 ## Sortie `quickwit` (issue #15)
 
