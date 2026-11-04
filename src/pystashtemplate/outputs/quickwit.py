@@ -13,12 +13,15 @@ propres au produit :
 - **pas de `_id`** : Quickwit n'a pas d'identifiant de document ; un
   `document_id` est ignoré avec un avertissement (dégradation documentée
   du client commun) ;
-- **pas d'accusé par élément** : la réponse ne rapporte que
-  `num_docs_for_processing` ; les erreurs d'indexation ne remontent que
-  dans le journal du serveur. La sortie décide sur le **statut HTTP
-  global** (`accuse_par_evenement=False`) : 2xx = lot accepté ;
-  400/404 = échec permanent (DLQ si configurée) ; réseau, 429, 5xx =
-  transitoire.
+- **accusé par élément, sous la clé `index`** : la réponse porte un
+  `items[]` comme Elasticsearch (201, 404 index absent, 400 document
+  illisible…), mais chaque élément est rapporté sous la clé `index`
+  même pour un `create` ; la sortie le relit sous l'action envoyée
+  avant l'analyse commune (observé contre Quickwit 0.9.3).
+
+`refresh` (`true`, `wait_for`) fait attendre le commit de Quickwit (2 à
+5 s observées, `commit_timeout_secs` de l'index) : sans option `timeout`
+explicite, le délai de requête passe alors à 30 s au lieu de 3 s.
 
 Requête limitée à 10 Mo par Quickwit (`taille_max_requete`). L'index doit
 exister (Quickwit ne le crée pas à l'ingestion).
@@ -43,6 +46,7 @@ from __future__ import annotations
 
 from typing import Any, ClassVar
 
+import httpx
 from loguru import logger
 
 from pystashtemplate.dlq import LocalDeadLetterQueue
@@ -54,20 +58,23 @@ from pystashtemplate.tracing import atraced, traced
 # Valeurs du paramètre `refresh` de l'API `_bulk` de Quickwit.
 REFRESH = ("true", "wait_for", "false")
 
+# Délai de requête par défaut quand `refresh` attend le commit (secondes).
+TIMEOUT_REFRESH = 30.0
+
 # Taille maximale d'une requête `_bulk` acceptée par Quickwit (10 Mo).
 TAILLE_MAX_REQUETE = 10 * 1024 * 1024
 
 
 @enregistrer
 class QuickwitOutput(ElasticsearchBulkOutput):
-    """Sortie Quickwit : `_bulk` sous `/api/v1/_elastic`, `create` seule, statut HTTP global."""
+    """Sortie Quickwit : `_bulk` sous `/api/v1/_elastic`, `create` seule, accusé par élément."""
 
     plugin = "quickwit"
     chemin_bulk = "/api/v1/_elastic"
     capacites = Capacites(
         actions=frozenset({"create"}),
         accepte_id=False,
-        accuse_par_evenement=False,
+        accuse_par_evenement=True,
         taille_max_requete=TAILLE_MAX_REQUETE,
     )
     OPTIONS_CONNUES: ClassVar[frozenset[str]] = ElasticsearchBulkOutput.OPTIONS_CONNUES | frozenset({"refresh"})
@@ -91,6 +98,8 @@ class QuickwitOutput(ElasticsearchBulkOutput):
         if action != "create":
             logger.warning(_("sortie quickwit : action {action} refusée (create seule)"), action=action)
         self.capacites.verifie_action(action)
+        if str(options.get("refresh", "")).lower() in ("true", "wait_for"):
+            options.setdefault("timeout", TIMEOUT_REFRESH)
         super().__init__(options, dlq=dlq, transport=transport)
         self._parametres: dict[str, str] = {}
         refresh = options.get("refresh")
@@ -113,6 +122,27 @@ class QuickwitOutput(ElasticsearchBulkOutput):
     async def envoyer(self, doc: dict[str, Any], *, action: str = "create", **options: Any) -> SendOutcome:
         """`envoyer` du client commun, avec `create` pour action par défaut."""
         return await super().envoyer(doc, action=action, **options)
+
+    @atraced
+    async def _analyser_reponse(self, pendings: list[dict[str, Any]], response: httpx.Response) -> list[SendOutcome]:
+        """Relit chaque élément `items[]` sous l'action envoyée, puis analyse commune.
+
+        Quickwit rapporte tout élément sous la clé `index`, même pour un
+        `create` : sans cette relecture, une erreur d'élément serait
+        ignorée (document compté indexé).
+        """
+        try:
+            corps = response.json()
+            items = corps["items"]
+            normalises = [
+                {pending["action"]: next(iter(item.values()))} for pending, item in zip(pendings, items, strict=True)
+            ]
+        except (ValueError, KeyError, TypeError, AttributeError, StopIteration) as exc:
+            logger.warning(_("réponse _bulk quickwit non normalisée erreur={error}"), error=exc)
+            return await super()._analyser_reponse(pendings, response)
+        corps["items"] = normalises
+        relue = httpx.Response(response.status_code, json=corps, request=response.request)
+        return await super()._analyser_reponse(pendings, relue)
 
     @atraced
     async def health(self) -> dict[str, Any]:

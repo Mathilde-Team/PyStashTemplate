@@ -16,8 +16,9 @@ le projet suit SemVer.
 
 - Sortie `quickwit` (issue #15) : sous-classe du client _bulk commun
   (`/api/v1/_elastic/_bulk`), action `create` seule (défaut, toute autre
-  refusée dès la compilation), `_id` ignoré, statut HTTP global, requête
-  ≤ 10 Mio, option `refresh`, santé `/api/v1/version`. Banc de
+  refusée dès la compilation), `_id` ignoré, accusé par élément (relu sous
+  l'action envoyée : Quickwit répond sous la clé `index`), requête
+  ≤ 10 Mio, option `refresh` (délai porté à 30 s), santé `/api/v1/version`. Banc de
   conformité contre Quickwit 0.9.3 en conteneur
   (`conformite-quickwit.yml`) et fixture du banc commun.
 

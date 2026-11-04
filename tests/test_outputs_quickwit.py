@@ -3,7 +3,8 @@
 
 Chemin `_bulk` sous `/api/v1/_elastic`, action `create` imposée (refus
 de toute autre action dès la construction), `_id` ignoré, paramètre
-`refresh`, statut HTTP global, santé (`/api/v1/version`). Les cas
+`refresh` (et délai allongé), accusé par élément rapporté sous la clé
+`index` (relu sous l'action envoyée), santé (`/api/v1/version`). Les cas
 communs (lot, erreur partielle, 429, coupure, arrêt) sont rejoués par le
 banc de conformité (`test_conformite_sorties.py`).
 """
@@ -21,22 +22,28 @@ from pystashtemplate.dlq import LocalDeadLetterQueue
 from pystashtemplate.interpreter import PipelineInterpreter
 from pystashtemplate.outputs import REGISTRY, compiler_sorties
 from pystashtemplate.outputs.elasticsearch_bulk import ActionInvalideError, SendOutcome
-from pystashtemplate.outputs.quickwit import TAILLE_MAX_REQUETE, QuickwitOutput
+from pystashtemplate.outputs.quickwit import TAILLE_MAX_REQUETE, TIMEOUT_REFRESH, QuickwitOutput
 
 
 class FauxQuickwit:
-    """Répond comme Quickwit : `num_docs_for_processing`, sans `items[]`."""
+    """Répond comme Quickwit 0.9.3 : `items[]`, chaque élément sous la clé `index`."""
 
-    def __init__(self, statut: int = 200) -> None:
+    def __init__(self, statut: int = 200, elements: list[dict[str, Any]] | None = None, corps: Any = None) -> None:
         self.statut = statut
+        self.elements = elements
+        self.corps = corps
         self.requests: list[httpx.Request] = []
 
     def handler(self, request: httpx.Request) -> httpx.Response:
         self.requests.append(request)
         if request.url.path == "/api/v1/version":
             return httpx.Response(200, json={"build": {"version": "0.9.3"}, "version": "0.9.3"})
-        lignes = request.content.decode("utf-8").splitlines()
-        return httpx.Response(self.statut, json={"num_docs_for_processing": len(lignes) // 2})
+        if self.corps is not None:
+            return httpx.Response(self.statut, content=self.corps)
+        nombre = len(request.content.decode("utf-8").splitlines()) // 2
+        elements = self.elements or [{"status": 201, "error": None}] * nombre
+        items = [{"index": {"_index": "logs", "_id": None, **element}} for element in elements]
+        return httpx.Response(self.statut, json={"took": 1, "errors": False, "items": items})
 
     def lignes(self, i: int = 0) -> list[dict[str, Any]]:
         """Lignes NDJSON décodées de la i-ème requête."""
@@ -68,11 +75,11 @@ def test_inscrite_au_registre_sous_son_nom_de_plugin() -> None:
     assert REGISTRY["quickwit"] is QuickwitOutput
 
 
-def test_capacites_create_seule_sans_id_accuse_global() -> None:
+def test_capacites_create_seule_sans_id_accuse_par_element() -> None:
     capacites = QuickwitOutput.capacites
     assert capacites.actions == {"create"}
     assert not capacites.accepte_id
-    assert not capacites.accuse_par_evenement
+    assert capacites.accuse_par_evenement
     assert capacites.taille_max_requete == TAILLE_MAX_REQUETE == 10 * 1024 * 1024
 
 
@@ -140,9 +147,44 @@ def test_option_inconnue_refusee() -> None:
         sortie(FauxQuickwit(), commit="auto")
 
 
+def test_timeout_allonge_avec_refresh() -> None:
+    assert sortie(FauxQuickwit(), refresh="true")._client_http().timeout.read == TIMEOUT_REFRESH
+    assert sortie(FauxQuickwit(), refresh="wait_for", timeout=5)._client_http().timeout.read == 5
+    assert sortie(FauxQuickwit())._client_http().timeout.read == 3.0
+
+
+def test_element_en_erreur_sous_la_cle_index_en_dlq(tmp_path) -> None:
+    chemin = tmp_path / "dlq.jsonl"
+    erreur = {"status": 404, "error": {"type": "index_not_found_exception", "reason": "no such index [logs]"}}
+    serveur = FauxQuickwit(elements=[erreur])
+    assert envoyer(sortie(serveur, dlq=LocalDeadLetterQueue(str(chemin)))) is SendOutcome.DEAD_LETTERED
+    assert "index_not_found_exception" in chemin.read_text()
+
+
+def test_elements_mixtes_par_document(tmp_path) -> None:
+    chemin = tmp_path / "dlq.jsonl"
+    elements = [{"status": 201, "error": None}, {"status": 400, "error": {"type": "document_parsing_exception"}}]
+    s = sortie(FauxQuickwit(elements=elements), dlq=LocalDeadLetterQueue(str(chemin)), batch_size=3)
+
+    async def scenario() -> list[SendOutcome]:
+        try:
+            await s.envoyer({"message": "a"})
+            await s.envoyer({"message": "b"})
+            return await s._flush()
+        finally:
+            await s.close()
+
+    assert asyncio.run(scenario()) == [SendOutcome.INDEXED, SendOutcome.DEAD_LETTERED]
+
+
+@pytest.mark.parametrize("corps", [b"pas du json", b'{"num_docs_for_processing": 1}', b'{"items": []}'])
+def test_reponse_non_normalisable_repli_client_commun(corps: bytes) -> None:
+    assert envoyer(sortie(FauxQuickwit(corps=corps))) is SendOutcome.RETRYABLE
+
+
 def test_statut_global_400_en_dlq(tmp_path) -> None:
     chemin = tmp_path / "dlq.jsonl"
-    serveur = FauxQuickwit(statut=400)
+    serveur = FauxQuickwit(statut=400, corps=b'{"message": "requete invalide"}')
     assert envoyer(sortie(serveur, dlq=LocalDeadLetterQueue(str(chemin)))) is SendOutcome.DEAD_LETTERED
     assert json.loads(chemin.read_text())["@dlq_output"] == "quickwit"
 
