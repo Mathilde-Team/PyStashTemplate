@@ -92,11 +92,11 @@ msgstr "Prometheus metrics on http://{addr}:{port}/metrics"
 
 #: src/pystashtemplate/outputs/__init__.py
 msgid "sortie « {} » déjà inscrite au registre"
-msgstr "output \"{}\": option \"{}\" is required"
+msgstr "output \"{}\" already registered"
 
 #: src/pystashtemplate/outputs/__init__.py
 msgid "sortie « {} » inconnue — sorties disponibles : {}"
-msgstr "unknown option \"{}\" for output \"{}\" (valid options: {})"
+msgstr "unknown output \"{}\" — available outputs: {}"
 
 #: src/pystashtemplate/outputs/base.py
 msgid "action « {} » non supportée par cette sortie (supportées : {})"
@@ -380,6 +380,10 @@ msgstr "kafka output: user is required with SASL"
 #: src/pystashtemplate/outputs/loki.py
 msgid "@timestamp {} illisible, heure d'envoi utilisée"
 msgstr "unreadable @timestamp {}, send time used instead"
+
+#: src/pystashtemplate/outputs/loki.py
+msgid "sortie loki : label {} sur le champ {} à forte cardinalité (un flux par valeur)"
+msgstr "loki output: label {} uses high-cardinality field {} (one stream per value)"
 
 #: src/pystashtemplate/outputs/lotisseur.py
 msgid "arrêt demandé mais le lotisseur n'a jamais démarré"
