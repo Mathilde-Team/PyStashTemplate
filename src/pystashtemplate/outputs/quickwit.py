@@ -53,6 +53,7 @@ from pystashtemplate.dlq import LocalDeadLetterQueue
 from pystashtemplate.i18n import _
 from pystashtemplate.outputs import Capacites, enregistrer
 from pystashtemplate.outputs.elasticsearch_bulk import ElasticsearchBulkOutput, SendOutcome
+from pystashtemplate.outputs.relecture import relire_sous_action
 from pystashtemplate.outputs.schema import OptionSpec
 from pystashtemplate.tracing import atraced, traced
 
@@ -139,18 +140,7 @@ class QuickwitOutput(ElasticsearchBulkOutput):
         `create` : sans cette relecture, une erreur d'élément serait
         ignorée (document compté indexé).
         """
-        try:
-            corps = response.json()
-            items = corps["items"]
-            normalises = [
-                {pending["action"]: next(iter(item.values()))} for pending, item in zip(pendings, items, strict=True)
-            ]
-        except (ValueError, KeyError, TypeError, AttributeError, StopIteration) as exc:
-            logger.warning(_("réponse _bulk quickwit non normalisée erreur={error}"), error=exc)
-            return await super()._analyser_reponse(pendings, response)
-        corps["items"] = normalises
-        relue = httpx.Response(response.status_code, json=corps, request=response.request)
-        return await super()._analyser_reponse(pendings, relue)
+        return await super()._analyser_reponse(pendings, relire_sous_action(pendings, response, self.plugin))
 
     @atraced
     async def health(self) -> dict[str, Any]:
