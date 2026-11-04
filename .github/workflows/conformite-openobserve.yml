@@ -1,0 +1,61 @@
+# Banc de conformité OpenObserve (issue #16) : la sortie `openobserve`
+# contre un vrai OpenObserve en conteneur éphémère (API `_bulk` compatible
+# Elasticsearch), appariement des échecs par contenu, relecture par
+# l'API de recherche SQL. Complète les tests unitaires
+# (faux serveur `httpx.MockTransport`).
+#
+# Runner hébergé GitHub (ubuntu-latest, autorisé par la MISSION) : Docker
+# y est garanti, contrairement aux runners maison.
+name: Banc de conformité OpenObserve
+
+"on":
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conformite:
+    name: "Sortie openobserve contre un vrai OpenObserve"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v7
+
+      - name: Installation de uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Installation de Python
+        run: uv python install
+
+      - name: Installation des dépendances
+        run: uv sync --extra dev
+
+      - name: OpenObserve éphémère
+        run: |
+          docker run -d --name openobserve -p 5080:5080 \
+            -e ZO_ROOT_USER_EMAIL=banc@example.com -e ZO_ROOT_USER_PASSWORD=BancConformite1 \
+            -e ZO_DATA_DIR=/data openobserve/openobserve:v1.1.2
+          for i in $(seq 1 60); do
+            if curl -sf http://localhost:5080/healthz >/dev/null; then echo "OpenObserve prêt"; exit 0; fi
+            sleep 1
+          done
+          docker logs openobserve
+          echo "::error::OpenObserve n'a pas démarré" && exit 1
+
+      - name: Banc de conformité
+        env:
+          PYSTASHTEMPLATE_OPENOBSERVE_URL: http://localhost:5080
+          PYSTASHTEMPLATE_OPENOBSERVE_USER: banc@example.com
+          PYSTASHTEMPLATE_OPENOBSERVE_PASSWORD: BancConformite1
+        run: uv run pytest tests/test_integration_openobserve.py -v
+
+      - name: Nettoyage du conteneur
+        if: always()
+        run: docker rm -f openobserve || true

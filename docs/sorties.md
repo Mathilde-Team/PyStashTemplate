@@ -21,6 +21,7 @@ coupure réseau, arrêt propre).
 | `elasticsearch` | toutes | oui | oui | — | oui | oui | oui |
 | `file` | `index`, `create` | non | oui | — | oui | non | non |
 | `null` | toutes | oui | oui | — | non | non | non |
+| `openobserve` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `opensearch` | toutes | oui | oui | — | oui | oui | oui |
 | `stdout` | `index`, `create` | non | oui | — | non | non | non |
 | `victorialogs` | `index`, `create` | non | non | — | oui | oui | oui |
@@ -161,6 +162,42 @@ par le produit (`_id` refusé par la sortie). `health()` lit
 Banc de conformité : `tests/test_integration_victorialogs.py`, workflow
 `conformite-victorialogs.yml` (VictoriaLogs v1.53.0 en conteneur) —
 modes `bulk` et `jsonline`, champs de flux et de date relus par LogsQL.
+
+## Sortie `openobserve` (issue #16)
+
+Sous-classe du client commun sur l'API compatible Elasticsearch
+d'OpenObserve : `POST /api/{organization}/_bulk` (port 5080 par défaut),
+le `_index` de chaque ligne étant le stream. Authentification basic
+(`user`/`password` via `${VAR}`).
+
+| Option propre | Rôle |
+|---|---|
+| `organization` | organisation, dans le chemin (défaut : `default`) |
+
+- **Actions `index` et `create`** ; `update`/`delete` refusées dès la
+  compilation (OpenObserve ignore `delete`, et génère ses identifiants :
+  `_id` ignoré avec un avertissement).
+- **Ordre des `items[]` non garanti** ([issue amont
+  #15716](https://github.com/openobserve/openobserve/issues/15716)) :
+  attribuer le N-ième élément au N-ième document pourrait déclarer
+  indexé un document refusé. Appariement prudent (crochet `_apparier`
+  du client commun) :
+  1. réponse sans champ `errors` (429, 5xx…) : règle commune ;
+  2. `errors: false` : tout le lot indexé, sans regarder l'ordre (couvre
+     `ZO_BULK_API_RESPONSE_ERRORS_ONLY`, qui omet les succès) ;
+  3. sinon, chaque échec est apparié par contenu (`originalRecord`) ;
+  4. un échec sans contenu reconnaissable n'est attribué par position
+     que si la réponse a un élément par document (avertissement) ;
+  5. à défaut, le lot est rendu à l'appelant : doublon possible plutôt
+     que perte.
+
+Santé : `health()` interroge `GET /healthz`.
+
+Banc de conformité contre OpenObserve v1.1.2 en conteneur
+(`.github/workflows/conformite-openobserve.yml`,
+`tests/test_integration_openobserve.py`) : lot indexé puis retrouvé par
+la recherche SQL ; un document trop ancien (au-delà de
+`ZO_INGEST_ALLOWED_UPTO`) part seul en DLQ, apparié par son contenu.
 
 ## Sorties `file` et `stdout` (issue #32)
 

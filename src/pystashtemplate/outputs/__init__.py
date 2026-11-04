@@ -111,6 +111,7 @@ class SortieInconnueError(ValueError):
 from pystashtemplate.outputs.elasticsearch import ElasticsearchOutput  # noqa: E402
 from pystashtemplate.outputs.fichier import FileOutput  # noqa: E402
 from pystashtemplate.outputs.null import NullOutput  # noqa: E402
+from pystashtemplate.outputs.openobserve import OpenObserveOutput  # noqa: E402
 from pystashtemplate.outputs.opensearch import OpenSearchOutput  # noqa: E402
 from pystashtemplate.outputs.stdout import StdoutOutput  # noqa: E402
 from pystashtemplate.outputs.victorialogs import VictoriaLogsOutput  # noqa: E402
@@ -123,6 +124,7 @@ __all__ = [
     "FileOutput",
     "NullOutput",
     "OpenSearchOutput",
+    "OpenObserveOutput",
     "Output",
     "REGISTRY",
     "SortieInconnueError",

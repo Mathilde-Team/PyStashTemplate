@@ -14,6 +14,14 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- Sortie `openobserve` (issue #16) : sous-classe du client _bulk commun
+  (`/api/{organization}/_bulk`, option `organization`), actions `index`
+  et `create`, appariement prudent des éléments de réponse dont l'ordre
+  n'est pas garanti (amont #15716 : par contenu `originalRecord`, repli
+  par position, sinon lot rendu), santé `/healthz`. Nouveau crochet
+  `_apparier` du client commun. Banc de conformité contre OpenObserve
+  v1.1.2 en conteneur et fixture du banc commun.
+
 - Banc commun de conformité des sorties (issue #9) : une même suite
   (lot simple, erreur partielle, 429, coupure réseau, arrêt propre)
   rejouée sans réseau contre chaque sortie HTTP par un faux serveur
