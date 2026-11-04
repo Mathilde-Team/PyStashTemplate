@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 19:18+0000\n"
+"POT-Creation-Date: 2026-11-04 20:19+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: deusyv\n"
 "Language-Team: English\n"
@@ -86,6 +86,49 @@ msgstr "unknown option \"{}\" for output \"{}\" (valid options: {})"
 #: src/pystashtemplate/outputs/base.py
 msgid "action « {} » non supportée par cette sortie (supportées : {})"
 msgstr "action \"{}\" not supported by this output (supported: {})"
+
+#: src/pystashtemplate/outputs/doris.py
+#, python-brace-format
+msgid "doris : label {label} déjà pris (état {etat}), lot rendu à l'appelant"
+msgstr "doris: label {label} already taken (state {etat}), batch returned to the caller"
+
+#: src/pystashtemplate/outputs/doris.py
+msgid "doris : label_prefix {prefixe!r} invalide (lettres, chiffres, - et _, 95 au plus)"
+msgstr "doris: invalid label_prefix {prefixe!r} (letters, digits, - and _, at most 95)"
+
+#: src/pystashtemplate/outputs/doris.py
+msgid "doris : lot de {} documents refusé, renvoi un par un"
+msgstr "doris: batch of {} documents rejected, replaying one by one"
+
+#: src/pystashtemplate/outputs/doris.py
+#, python-brace-format
+msgid "doris : lot déjà chargé (label {label}), compté comme indexé"
+msgstr "doris: batch already loaded (label {label}), counted as indexed"
+
+#: src/pystashtemplate/outputs/doris.py
+#, python-brace-format
+msgid "doris : max_filter_ratio {ratio} hors de [0, 1]"
+msgstr "doris: max_filter_ratio {ratio} outside [0, 1]"
+
+#: src/pystashtemplate/outputs/doris.py
+#, python-brace-format
+msgid "doris : redirection vers {cible} non suivie"
+msgstr "doris: redirect to {cible} not followed"
+
+#: src/pystashtemplate/outputs/doris.py
+#, python-brace-format
+msgid "doris : statut Stream Load inattendu {statut}, lot rendu à l'appelant"
+msgstr "doris: unexpected Stream Load status {statut}, batch returned to the caller"
+
+#: src/pystashtemplate/outputs/doris.py
+#, python-brace-format
+msgid "doris : {nombre} ligne(s) écartée(s) par le serveur, détail : {url}"
+msgstr "doris: {nombre} row(s) filtered out by the server, details: {url}"
+
+#: src/pystashtemplate/outputs/doris.py
+#, python-brace-format
+msgid "réponse Stream Load illisible erreur={error}"
+msgstr "unreadable Stream Load response error={error}"
 
 #: src/pystashtemplate/outputs/elasticsearch.py
 msgid "sortie elasticsearch : data_stream n'accepte que l'action create ({})"

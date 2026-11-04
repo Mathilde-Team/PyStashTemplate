@@ -7,6 +7,16 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- Sortie `doris` (issue #27) : Stream Load d'Apache Doris
+  (`PUT /api/<database>/<table>/_stream_load`, tableau JSON), redirection
+  FE → BE suivie avec l'authentification, label par lot stable d'une
+  retente à l'autre (rejeu sans doublon : `Label Already Exists`
+  `FINISHED` compté comme indexé), statut lu dans le corps (`Success`,
+  `Publish Timeout`, `Fail`), lot refusé renvoyé document par document
+  pour isoler la ligne fautive, `max_filter_ratio`, `label_prefix`,
+  santé `GET /api/health`. Client commun : en-têtes par lot
+  (`_entetes_requete`). Banc de conformité contre Doris 4.1.3
+  (`conformite-doris.yml`) et fixture du banc commun.
 - Sortie `kafka` (issue #29) : producteur asynchrone `aiokafka` vers
   Apache Kafka et compatibles, options du plugin `kafka` de Logstash
   (`bootstrap_servers`/`topic_id` requis, `message_key`, `codec`,

@@ -29,6 +29,7 @@ import pytest
 from pystashtemplate.dlq import LocalDeadLetterQueue
 from pystashtemplate.outputs import REGISTRY
 from pystashtemplate.outputs.clickhouse import ClickHouseOutput
+from pystashtemplate.outputs.doris import DorisOutput
 from pystashtemplate.outputs.elasticsearch import ElasticsearchOutput
 from pystashtemplate.outputs.elasticsearch_bulk import ElasticsearchBulkOutput
 from pystashtemplate.outputs.greptimedb import GreptimeDbOutput
@@ -63,7 +64,7 @@ def _lignes_json(corps: bytes) -> int:
 
 
 def _tableau_json(corps: bytes) -> int:
-    """Documents d'un corps tableau JSON (Parseable) : un élément par document."""
+    """Documents d'un corps tableau JSON (Parseable, Doris) : un élément par document."""
     return len(json.loads(corps))
 
 
@@ -82,11 +83,17 @@ class FixtureSortie:
         options: Options minimales propres à la sortie (en plus de
             `hosts`, `batch_size`, `retry_max`, `retry_backoff`).
         compter: Nombre de documents contenus dans le corps d'une requête.
+        corps_ok: Corps d'une réponse `ok` à accusé global (`{}` ; Doris
+            donne son statut dans le corps, #27).
+        rejet: Statut et corps d'un lot refusé à accusé global (400 ;
+            Doris répond 200 avec `Status: Fail`).
     """
 
     classe: type[ElasticsearchBulkOutput]
     options: dict[str, Any] = field(default_factory=dict)
     compter: Callable[[bytes], int] = _paires_ndjson
+    corps_ok: dict[str, Any] = field(default_factory=dict)
+    rejet: tuple[int, dict[str, Any]] = (400, {"error": "lot refusé"})
 
     @property
     def id(self) -> str:
@@ -113,6 +120,13 @@ FIXTURES: list[FixtureSortie] = [
     FixtureSortie(ClickHouseOutput, {"table": "logs"}, compter=_lignes_json),
     FixtureSortie(HttpOutput, {"url": "http://faux:9200/logs"}, compter=_lignes_json),
     FixtureSortie(ParseableOutput, {"stream": "banc"}, compter=_tableau_json),
+    FixtureSortie(
+        DorisOutput,
+        {"database": "banc", "table": "logs"},
+        compter=_tableau_json,
+        corps_ok={"Status": "Success", "NumberLoadedRows": 1},
+        rejet=(200, {"Status": "Fail", "Message": "[DATA_QUALITY_ERROR]too many filtered rows"}),
+    ),
 ]
 
 
@@ -159,9 +173,10 @@ class FauxServeurGenerique:
         if etape == "429":
             return httpx.Response(429, json={"error": "trop de requêtes"})
         if etape == "partiel" and not par_element:
-            return httpx.Response(400, json={"error": "lot refusé"})
+            statut, corps = self.fixture.rejet
+            return httpx.Response(statut, json=corps)
         if not par_element:
-            return httpx.Response(200, json={})
+            return httpx.Response(200, json=self.fixture.corps_ok)
         refuse = 1 if etape == "partiel" else None
         return httpx.Response(200, json={"errors": refuse is not None, "items": self._items(request.content, refuse)})
 
