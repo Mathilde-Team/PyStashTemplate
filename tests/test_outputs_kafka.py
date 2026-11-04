@@ -45,12 +45,13 @@ class FauxProducteur:
         return object()
 
     class _Client:
-        async def fetch_metadata(self) -> Any:
+        async def fetch_all_metadata(self) -> Any:
             class _Broker:
                 host, port = "kafka", 9092
 
             class _Meta:
-                brokers = {1: _Broker()}
+                def brokers(self) -> dict[int, _Broker]:
+                    return {1: _Broker()}
 
             return _Meta()
 
