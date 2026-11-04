@@ -113,6 +113,7 @@ from pystashtemplate.outputs.elasticsearch import ElasticsearchOutput  # noqa: E
 from pystashtemplate.outputs.fichier import FileOutput  # noqa: E402
 from pystashtemplate.outputs.greptimedb import GreptimeDbOutput  # noqa: E402
 from pystashtemplate.outputs.http_generique import HttpOutput  # noqa: E402
+from pystashtemplate.outputs.kafka import KafkaOutput  # noqa: E402
 from pystashtemplate.outputs.loki import LokiOutput  # noqa: E402
 from pystashtemplate.outputs.manticore import ManticoreOutput  # noqa: E402
 from pystashtemplate.outputs.null import NullOutput  # noqa: E402
@@ -135,6 +136,7 @@ __all__ = [
     "FileOutput",
     "GreptimeDbOutput",
     "HttpOutput",
+    "KafkaOutput",
     "LokiOutput",
     "ManticoreOutput",
     "NullOutput",
