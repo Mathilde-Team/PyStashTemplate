@@ -149,7 +149,7 @@ def analyser_syslog(trame: bytes) -> dict[str, Any] | None:
     return None
 
 
-@traced
+@atraced
 async def _lire_trame(lecteur: asyncio.StreamReader) -> bytes | None:
     """Lit UNE trame syslog TCP (RFC 6587) : octet-counting ou LF.
 
@@ -181,7 +181,7 @@ async def _lire_trame(lecteur: asyncio.StreamReader) -> bytes | None:
         tampon += octet
 
 
-@traced
+@atraced
 async def _lire_requete(lecteur: asyncio.StreamReader) -> tuple[list[bytes] | None, bytes]:
     """Lit UNE requête HTTP POST ; rend les documents du corps.
 

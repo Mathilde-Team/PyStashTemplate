@@ -95,3 +95,29 @@ class TestAtraced:
         finally:
             logger.remove(sink)
         assert not any("s3cret" in m or "S3CRET" in m for m in messages)
+
+
+class TestCoroutinesDecorees:
+    """Aucune coroutine du paquet n'est décorée par `@traced` (issue #37).
+
+    `@traced` sur un `async def` journalise la « sortie » dès la création de
+    la coroutine, avant le premier `await` : la trace ment. Analyse AST de
+    `src/`, sans import.
+    """
+
+    def test_aucun_traced_sur_async_def(self) -> None:
+        import ast
+        from pathlib import Path
+
+        racine = Path(__file__).resolve().parent.parent / "src"
+        fautifs: list[str] = []
+        for fichier in sorted(racine.rglob("*.py")):
+            arbre = ast.parse(fichier.read_text(encoding="utf-8"))
+            for noeud in ast.walk(arbre):
+                if not isinstance(noeud, ast.AsyncFunctionDef):
+                    continue
+                for decorateur in noeud.decorator_list:
+                    nom = decorateur.id if isinstance(decorateur, ast.Name) else getattr(decorateur, "attr", None)
+                    if nom == "traced":
+                        fautifs.append(f"{fichier.relative_to(racine)}:{noeud.lineno} {noeud.name}")
+        assert fautifs == [], f"@traced sur des coroutines (utiliser @atraced) : {fautifs}"
