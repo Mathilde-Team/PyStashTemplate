@@ -30,6 +30,7 @@ from pystashtemplate.dlq import LocalDeadLetterQueue
 from pystashtemplate.outputs import REGISTRY
 from pystashtemplate.outputs.elasticsearch import ElasticsearchOutput
 from pystashtemplate.outputs.elasticsearch_bulk import ElasticsearchBulkOutput
+from pystashtemplate.outputs.metriques import CompteursSortie
 from pystashtemplate.outputs.opensearch import OpenSearchOutput
 from pystashtemplate.outputs.victorialogs import VictoriaLogsOutput
 from pystashtemplate.outputs.zincsearch import ZincSearchOutput
@@ -131,23 +132,34 @@ def _sortie(
     dlq: LocalDeadLetterQueue | None = None,
     **options: Any,
 ) -> ElasticsearchBulkOutput:
-    """Sortie de la fixture branchée sur le faux serveur."""
-    return fixture.classe(
+    """Sortie de la fixture branchée sur le faux serveur, ses métriques en mémoire (#10)."""
+    sortie = fixture.classe(
         {"hosts": "http://faux:9200", "retry_backoff": 0, **fixture.options, **options},
         transport=httpx.MockTransport(serveur.handler),
         dlq=dlq,
     )
+    sortie.observateur = CompteursSortie()
+    return sortie
 
 
-def _envoyer(sortie: ElasticsearchBulkOutput, documents: list[dict[str, Any]], *, flush: bool = False) -> list[str]:
-    """Envoie les documents (puis `flush` si demandé) et ferme, dans une même boucle."""
+def _metriques(sortie: ElasticsearchBulkOutput) -> dict[str, object]:
+    """Métriques de la sortie (vides si elle n'a rien observé)."""
+    assert isinstance(sortie.observateur, CompteursSortie)
+    return sortie.observateur.instantane().get(sortie.nom, {})
+
+
+def _issues(sortie: ElasticsearchBulkOutput) -> dict[str, object]:
+    """Compteurs d'issues non nuls de la sortie."""
+    metriques = _metriques(sortie)
+    return {k: metriques[k] for k in ("indexed", "dead_lettered", "retryable", "rejected") if metriques.get(k)}
+
+
+def _envoyer(sortie: ElasticsearchBulkOutput, documents: list[dict[str, Any]]) -> list[str]:
+    """Envoie les documents et ferme, dans une même boucle."""
 
     async def scenario() -> list[str]:
         try:
-            resultats = [(await sortie.envoyer(dict(doc))).value for doc in documents]
-            if flush:
-                await sortie.flush()
-            return resultats
+            return [(await sortie.envoyer(dict(doc))).value for doc in documents]
         finally:
             await sortie.close()
 
@@ -178,10 +190,15 @@ def test_toute_sortie_http_du_registre_a_sa_fixture() -> None:
 @parametre
 def test_lot_simple_une_requete_pour_le_lot(fixture: FixtureSortie) -> None:
     serveur = FauxServeurGenerique(fixture, "ok")
-    resultats = _envoyer(_sortie(fixture, serveur, batch_size=3), _documents(3))
+    sortie = _sortie(fixture, serveur, batch_size=3)
+    resultats = _envoyer(sortie, _documents(3))
     assert resultats == ["en_attente", "en_attente", "indexed"]
     assert len(serveur.requetes) == 1
     assert serveur.documents_recus == 3
+    assert _issues(sortie) == {"indexed": 3}
+    assert _metriques(sortie)["requetes"] == 1
+    assert _metriques(sortie)["reessais"] == 0
+    assert _metriques(sortie)["file"] == 0
 
 
 @parametre
@@ -189,21 +206,28 @@ def test_erreur_partielle_en_dlq_selon_l_accuse(fixture: FixtureSortie, tmp_path
     serveur = FauxServeurGenerique(fixture, "partiel")
     chemin = tmp_path / "dlq.jsonl"
     documents = _documents(3)
-    _envoyer(_sortie(fixture, serveur, batch_size=3, dlq=LocalDeadLetterQueue(str(chemin))), documents)
+    sortie = _sortie(fixture, serveur, batch_size=3, dlq=LocalDeadLetterQueue(str(chemin)))
+    _envoyer(sortie, documents)
     en_dlq = [d["message"] for d in _dlq_documents(chemin)]
     if fixture.classe.capacites.accuse_par_evenement:
         # Accusé par élément : seul le document refusé part en DLQ.
         assert en_dlq == ["m1"]
+        assert _issues(sortie) == {"indexed": 2, "dead_lettered": 1, "rejected": 1}
     else:
         # Accusé global (dégradation documentée) : tout le lot.
         assert en_dlq == ["m0", "m1", "m2"]
+        assert _issues(sortie) == {"dead_lettered": 3, "rejected": 3}
 
 
 @parametre
 def test_429_retente_puis_reussit(fixture: FixtureSortie) -> None:
     serveur = FauxServeurGenerique(fixture, "429", "ok")
-    assert _envoyer(_sortie(fixture, serveur, retry_max=1), _documents(1)) == ["indexed"]
+    sortie = _sortie(fixture, serveur, retry_max=1)
+    assert _envoyer(sortie, _documents(1)) == ["indexed"]
     assert len(serveur.requetes) == 2
+    assert _issues(sortie) == {"indexed": 1}
+    assert _metriques(sortie)["reessais"] == 1
+    assert _metriques(sortie)["requetes"] == 2
 
 
 @parametre
@@ -214,13 +238,20 @@ def test_429_epuise_rendu_a_l_appelant_sans_dlq(fixture: FixtureSortie, tmp_path
     assert _envoyer(sortie, _documents(1)) == ["retryable"]
     assert len(serveur.requetes) == 2
     assert _dlq_documents(chemin) == []
+    assert _issues(sortie) == {"retryable": 1}
+    assert _metriques(sortie)["reessais"] == 1
 
 
 @parametre
 def test_coupure_reseau_retente_puis_reussit(fixture: FixtureSortie) -> None:
     serveur = FauxServeurGenerique(fixture, "reseau", "ok")
-    assert _envoyer(_sortie(fixture, serveur, retry_max=1), _documents(1)) == ["indexed"]
+    sortie = _sortie(fixture, serveur, retry_max=1)
+    assert _envoyer(sortie, _documents(1)) == ["indexed"]
     assert len(serveur.requetes) == 2
+    assert _issues(sortie) == {"indexed": 1}
+    assert _metriques(sortie)["reessais"] == 1
+    # La requête coupée compte aussi dans la latence.
+    assert _metriques(sortie)["requetes"] == 2
 
 
 @parametre
@@ -230,15 +261,30 @@ def test_coupure_reseau_epuisee_rendue_a_l_appelant(fixture: FixtureSortie, tmp_
     sortie = _sortie(fixture, serveur, dlq=LocalDeadLetterQueue(str(chemin)))
     assert _envoyer(sortie, _documents(1)) == ["retryable"]
     assert _dlq_documents(chemin) == []
+    assert _issues(sortie) == {"retryable": 1}
+    assert _metriques(sortie)["reessais"] == 0
 
 
 @parametre
 def test_arret_propre_pousse_le_tampon(fixture: FixtureSortie) -> None:
     serveur = FauxServeurGenerique(fixture, "ok")
-    resultats = _envoyer(_sortie(fixture, serveur, batch_size=10), _documents(2), flush=True)
-    assert resultats == ["en_attente", "en_attente"]
+    sortie = _sortie(fixture, serveur, batch_size=10)
+
+    async def tampon_puis_arret() -> int:
+        try:
+            for doc in _documents(2):
+                assert (await sortie.envoyer(doc)).value == "en_attente"
+            file = _metriques(sortie)["file"]
+            await sortie.flush()
+            return int(str(file))
+        finally:
+            await sortie.close()
+
+    assert asyncio.run(tampon_puis_arret()) == 2
     assert len(serveur.requetes) == 1
     assert serveur.documents_recus == 2
+    assert _issues(sortie) == {"indexed": 2}
+    assert _metriques(sortie)["file"] == 0
 
 
 @parametre
@@ -254,3 +300,4 @@ def test_arret_sans_tampon_ne_fait_aucune_requete_et_close_idempotent(fixture: F
 
     asyncio.run(scenario())
     assert serveur.requetes == []
+    assert _metriques(sortie) == {}
