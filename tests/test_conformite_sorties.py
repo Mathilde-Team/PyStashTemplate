@@ -32,6 +32,7 @@ from pystashtemplate.outputs.clickhouse import ClickHouseOutput
 from pystashtemplate.outputs.doris import DorisOutput
 from pystashtemplate.outputs.elasticsearch import ElasticsearchOutput
 from pystashtemplate.outputs.elasticsearch_bulk import ElasticsearchBulkOutput
+from pystashtemplate.outputs.gelf import GelfOutput
 from pystashtemplate.outputs.greptimedb import GreptimeDbOutput
 from pystashtemplate.outputs.http_generique import HttpOutput
 from pystashtemplate.outputs.loki import LokiOutput
@@ -129,6 +130,7 @@ FIXTURES: list[FixtureSortie] = [
         corps_ok={"Status": "Success", "NumberLoadedRows": 1},
         rejet=(200, {"Status": "Fail", "Message": "[DATA_QUALITY_ERROR]too many filtered rows"}),
     ),
+    FixtureSortie(GelfOutput, compter=_lignes_json),
 ]
 
 
