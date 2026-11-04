@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 21:35+0000\n"
+"POT-Creation-Date: 2026-11-04 21:47+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: Automatically generated\n"
 "Language-Team: none\n"
@@ -47,6 +47,16 @@ msgstr ""
 msgid "exception pendant l'application du filtre mutate, opérations restantes ignorées : {}"
 msgstr ""
 
+#: src/pystashtemplate/indexer.py
+#, python-brace-format
+msgid "Indexation OpenSearch échouée définitivement erreur={error}"
+msgstr ""
+
+#: src/pystashtemplate/indexer.py
+#, python-brace-format
+msgid "Plusieurs nœuds configurés ({hosts}), seul le premier est utilisé"
+msgstr "Nakonfigurováno více uzlů ({hosts}), používá se jen první"
+
 #: src/pystashtemplate/interpreter.py
 msgid "dissect : conversion impossible de {} en {}"
 msgstr ""
@@ -73,6 +83,11 @@ msgstr ""
 
 #: src/pystashtemplate/interpreter.py
 msgid "json ignoré : option source manquante"
+msgstr ""
+
+#: src/pystashtemplate/metrics.py
+#, python-brace-format
+msgid "Métriques Prometheus sur http://{addr}:{port}/metrics"
 msgstr ""
 
 #: src/pystashtemplate/outputs/__init__.py

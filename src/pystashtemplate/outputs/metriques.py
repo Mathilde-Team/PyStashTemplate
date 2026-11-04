@@ -17,10 +17,10 @@ prévient à chaque événement mesurable :
 `CompteursSortie` est l'implémentation fournie : compteurs en mémoire par
 sortie, `instantane()` pour les tests et les tableaux de bord, et
 `exposition()` au format texte Prometheus (contenu d'un `/metrics`). Un
-connecteur qui a déjà ses métriques (RsysLogstach, `prometheus_client`)
-branche plutôt un adaptateur qui implémente `ObservateurSortie` sur ses
-compteurs existants : ses noms de métriques ne changent pas (voir
-`docs/sorties.md`).
+outil qui expose déjà ses métriques avec `prometheus_client` branche
+plutôt `pystashtemplate.metrics.Metrics`, qui implémente
+`ObservateurSortie` sur son propre registre avec les mêmes noms (voir
+`docs/indexation-metriques.md`).
 """
 
 from __future__ import annotations

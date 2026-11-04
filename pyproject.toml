@@ -1,6 +1,6 @@
 [project]
 name = "pystashtemplate"
-version = "0.2.0"
+version = "0.3.0"
 description = "Sémantique Logstash partagée : gabarits, filtres, interprétation des .conf (extrait de RsysLogstach, #111)"
 license = "GPL-3.0-or-later"
 requires-python = ">=3.11"
@@ -22,6 +22,7 @@ dependencies = [
     "aio-pika>=9.5",  # client AMQP 0-9-1 de la sortie rabbitmq (#33)
     "nats-py>=2.10",  # client NATS / JetStream de la sortie nats (#33)
     "msgpack>=1.0",  # protocole forward de la sortie fluent_forward (#31)
+    "prometheus-client==0.26.0",  # métriques /metrics (pystashtemplate.metrics, #110), version figée
 ]
 
 [project.optional-dependencies]

@@ -5,8 +5,18 @@ le projet suit SemVer.
 
 ## [Non publié]
 
+## [0.3.0] - 2026-11-04
+
 ### Évolutions
 
+- Correction du découpage RsysLogstach#111 (issue #110) : `indexer`
+  (`OpenSearchIndexer`, `SendOutcome`, `ActionInvalideError`, `ACTIONS`),
+  `opensearchconf` (options de connexion du `.conf`) et `metrics`
+  (métriques Prometheus) rejoignent la bibliothèque. Seul `omprog` reste
+  dans RsysLogstach. `Metrics` prend un `prefixe` (`pystashtemplate` par
+  défaut) et implémente `ObservateurSortie` (#10). Nouvelle dépendance :
+  `prometheus-client==0.26.0`. Documentation :
+  `docs/indexation-metriques.md`.
 - Entrée sFlow v5 du service autonome (issue #97) : `EntreeSflow`
   écoute l'UDP (port configurable), `pystashtemplate.sflow` décode les
   datagrammes RFC 3176 — échantillons de flux (en-tête Ethernet puis
