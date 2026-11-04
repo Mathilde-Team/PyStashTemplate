@@ -142,8 +142,7 @@ msgstr "batch with transient failure sent to the DLQ documents={nombre}"
 msgid "réponse _bulk : {} éléments attendus, {} reçus"
 msgstr "_bulk response: {} items expected, {} received"
 
-#: src/pystashtemplate/outputs/elasticsearch_bulk.py
-#: src/pystashtemplate/outputs/manticore.py
+#: src/pystashtemplate/outputs/elasticsearch_bulk.py src/pystashtemplate/outputs/manticore.py
 #, python-brace-format
 msgid "réponse _bulk illisible erreur={error}"
 msgstr "unreadable _bulk response error={error}"
