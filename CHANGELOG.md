@@ -40,6 +40,15 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- Sortie `otlp` (issue #22) : OpenTelemetry OTLP/HTTP `/v1/logs`, en
+  protobuf (défaut, codé sans nouvelle dépendance) ou JSON, gzip en
+  option ; table de correspondance champ → `LogRecord` (`body`, `time`,
+  `severity`, `trace_id`/`span_id`, `resource.*`, `attributes.*`,
+  `drop`), journaux groupés par ressource ; accusé global et
+  `partial_success` (lot entier refusé → DLQ, refus partiel compté en
+  métrique). Banc de conformité contre OpenTelemetry Collector 0.164.0
+  en conteneur.
+
 - Sortie `siglens` (issue #20) : `/elastic/_bulk` du port d'ingestion,
   actions `index`/`create` (`update`/`delete` refusées à la
   compilation), `_id` ignoré (SigLens ne le conserve pas), accusé par

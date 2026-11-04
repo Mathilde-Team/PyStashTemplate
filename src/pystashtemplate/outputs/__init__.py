@@ -117,6 +117,7 @@ from pystashtemplate.outputs.manticore import ManticoreOutput  # noqa: E402
 from pystashtemplate.outputs.null import NullOutput  # noqa: E402
 from pystashtemplate.outputs.openobserve import OpenObserveOutput  # noqa: E402
 from pystashtemplate.outputs.opensearch import OpenSearchOutput  # noqa: E402
+from pystashtemplate.outputs.otlp import OtlpOutput  # noqa: E402
 from pystashtemplate.outputs.parseable import ParseableOutput  # noqa: E402
 from pystashtemplate.outputs.quickwit import QuickwitOutput  # noqa: E402
 from pystashtemplate.outputs.siglens import SigLensOutput  # noqa: E402
@@ -136,8 +137,9 @@ __all__ = [
     "ManticoreOutput",
     "NullOutput",
     "OpenSearchOutput",
-    "ParseableOutput",
     "OpenObserveOutput",
+    "OtlpOutput",
+    "ParseableOutput",
     "Output",
     "QuickwitOutput",
     "REGISTRY",

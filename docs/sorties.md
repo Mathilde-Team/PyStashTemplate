@@ -27,6 +27,7 @@ coupure réseau, arrêt propre).
 | `null` | toutes | oui | oui | — | non | oui | non |
 | `openobserve` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `opensearch` | toutes | oui | oui | — | oui | oui | oui |
+| `otlp` | `index`, `create` | non | non | — | oui | oui | oui |
 | `parseable` | `index` | non | non | 10 Mio | oui | oui | oui |
 | `quickwit` | `create` | non | oui | 10 Mio | oui | oui | oui |
 | `siglens` | `index`, `create` | non | oui | — | oui | oui | oui |
@@ -364,6 +365,134 @@ Banc de conformité contre Quickwit 0.9.3 en conteneur
 `tests/test_integration_quickwit.py`) : lot `create` indexé puis
 retrouvé par la recherche, `_id` ignoré, index absent parti en DLQ.
 
+## Sortie `parseable` (issue #25)
+
+API d'ingestion JSON de Parseable (port 8000 par défaut) :
+`POST /api/v1/ingest`, corps **tableau JSON** des documents du lot
+(`Content-Type: application/json`), jeu de données visé dans l'en-tête
+`X-P-Stream` — créé automatiquement s'il n'existe pas.
+
+```
+output {
+  parseable {
+    hosts => ["http://parseable:8000"]
+    stream => "rsyslog"
+    user => "${PARSEABLE_USER}"
+    password => "${PARSEABLE_PASSWORD}"
+    tags => { "env" => "prod" }
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `stream` | Jeu de données Parseable (en-tête `X-P-Stream`) ; **obligatoire** |
+| `api_key` | Clé d'API (en-tête `X-API-Key`, Parseable Cloud / Enterprise) ; absente par défaut |
+| `tenant_id` | Locataire multi-tenant (en-tête `X-P-Tenant-ID`) ; absent par défaut |
+| `tags` | Étiquettes ajoutées à chaque événement (en-têtes `X-P-Tag-<nom>`, nom en lettres, chiffres, `_`, `-`) ; `{}` par défaut |
+
+Particularités :
+
+- **authentification** : basique (`user`/`password`) pour l'édition
+  open source, `api_key` sinon ;
+- **schéma souple** : Parseable aplatit les champs imbriqués
+  (`host.name` → colonne `host_name`) et ajoute `p_timestamp`
+  (horodatage d'ingestion) ; un **conflit de type** n'est pas une
+  erreur : la valeur est rangée dans une colonne suffixée (`n`
+  numérique puis `"texte"` → colonne `n_utf8`), sans perte ;
+- **insertions seules** : `index` est la seule action acceptée (les
+  options `index`, `pipeline`, `routing`, `doc_as_upsert` de la famille
+  `_bulk` sont refusées à la compilation) ; `_id` refusé ;
+- **accusé global** : Parseable répond 200 sans corps, sans détail par
+  élément (`accuse_par_evenement=False`) : 2xx = lot ingéré ; 400 (JSON
+  invalide, élément qui n'est pas un objet, nom de jeu de données
+  invalide) = permanent, DLQ si configurée ; réseau, 429, 5xx =
+  transitoire, retenté puis rendu à l'appelant ; 401/403 (clé ou mot de
+  passe refusés) = lot rendu à l'appelant, jamais en DLQ ;
+- **taille** : 10 Mio au plus par requête (limite documentée de
+  Parseable, à respecter avec `batch_bytes`) ;
+- **lot vide jamais envoyé** : Parseable 3.2.6 panique et s'arrête sur
+  un tableau vide `[]` (constaté au banc) — le client n'envoie jamais
+  de lot vide.
+
+Santé : `health()` interroge `GET /api/v1/readiness` puis
+`GET /api/v1/about` (rend la version).
+
+Banc de conformité contre Parseable 3.2.6 (binaire officiel, empreinte
+vérifiée, dans un conteneur Debian éphémère : Parseable 3.x n'est pas
+publié sur Docker Hub) (`.github/workflows/conformite-parseable.yml`,
+`tests/test_integration_parseable.py`) : lot relu par l'API SQL, jeu de
+données créé à la volée, champs aplatis, conflit de type rangé en
+colonne suffixée, nom invalide en DLQ, mauvais mot de passe rendu à
+l'appelant. Fixture du banc commun (#9) en plus.
+
+## Sortie `otlp` (issue #22)
+
+OpenTelemetry OTLP/HTTP, journaux : `POST {hosts}/v1/logs` (port 4318
+par défaut), en protobuf (`application/x-protobuf`, défaut de la
+spécification) ou en JSON. Un seul client pour tous les récepteurs
+OTLP : OpenTelemetry Collector, SigNoz, Uptrace, HyperDX/ClickStack,
+OpenObserve, Quickwit, GreptimeDB, VictoriaLogs, Parseable, Data
+Prepper… Le protobuf est codé par `outputs/otlp_codec.py`, sans nouvelle
+dépendance.
+
+```
+output {
+  otlp {
+    hosts => ["http://otel-collector:4318"]
+    encoding => "protobuf"   # ou "json"
+    resource => { "service.name" => "rsyslog" }
+    fields => { "host" => "resource.host.name" "program" => "attributes.process.executable.name" }
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `encoding` | `protobuf` (défaut) ou `json` |
+| `resource` | attributs de ressource fixes (défaut : `service.name => "pystashtemplate"`) |
+| `fields` | table de correspondance champ → cible, fusionnée avec la table par défaut |
+| `scope` | nom de la portée d'instrumentation (défaut : `pystashtemplate`) |
+| `timeout`, `headers`, `dlq_transitoires` | comme la famille `_bulk` |
+
+`compression => true` compresse le corps en gzip.
+
+Correspondance champ de l'événement → `LogRecord` (option `fields`) :
+
+| Cible | Effet | Champ par défaut |
+|---|---|---|
+| `body` | corps du journal | `message` |
+| `time` | `time_unix_nano` : date ISO 8601 (UTC si sans fuseau) ou nombre (s, ms, µs ou ns) | `@timestamp` |
+| `severity` | `severity_text` + `severity_number` : nom usuel (`info`, `warning`, `err`, `crit`…) ou code syslog 0–7 | `severity` |
+| `trace_id`, `span_id` | identifiants hexadécimaux (32 et 16 caractères) | champs de même nom |
+| `resource.<nom>` | attribut de ressource ; les journaux sont groupés par ressource | — |
+| `attributes.<nom>` | attribut du journal, renommé | — |
+| `drop` | champ non transmis | — |
+
+Tout autre champ devient un attribut du journal sous son nom ; une
+valeur illisible pour sa cible (date, identifiant) reste un attribut.
+`observed_time_unix_nano` est l'heure d'envoi.
+
+Accusé de réception **global** (OTLP ne rapporte rien par journal) :
+
+- 2xx accepté ; 400 refus définitif (DLQ) ; 429 et 5xx retentés
+  (`retry_max`) puis rendus à l'appelant ;
+- `partial_success` d'une réponse 2xx : tout le lot refusé → DLQ ;
+  refus partiel → les journaux refusés ne sont pas identifiables et la
+  spécification interdit de les renvoyer : ils sont comptés dans la
+  métrique `rejected` et journalisés avec le message du serveur, le
+  reste du lot compté indexé ;
+- en JSON, un document impossible à coder (flottant NaN ou infini) part
+  seul en DLQ, les autres sont envoyés.
+
+`health()` envoie une requête OTLP vide (OTLP n'a pas de point de santé).
+
+Banc de conformité : `tests/test_integration_otlp.py`, workflow
+`conformite-otlp.yml` (OpenTelemetry Collector contrib 0.164.0 en
+conteneur, exportateur `file`) — protobuf, JSON et gzip relus après
+décodage par le Collector (ressources, dates, sévérités, identifiants,
+attributs imbriqués).
+
 ## Sortie `siglens` (issue #20)
 
 API `_bulk` compatible Elasticsearch de SigLens, sur le port
@@ -539,67 +668,6 @@ Banc de conformité contre Grafana Loki 3.7.9 en conteneur
 (`.github/workflows/conformite-loki.yml`, `tests/test_integration_loki.py`) :
 documents retrouvés par LogQL avec leurs labels de flux, horodatage du
 document respecté. Fixture du banc commun (#9) en plus.
-
-## Sortie `parseable` (issue #25)
-
-API d'ingestion JSON de Parseable (port 8000 par défaut) :
-`POST /api/v1/ingest`, corps **tableau JSON** des documents du lot
-(`Content-Type: application/json`), jeu de données visé dans l'en-tête
-`X-P-Stream` — créé automatiquement s'il n'existe pas.
-
-```
-output {
-  parseable {
-    hosts => ["http://parseable:8000"]
-    stream => "rsyslog"
-    user => "${PARSEABLE_USER}"
-    password => "${PARSEABLE_PASSWORD}"
-    tags => { "env" => "prod" }
-  }
-}
-```
-
-| Option propre | Rôle |
-|---|---|
-| `stream` | Jeu de données Parseable (en-tête `X-P-Stream`) ; **obligatoire** |
-| `api_key` | Clé d'API (en-tête `X-API-Key`, Parseable Cloud / Enterprise) ; absente par défaut |
-| `tenant_id` | Locataire multi-tenant (en-tête `X-P-Tenant-ID`) ; absent par défaut |
-| `tags` | Étiquettes ajoutées à chaque événement (en-têtes `X-P-Tag-<nom>`, nom en lettres, chiffres, `_`, `-`) ; `{}` par défaut |
-
-Particularités :
-
-- **authentification** : basique (`user`/`password`) pour l'édition
-  open source, `api_key` sinon ;
-- **schéma souple** : Parseable aplatit les champs imbriqués
-  (`host.name` → colonne `host_name`) et ajoute `p_timestamp`
-  (horodatage d'ingestion) ; un **conflit de type** n'est pas une
-  erreur : la valeur est rangée dans une colonne suffixée (`n`
-  numérique puis `"texte"` → colonne `n_utf8`), sans perte ;
-- **insertions seules** : `index` est la seule action acceptée (les
-  options `index`, `pipeline`, `routing`, `doc_as_upsert` de la famille
-  `_bulk` sont refusées à la compilation) ; `_id` refusé ;
-- **accusé global** : Parseable répond 200 sans corps, sans détail par
-  élément (`accuse_par_evenement=False`) : 2xx = lot ingéré ; 400 (JSON
-  invalide, élément qui n'est pas un objet, nom de jeu de données
-  invalide) = permanent, DLQ si configurée ; réseau, 429, 5xx =
-  transitoire, retenté puis rendu à l'appelant ; 401/403 (clé ou mot de
-  passe refusés) = lot rendu à l'appelant, jamais en DLQ ;
-- **taille** : 10 Mio au plus par requête (limite documentée de
-  Parseable, à respecter avec `batch_bytes`) ;
-- **lot vide jamais envoyé** : Parseable 3.2.6 panique et s'arrête sur
-  un tableau vide `[]` (constaté au banc) — le client n'envoie jamais
-  de lot vide.
-
-Santé : `health()` interroge `GET /api/v1/readiness` puis
-`GET /api/v1/about` (rend la version).
-
-Banc de conformité contre Parseable 3.2.6 (binaire officiel, empreinte
-vérifiée, dans un conteneur Debian éphémère : Parseable 3.x n'est pas
-publié sur Docker Hub) (`.github/workflows/conformite-parseable.yml`,
-`tests/test_integration_parseable.py`) : lot relu par l'API SQL, jeu de
-données créé à la volée, champs aplatis, conflit de type rangé en
-colonne suffixée, nom invalide en DLQ, mauvais mot de passe rendu à
-l'appelant. Fixture du banc commun (#9) en plus.
 
 ## Sorties `file` et `stdout` (issue #32)
 

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 18:41+0000\n"
+"POT-Creation-Date: 2026-11-04 18:49+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: deusyv\n"
 "Language-Team: English\n"
@@ -239,6 +239,61 @@ msgstr "openobserve output: empty \"organization\" option"
 msgid "sortie openobserve : organisation vide"
 msgstr "openobserve output: empty organization"
 
+#: src/pystashtemplate/outputs/otlp.py
+#, python-brace-format
+msgid "réponse OTLP : lot entier refusé message={message}"
+msgstr "OTLP response: whole batch rejected message={message}"
+
+#: src/pystashtemplate/outputs/otlp.py
+#, python-brace-format
+msgid "réponse OTLP : {rejetes} journal(aux) refusé(s) sur {total}, non identifiables message={message}"
+msgstr "OTLP response: {rejetes} log record(s) rejected out of {total}, not identifiable message={message}"
+
+#: src/pystashtemplate/outputs/otlp.py
+#, python-brace-format
+msgid "réponse OTLP illisible, lot compté accepté erreur={error}"
+msgstr "unreadable OTLP response, batch counted as accepted error={error}"
+
+#: src/pystashtemplate/outputs/otlp.py
+#, python-brace-format
+msgid "sortie otlp : cible {cible} inconnue pour {champ}"
+msgstr "otlp output: unknown target {cible} for {champ}"
+
+#: src/pystashtemplate/outputs/otlp.py
+msgid "sortie otlp : cible « {} » inconnue pour le champ « {} » (attendu : {})"
+msgstr "otlp output: unknown target \"{}\" for field \"{}\" (expected: {})"
+
+#: src/pystashtemplate/outputs/otlp.py
+#, python-brace-format
+msgid "sortie otlp : lot impossible à coder erreur={error}"
+msgstr "otlp output: batch cannot be encoded error={error}"
+
+#: src/pystashtemplate/outputs/otlp_codec.py
+#, python-brace-format
+msgid "codage OTLP JSON impossible erreur={error}"
+msgstr "OTLP JSON encoding impossible error={error}"
+
+#: src/pystashtemplate/outputs/otlp_codec.py
+msgid "réponse OTLP JSON : objet attendu"
+msgstr "OTLP JSON response: object expected"
+
+#: src/pystashtemplate/outputs/otlp_codec.py
+msgid "réponse OTLP JSON : partialSuccess n'est pas un objet"
+msgstr "OTLP JSON response: partialSuccess is not an object"
+
+#: src/pystashtemplate/outputs/otlp_codec.py
+msgid "réponse OTLP protobuf : champ tronqué"
+msgstr "OTLP protobuf response: truncated field"
+
+#: src/pystashtemplate/outputs/otlp_codec.py
+#, python-brace-format
+msgid "réponse OTLP protobuf : type de fil {type_fil} non pris en charge"
+msgstr "OTLP protobuf response: unsupported wire type {type_fil}"
+
+#: src/pystashtemplate/outputs/otlp_codec.py
+msgid "réponse OTLP protobuf : varint tronqué"
+msgstr "OTLP protobuf response: truncated varint"
+
 #: src/pystashtemplate/outputs/parseable.py
 msgid "sortie parseable : nom d'étiquette invalide {!r} (lettres, chiffres, _ et -)"
 msgstr "parseable output: invalid tag name {!r} (letters, digits, _ and -)"
@@ -443,10 +498,6 @@ msgstr "uuid ignored: missing target option"
 
 #~ msgid "Index template à installer au démarrage"
 #~ msgstr "Index template to install at startup"
-
-#, python-brace-format
-#~ msgid "Message JSON invalide ignoré erreur={error}"
-#~ msgstr "Invalid JSON message skipped error={error}"
 
 #~ msgid "Message JSON qui n'est pas un objet, ignoré"
 #~ msgstr "JSON message that is not an object, skipped"
