@@ -28,7 +28,8 @@ syslog (`emerg` 0 … `debug` 7).
 - `http` (défaut) : `POST /gelf` sur l'entrée GELF HTTP de Graylog. Un
   message par requête avec `batch_size => 1` ; au-delà, les messages
   partent en NDJSON et l'entrée doit avoir **Enable Bulk Receiving**
-  activé. Graylog n'accuse pas réception élément par élément (202 sans
+  activé (chaque message est terminé par un saut de ligne : l'entrée
+  découpe le flux de la connexion, pas la requête). Graylog n'accuse pas réception élément par élément (202 sans
   corps) : statut HTTP global, même politique que les autres sorties
   (`accuse_par_evenement=False`) — 2xx = lot reçu ; 400/404 = échec
   permanent (DLQ si configurée) ; réseau, 429, 5xx = transitoire ;
@@ -426,8 +427,14 @@ class GelfOutput(ElasticsearchBulkOutput):
 
     @traced
     def _corps_requete(self, pendings: list[dict[str, Any]]) -> str:
-        """Messages GELF du lot, un par ligne (NDJSON du mode bulk ; un seul sinon)."""
-        return "\n".join(self._json(pending["doc"]).decode("utf-8") for pending in pendings)
+        """Messages GELF du lot, chacun terminé par un saut de ligne (NDJSON du mode bulk).
+
+        Le saut de ligne final compte : en réception par lot, Graylog
+        découpe le flux de la connexion sur les sauts de ligne ; sans lui,
+        le dernier message d'une requête reste en attente et se colle au
+        premier de la requête suivante sur la même connexion (perdu).
+        """
+        return "".join(self._json(pending["doc"]).decode("utf-8") + "\n" for pending in pendings)
 
     @traced
     def _client_http(self) -> httpx.AsyncClient:

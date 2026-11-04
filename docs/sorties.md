@@ -551,8 +551,10 @@ Particularités :
   réservé par GELF), champs `@…` non envoyés ; `timestamp` vient de
   `@timestamp` (secondes depuis l'epoch) ;
 - **HTTP** : un message par requête avec `batch_size => 1` ; au-delà,
-  NDJSON (un message par ligne), à condition d'activer **Enable Bulk
-  Receiving** sur l'entrée GELF HTTP. Graylog répond 202 sans détail :
+  NDJSON (chaque message terminé par un saut de ligne, sinon Graylog
+  colle le dernier message d'une requête au premier de la suivante sur
+  la même connexion), à condition d'activer **Enable Bulk Receiving**
+  sur l'entrée GELF HTTP. Graylog répond 202 sans détail :
   statut HTTP global (`accuse_par_evenement=False`), 400/404 en DLQ,
   429/5xx/réseau retentés, 401/403 rendus à l'appelant ;
 - **TCP** : connexion persistante, messages terminés par un octet nul,

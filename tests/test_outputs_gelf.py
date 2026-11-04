@@ -280,8 +280,15 @@ class TestHttp:
         serveur = FauxGraylog()
         documents = [{**DOC, "message": f"m{i}"} for i in range(3)]
         _envoyer(_http(serveur, batch_size=3), documents)
-        lignes = serveur.requests[0].content.decode("utf-8").splitlines()
-        assert [json.loads(ligne)["short_message"] for ligne in lignes] == ["m0", "m1", "m2"]
+        corps = serveur.requests[0].content.decode("utf-8")
+        # Chaque message terminé par un saut de ligne, le dernier compris.
+        assert corps.endswith("}\n")
+        assert [json.loads(ligne)["short_message"] for ligne in corps.splitlines()] == ["m0", "m1", "m2"]
+
+    def test_message_seul_termine_par_saut_de_ligne(self) -> None:
+        serveur = FauxGraylog()
+        _envoyer(_http(serveur), [DOC, DOC])
+        assert all(r.content.endswith(b"}\n") and r.content.count(b"\n") == 1 for r in serveur.requests)
 
     def test_400_en_dlq(self, tmp_path: Path) -> None:
         chemin = tmp_path / "dlq.jsonl"
