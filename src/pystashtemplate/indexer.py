@@ -35,7 +35,7 @@ from pystashtemplate.outputs.elasticsearch_bulk import (
 from pystashtemplate.outputs.elasticsearch_bulk import SendOutcome as _SortieOutcome
 from pystashtemplate.outputs.opensearch import OpenSearchOutput
 from pystashtemplate.templates import CompiledTemplate, compile_template, render
-from pystashtemplate.tracing import traced
+from pystashtemplate.tracing import atraced, traced
 
 OPENSEARCH_TIMEOUT = 3.0  # secondes, timeout socket du client OpenSearch
 
@@ -190,7 +190,7 @@ class OpenSearchIndexer:
             options["ssl_key"] = client_key
         self.sortie = OpenSearchOutput(options, dlq=dlq)
 
-    @traced
+    @atraced
     async def health(self) -> dict[str, Any]:
         """Interroge le cluster (GET /) : sa version, ou lève l'erreur.
 
@@ -229,7 +229,7 @@ class OpenSearchIndexer:
         rendered = render(self._document_id_template, doc, on_missing="empty")
         return rendered or None
 
-    @traced
+    @atraced
     async def _client(self):
         """Client httpx paresseux de la sortie (couture : template d'index).
 
@@ -239,7 +239,7 @@ class OpenSearchIndexer:
         """
         return self.sortie._client_http()
 
-    @traced
+    @atraced
     async def send(
         self,
         doc: dict,
@@ -308,7 +308,7 @@ class OpenSearchIndexer:
             return SendOutcome.INDEXED
         return SendOutcome.RETRYABLE
 
-    @traced
+    @atraced
     async def close(self) -> None:
         """Ferme proprement la sortie (et son client HTTP)."""
         await self.sortie.close()

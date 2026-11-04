@@ -5,6 +5,16 @@ le projet suit SemVer.
 
 ## [Non publié]
 
+### Corrections
+
+- Traçage asynchrone (#37, audit du 04/11) : les fonctions `async def`
+  arrivées après la v0.2.0 (`indexer.py`, `service.py`,
+  `outputs/syslog.py`) portaient `@traced`, qui journalise la sortie
+  avant l'`await`, ou aucun décorateur. Elles passent à `@atraced` ; un
+  test (`tests/test_tracing.py::TestRegleAtraced`) fait désormais
+  respecter la règle sur tout `src/` (seules exceptions : méthodes
+  abstraites, signatures de Protocol, générateurs asynchrones).
+
 ### Tests
 
 - Couverture des sorties `victorialogs` (#14) et `http` (#24) remontée à
