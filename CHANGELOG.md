@@ -15,6 +15,9 @@ le projet suit SemVer.
   `blocklist.example.txt`, `enrich-dict.example.json` et
   `pipeline.example.d/` (cités par le code de `filters`, `interpreter` et
   `enrichment`) ; liens depuis le README.
+- `LICENSES/` (texte Apache-2.0 et notice de logstash-patterns-core) : les
+  motifs grok recopiés dans `grok.py` y renvoient, le dossier était resté
+  dans RsysLogstach (#57).
 - `atraced` (issue #37, chantier full async #1) : équivalent asynchrone de
   `@traced` dans `tracing.py` — la sortie est journalisée quand la
   coroutine se termine réellement (autour du `await`), et non dès sa

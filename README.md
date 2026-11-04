@@ -147,3 +147,11 @@ et compile les `.mo`. La locale se force par `$LANGUAGE` ou
 GPL-3.0-or-later. Crédits et historique complet : projet
 [RsysLogstach](https://github.com/Mathilde-Team/RsysLogstach) (sources
 d'origine, issues #25, #40, #73, #111...).
+
+La bibliothèque des motifs `grok` de base (`patterns/legacy/grok-patterns`
+de [logstash-patterns-core](https://github.com/logstash-plugins/logstash-patterns-core),
+Copyright 2012-2015 Elasticsearch, Apache-2.0) est recopiée sans
+modification dans `src/pystashtemplate/grok.py`, avec attribution ; le texte
+de la licence Apache-2.0 et la notice d'origine sont dans
+[`LICENSES/`](LICENSES/) (rapatriés de RsysLogstach par #57). Cette licence
+est compatible avec la GPLv3.
