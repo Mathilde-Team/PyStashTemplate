@@ -109,6 +109,9 @@ class SortieInconnueError(ValueError):
 # moment de leur import — le registre doit exister (définitions ci-dessus)
 # avant que ce module ne soit chargé.
 from pystashtemplate.outputs.clickhouse import ClickHouseOutput  # noqa: E402
+from pystashtemplate.outputs.courtier_nats import NatsOutput  # noqa: E402
+from pystashtemplate.outputs.courtier_rabbitmq import RabbitMqOutput  # noqa: E402
+from pystashtemplate.outputs.courtier_redis import RedisOutput  # noqa: E402
 from pystashtemplate.outputs.doris import DorisOutput  # noqa: E402
 from pystashtemplate.outputs.elasticsearch import ElasticsearchOutput  # noqa: E402
 from pystashtemplate.outputs.fichier import FileOutput  # noqa: E402
@@ -140,6 +143,7 @@ __all__ = [
     "GreptimeDbOutput",
     "HttpOutput",
     "KafkaOutput",
+    "NatsOutput",
     "LokiOutput",
     "ManticoreOutput",
     "NullOutput",
@@ -150,7 +154,9 @@ __all__ = [
     "SyslogOutput",
     "Output",
     "QuickwitOutput",
+    "RabbitMqOutput",
     "REGISTRY",
+    "RedisOutput",
     "SigLensOutput",
     "SortieInconnueError",
     "StdoutOutput",

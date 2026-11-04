@@ -1,0 +1,59 @@
+# Banc de conformité rabbitmq (issue #33) : la sortie `rabbitmq` contre un
+# vrai courtier RabbitMQ, en conteneur éphémère. Publication confirmée sur
+# un échange topic/fanout, messages relus dans une file liée (clé de
+# routage, propriétés AMQP, corps) ; échange passif absent et mauvais mot
+# de passe rendus à l'appelant (`tests/test_integration_rabbitmq.py`).
+#
+# Runner hébergé GitHub (ubuntu-latest, autorisé par la MISSION) : Docker
+# y est garanti, contrairement aux runners maison.
+name: Banc de conformité rabbitmq
+
+"on":
+  push:
+    branches: [main, dev]
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  conformite:
+    name: "Sortie rabbitmq contre un vrai RabbitMQ"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout du dépôt
+        uses: actions/checkout@v7
+
+      - name: Installation de uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          enable-cache: true
+
+      - name: Installation de Python
+        run: uv python install
+
+      - name: Installation des dépendances
+        run: uv sync --extra dev
+
+      - name: RabbitMQ éphémère
+        run: |
+          docker run -d --name rabbitmq -p 5672:5672 rabbitmq:4.2-alpine
+          for i in $(seq 1 90); do
+            if docker exec rabbitmq rabbitmq-diagnostics -q check_port_connectivity >/dev/null 2>&1; then
+              echo "RabbitMQ prêt"; exit 0
+            fi
+            sleep 1
+          done
+          docker logs rabbitmq
+          echo "::error::RabbitMQ n'a pas démarré" && exit 1
+
+      - name: Banc de conformité
+        env:
+          PYSTASHTEMPLATE_RABBITMQ_HOST: localhost:5672
+        run: uv run pytest tests/test_integration_rabbitmq.py -v
+
+      - name: Nettoyage du conteneur
+        if: always()
+        run: docker rm -f rabbitmq || true

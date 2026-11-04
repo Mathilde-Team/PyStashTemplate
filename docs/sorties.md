@@ -27,12 +27,15 @@ coupure réseau, arrêt propre).
 | `kafka` | `index` | non | non | — | oui | oui | oui |
 | `loki` | `index` | non | non | — | oui | oui | oui |
 | `manticore` | toutes | oui | oui | — | oui | oui | oui |
+| `nats` | `index` | non | non | — | oui | oui | oui |
 | `null` | toutes | oui | oui | — | non | oui | non |
 | `openobserve` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `opensearch` | toutes | oui | oui | — | oui | oui | oui |
 | `otlp` | `index`, `create` | non | non | — | oui | oui | oui |
 | `parseable` | `index` | non | non | 10 Mio | oui | oui | oui |
 | `quickwit` | `create` | non | oui | 10 Mio | oui | oui | oui |
+| `rabbitmq` | `index` | non | non | — | oui | oui | oui |
+| `redis` | `index` | non | non | — | oui | oui | oui |
 | `siglens` | `index`, `create` | non | oui | — | oui | oui | oui |
 | `stdout` | `index`, `create` | non | oui | — | non | oui | non |
 | `syslog` | `index` | non | non | — | oui | oui | oui |
@@ -594,6 +597,130 @@ Banc de conformité contre Redpanda en conteneur
 (`.github/workflows/conformite-kafka.yml`,
 `tests/test_integration_kafka.py`) : messages relus par un
 consommateur `aiokafka`, sujet, clé et valeur vérifiés.
+
+## Sorties courtiers de messages : `redis`, `rabbitmq`, `nats` (issue #33)
+
+Trois éditeurs asynchrones sur un **socle commun**
+(`pystashtemplate.outputs.courtier`) : seul le `output{}` change d'un
+courtier à l'autre, le cycle d'envoi est le même que celui de `kafka`.
+
+- chaque document est préparé à l'arrivée (destination rendue par
+  gabarit sprintf, charge utile encodée selon `codec` : `json` par
+  défaut, `json_lines` ou `rubydebug`) puis tamponné jusqu'à
+  `batch_size` ;
+- le lot part d'un bloc ; l'issue est analysée **message par message**
+  quand le courtier le permet ;
+- seuls les messages en échec transitoire sont retentés
+  (`retry_max`/`retry_backoff`), puis rendus à l'appelant (`RETRYABLE`)
+  ou mis en DLQ avec `dlq_transitoires` (#7) ; une erreur de connexion
+  vaut pour tout le lot et fait rouvrir la connexion au prochain essai ;
+- un **refus définitif** d'un message (voir chaque courtier) part en DLQ
+  si elle est configurée, sinon il est rendu à l'appelant ;
+- sémantique **au moins une fois** ; `index` seulement, `_id` refusé ;
+- TLS commun : `ssl_enabled` (faux par défaut) chiffre la connexion,
+  `ssl` (vérification du certificat, vrai par défaut), `cacert`,
+  `ssl_certificate`/`ssl_key` comme les autres sorties.
+
+### `redis`
+
+```
+output {
+  redis {
+    host => ["redis-1:6379", "redis-2"]
+    key => "logs-%{app}"
+    data_type => "list"
+    batch_size => 100
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `host` | Nœud(s) `hôte` ou `hôte:port` (`[::1]:6379` en IPv6), essayés dans l'ordre (`127.0.0.1` par défaut, à défaut `hosts`) |
+| `port` | Port des nœuds sans port explicite (6379) |
+| `db` | Base Redis (0) |
+| `key` | Liste, canal ou flux, gabarit sprintf — **requise** |
+| `data_type` | `list` (défaut, `RPUSH`), `channel` (`PUBLISH`), `stream` (`XADD`, champ `message`, extension absente de Logstash) |
+| `stream_maxlen` | Longueur maximale approximative du flux (`MAXLEN ~`) |
+| `timeout` | Délai réseau en secondes (5) |
+
+`user`/`password` portent l'authentification (ACL Redis 6+, ou mot de
+passe seul). Un lot = **un pipeline** Redis (sans transaction) ; une
+erreur de commande (`WRONGTYPE` : la clé existe avec un autre type) est
+un refus définitif de ce seul document. `channel` est feu-et-oubli :
+sans abonné, le message est perdu. Santé : `PING` et version du serveur.
+
+### `rabbitmq`
+
+```
+output {
+  rabbitmq {
+    host => "rabbitmq"
+    exchange => "logs"
+    exchange_type => "topic"
+    key => "%{app}"
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `host` | Nœud(s) `hôte` ou `hôte:port`, essayés dans l'ordre (`localhost`) |
+| `port` | Port AMQP (5672) |
+| `vhost` | Hôte virtuel (`/`) |
+| `exchange` | Échange de destination — **requis** (`""` : échange par défaut) |
+| `exchange_type` | `direct`, `fanout`, `topic`, `headers`, `x-consistent-hash`, `x-modulus-hash` — **requis** |
+| `key` | Clé de routage, gabarit sprintf (`logstash`) |
+| `durable` | Échange déclaré durable (vrai) |
+| `passive` | Vérifier l'échange sans le déclarer (faux) |
+| `persistent` | Messages en livraison persistante (vrai) |
+| `message_properties` | Propriétés AMQP : `content_type` (`application/json` par défaut), `priority`, `app_id`, `type`… |
+| `heartbeat`, `timeout` | Battement de cœur AMQP ; délai de connexion (5 s) |
+
+`user`/`password` valent `guest`/`guest` par défaut, comme Logstash. Le
+canal utilise les **confirmations d'éditeur** : un `nack` est
+transitoire, une erreur de canal ou de connexion aussi (la connexion est
+rouverte). Comme Logstash, `mandatory` n'est pas positionné : un message
+qu'aucune file ne reçoit est écarté par le courtier. Santé : produit et
+version annoncés, échange vérifié.
+
+### `nats`
+
+Pas de sortie NATS officielle dans Logstash : options du plugin
+communautaire `logstash-output-nats` et du client `nats-py`.
+
+```
+output {
+  nats {
+    url => ["nats://nats-1:4222", "nats://nats-2:4222"]
+    subject => "logs.%{app}"
+    jetstream => true
+  }
+}
+```
+
+| Option propre | Rôle |
+|---|---|
+| `url` | Serveur(s) du groupe, essayés dans l'ordre (`nats://127.0.0.1:4222`, à défaut `hosts`) |
+| `subject` | Sujet, gabarit sprintf — **requis** |
+| `token` | Jeton d'authentification (sinon `user`/`password`) |
+| `jetstream` | Publier en JetStream, avec accusé par message (faux) |
+| `stream` | Flux JetStream attendu pour le sujet |
+| `name`, `timeout` | Nom du client vu par le serveur ; délai réseau (5 s) |
+
+NATS cœur ne stocke rien : le lot est confirmé par un `flush`
+(aller-retour PING/PONG), qui prouve seulement que le serveur a tout
+reçu. En JetStream, un sujet couvert par aucun flux, un message plus
+gros que `max_payload` ou une erreur d'API autre que 503 sont des refus
+définitifs ; un délai dépassé ou un 503 sont transitoires. Santé : URL
+et version du serveur, plus le nombre de flux du compte en JetStream.
+
+Bancs de conformité en conteneur : Redis 8.4
+(`conformite-redis.yml`, `tests/test_integration_redis.py`),
+RabbitMQ 4.2 (`conformite-rabbitmq.yml`,
+`tests/test_integration_rabbitmq.py`) et NATS 2.15 avec JetStream
+(`conformite-nats.yml`, `tests/test_integration_nats.py`) : messages
+relus par un client indépendant, refus définitifs vérifiés en DLQ.
 
 ## Sortie `syslog` (issue #30)
 

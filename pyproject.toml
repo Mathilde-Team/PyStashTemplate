@@ -18,6 +18,9 @@ dependencies = [
     "dnspython==2.9.1",
     "httpx>=0.28",
     "aiokafka>=0.12",  # producteur asynchrone de la sortie kafka (#29)
+    "redis>=6.0",  # client asynchrone de la sortie redis (#33)
+    "aio-pika>=9.5",  # client AMQP 0-9-1 de la sortie rabbitmq (#33)
+    "nats-py>=2.10",  # client NATS / JetStream de la sortie nats (#33)
 ]
 
 [project.optional-dependencies]

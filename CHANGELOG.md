@@ -7,6 +7,22 @@ le projet suit SemVer.
 
 ### Évolutions
 
+- Sorties `redis`, `rabbitmq` et `nats` (issue #33) : courtiers de
+  messages sur un socle commun (`outputs/courtier.py` : tampon, retentes
+  des seuls messages en échec, refus définitif par message en DLQ,
+  transitoires épuisés rendus ou en DLQ avec `dlq_transitoires`).
+  `redis` : options du plugin Logstash (`host`, `port`, `db`, `key`,
+  `data_type` `list`/`channel`, plus `stream` avec `stream_maxlen`), un
+  pipeline par lot, `WRONGTYPE` refusé document par document.
+  `rabbitmq` : AMQP 0-9-1 `aio-pika`, options du plugin Logstash
+  (`exchange`, `exchange_type`, `key`, `durable`, `persistent`,
+  `passive`, `message_properties`, `vhost`), confirmations d'éditeur,
+  `nack` transitoire. `nats` : cœur (`flush` par lot) ou JetStream
+  (`PubAck` par message, sujet sans flux en DLQ), `user`/`password` ou
+  `token`. TLS commun (`ssl_enabled`). Bancs de conformité contre
+  Redis 8.4, RabbitMQ 4.2 et NATS 2.15 en conteneur
+  (`conformite-redis.yml`, `conformite-rabbitmq.yml`,
+  `conformite-nats.yml`).
 - Sortie `doris` (issue #27) : Stream Load d'Apache Doris
   (`PUT /api/<database>/<table>/_stream_load`, tableau JSON), redirection
   FE → BE suivie avec l'authentification, label par lot stable d'une
