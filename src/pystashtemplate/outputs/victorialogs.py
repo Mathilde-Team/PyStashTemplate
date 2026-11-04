@@ -119,9 +119,8 @@ class VictoriaLogsOutput(ElasticsearchBulkOutput):
                 qui n'est ni une chaîne ni une liste.
         """
         super().__init__(options, dlq=dlq, transport=transport)
+        # `mode` est déjà validé par le schéma commun (valeurs valides : MODES).
         self._mode = str(options.get("mode", "bulk"))
-        if self._mode not in MODES:
-            raise ValueError(_("sortie victorialogs : mode {} inconnu (bulk ou jsonline)").format(self._mode))
         self._parametres: dict[str, str] = {}
         for option, (parametre, defaut) in _CHAMPS.items():
             valeur = _liste_virgules(options.get(option, defaut))

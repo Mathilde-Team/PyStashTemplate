@@ -5,6 +5,13 @@ le projet suit SemVer.
 
 ## [Non publié]
 
+### Tests
+
+- Couverture des sorties `victorialogs` (#14) et `http` (#24) remontée à
+  100 % (audit du 04/11 : 94 % et 97 %) : santé `http` en 5xx et en 4xx,
+  aide `_liste_virgules` ; garde-fou de `mode` redondant avec le schéma
+  commun retiré de `VictoriaLogsOutput`.
+
 ### Sécurité
 
 - Identifiants écrits dans l'URL masqués dans les journaux (#5, audit du

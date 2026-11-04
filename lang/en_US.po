@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 21:47+0000\n"
+"POT-Creation-Date: 2026-11-04 22:26+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: deusyv\n"
 "Language-Team: English\n"
@@ -647,10 +647,6 @@ msgstr "transport: network failure after {} attempt(s)"
 msgid "sortie victorialogs : liste de champs attendue, reçu {}"
 msgstr "victorialogs output: list of fields expected, got {}"
 
-#: src/pystashtemplate/outputs/victorialogs.py
-msgid "sortie victorialogs : mode {} inconnu (bulk ou jsonline)"
-msgstr "victorialogs output: unknown mode {} (bulk or jsonline)"
-
 #: src/pystashtemplate/service.py
 #, python-brace-format
 msgid "entrée sflow : datagramme perdu erreur={error}"
@@ -871,6 +867,9 @@ msgstr "uuid ignored: missing target option"
 
 #~ msgid "options inconnues pour cette sortie : {}"
 #~ msgstr "unknown options for this output: {}"
+
+#~ msgid "sortie victorialogs : mode {} inconnu (bulk ou jsonline)"
+#~ msgstr "victorialogs output: unknown mode {} (bulk or jsonline)"
 
 #~ msgid "Âge maximal d'un fichier rotaté"
 #~ msgstr "Maximum age of a rotated file"
