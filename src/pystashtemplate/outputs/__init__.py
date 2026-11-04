@@ -109,6 +109,7 @@ class SortieInconnueError(ValueError):
 # moment de leur import — le registre doit exister (définitions ci-dessus)
 # avant que ce module ne soit chargé.
 from pystashtemplate.outputs.clickhouse import ClickHouseOutput  # noqa: E402
+from pystashtemplate.outputs.doris import DorisOutput  # noqa: E402
 from pystashtemplate.outputs.elasticsearch import ElasticsearchOutput  # noqa: E402
 from pystashtemplate.outputs.fichier import FileOutput  # noqa: E402
 from pystashtemplate.outputs.fluent_forward import FluentForwardOutput  # noqa: E402
@@ -124,7 +125,9 @@ from pystashtemplate.outputs.otlp import OtlpOutput  # noqa: E402
 from pystashtemplate.outputs.parseable import ParseableOutput  # noqa: E402
 from pystashtemplate.outputs.quickwit import QuickwitOutput  # noqa: E402
 from pystashtemplate.outputs.siglens import SigLensOutput  # noqa: E402
+from pystashtemplate.outputs.splunk_hec import SplunkHecOutput  # noqa: E402
 from pystashtemplate.outputs.stdout import StdoutOutput  # noqa: E402
+from pystashtemplate.outputs.syslog import SyslogOutput  # noqa: E402
 from pystashtemplate.outputs.victorialogs import VictoriaLogsOutput  # noqa: E402
 from pystashtemplate.outputs.zincsearch import ZincSearchOutput  # noqa: E402
 
@@ -133,6 +136,7 @@ __all__ = [
     "Capacites",
     "ClickHouseOutput",
     "Document",
+    "DorisOutput",
     "ElasticsearchOutput",
     "FileOutput",
     "FluentForwardOutput",
@@ -146,11 +150,13 @@ __all__ = [
     "OpenObserveOutput",
     "OtlpOutput",
     "ParseableOutput",
+    "SyslogOutput",
     "Output",
     "QuickwitOutput",
     "REGISTRY",
     "SigLensOutput",
     "SortieInconnueError",
+    "SplunkHecOutput",
     "StdoutOutput",
     "VictoriaLogsOutput",
     "ZincSearchOutput",
