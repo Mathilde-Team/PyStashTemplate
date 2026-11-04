@@ -143,7 +143,7 @@ def test_refresh_inconnu_refuse() -> None:
 
 
 def test_option_inconnue_refusee() -> None:
-    with pytest.raises(ValueError, match="options inconnues"):
+    with pytest.raises(ValueError, match="inconnue pour la sortie"):
         sortie(FauxQuickwit(), commit="auto")
 
 

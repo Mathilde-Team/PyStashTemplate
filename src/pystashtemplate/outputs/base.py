@@ -35,6 +35,7 @@ from loguru import logger
 
 from pystashtemplate.i18n import _
 from pystashtemplate.outputs.metriques import OBSERVATEUR_NUL, ObservateurSortie
+from pystashtemplate.outputs.schema import OptionSpec, valider_options
 from pystashtemplate.tracing import atraced, traced
 
 # Actions d'indexation d'un document, comme l'API `_bulk` de la famille
@@ -115,16 +116,30 @@ class Output(ABC):
     # adaptateur vers les métriques d'un connecteur).
     observateur: ObservateurSortie = OBSERVATEUR_NUL
 
+    # Options propres à la sortie, en plus des communes du schéma
+    # (`pystashtemplate.outputs.schema.OPTIONS_COMMUNES`, issue #8) :
+    # validées à l'instanciation — donc à la compilation du pipeline —
+    # option inconnue ou valeur invalide comprise.
+    OPTIONS_PROPRES: ClassVar[dict[str, OptionSpec]] = {}
+
     @traced
     def __init__(self, options: dict[str, Any]) -> None:
-        """Options du bloc `output{}` de la sortie, telles que rendues par l'interpréteur.
+        """Options du bloc `output{}` de la sortie, validées puis gardées telles quelles.
 
         Args:
             options: Options du bloc, rendues contre le document pour ce
                 qui est dynamique (index, identifiant…), telles quelles
                 pour la connexion (`hosts`, `user`…).
+
+        Raises:
+            ValueError: Option inconnue (communes + `OPTIONS_PROPRES`) ou
+                valeur invalide — le message, traduit, nomme le plugin.
         """
-        self.options: dict[str, Any] = options
+        # Nom de plugin : les classes de famille (elasticsearch_bulk, sans
+        # `plugin` propre) tombent sur le nom de la classe — le message
+        # reste utile pour un dépistage.
+        valider_options(getattr(self, "plugin", None) or type(self).__name__, dict(options), self.OPTIONS_PROPRES)
+        self.options: dict[str, Any] = dict(options)
 
     @property
     @traced

@@ -99,12 +99,21 @@ def test_file_est_inscrit_au_registre() -> None:
 
 
 def test_file_sans_path_leve_une_erreur_claire() -> None:
-    with pytest.raises(ValueError, match="option « path » manquante"):
+    # Schéma commun (#8) : l'option requise absente est nommée.
+    with pytest.raises(ValueError, match="l'option « path » est requise"):
         FileOutput({})
 
 
+def test_file_path_vide_leve_une_erreur_claire() -> None:
+    # Le schéma exige la présence de `path`, pas sa non-vacuité :
+    # la chaîne vide reste refusée, message historique conservé.
+    with pytest.raises(ValueError, match="option « path » manquante"):
+        FileOutput({"path": ""})
+
+
 def test_file_codec_inconnu_leve_une_erreur_claire() -> None:
-    with pytest.raises(ValueError, match="codec bogus inconnu"):
+    # Schéma commun (#8) : énumération validée à l'instanciation.
+    with pytest.raises(ValueError, match="valeurs valides : json_lines, rubydebug"):
         FileOutput({"path": "/tmp/x.ndjson", "codec": "bogus"})
 
 
@@ -215,7 +224,8 @@ def test_stdout_codec_json_lines() -> None:
 
 
 def test_stdout_codec_inconnu_leve_une_erreur_claire() -> None:
-    with pytest.raises(ValueError, match="codec bogus inconnu"):
+    # Schéma commun (#8) : énumération validée à l'instanciation.
+    with pytest.raises(ValueError, match="valeurs valides : json_lines, rubydebug"):
         StdoutOutput({"codec": "bogus"})
 
 

@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: RsysLogstach\n"
 "Report-Msgid-Bugs-To: https://github.com/Mathilde-Team/RsysLogstach/issues\n"
-"POT-Creation-Date: 2026-11-04 18:03+0000\n"
+"POT-Creation-Date: 2026-11-04 18:11+0000\n"
 "PO-Revision-Date: 2026-10-24 17:02+0000\n"
 "Last-Translator: deusyv\n"
 "Language-Team: English\n"
@@ -77,11 +77,11 @@ msgstr "json ignored: missing source option"
 
 #: src/pystashtemplate/outputs/__init__.py
 msgid "sortie « {} » déjà inscrite au registre"
-msgstr "output \"{}\" already registered"
+msgstr "output \"{}\": option \"{}\" is required"
 
 #: src/pystashtemplate/outputs/__init__.py
 msgid "sortie « {} » inconnue — sorties disponibles : {}"
-msgstr "unknown output \"{}\" — available outputs: {}"
+msgstr "unknown option \"{}\" for output \"{}\" (valid options: {})"
 
 #: src/pystashtemplate/outputs/base.py
 msgid "action « {} » non supportée par cette sortie (supportées : {})"
@@ -139,14 +139,10 @@ msgid "lot en échec transitoire mis en DLQ documents={nombre}"
 msgstr "batch with transient failure sent to the DLQ documents={nombre}"
 
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
-msgid "options inconnues pour cette sortie : {}"
-msgstr "unknown options for this output: {}"
-
-#: src/pystashtemplate/outputs/elasticsearch_bulk.py
 msgid "réponse _bulk : {} éléments attendus, {} reçus"
 msgstr "_bulk response: {} items expected, {} received"
 
-#: src/pystashtemplate/outputs/elasticsearch_bulk.py
+#: src/pystashtemplate/outputs/elasticsearch_bulk.py src/pystashtemplate/outputs/manticore.py
 #, python-brace-format
 msgid "réponse _bulk illisible erreur={error}"
 msgstr "unreadable _bulk response error={error}"
@@ -154,10 +150,6 @@ msgstr "unreadable _bulk response error={error}"
 #: src/pystashtemplate/outputs/elasticsearch_bulk.py
 msgid "sortie : _id refusé par le produit, ignoré"
 msgstr "output: _id rejected by the product, ignored"
-
-#: src/pystashtemplate/outputs/fichier.py src/pystashtemplate/outputs/stdout.py
-msgid "codec {} inconnu (codecs disponibles : json_lines, rubydebug)"
-msgstr "unknown codec {} (available codecs: json_lines, rubydebug)"
 
 #: src/pystashtemplate/outputs/fichier.py
 msgid "sortie file : option « path » manquante (chemin du fichier de sortie)"
@@ -204,6 +196,14 @@ msgstr "lotisseur option {}: {} (must be strictly positive)"
 #: src/pystashtemplate/outputs/lotisseur.py
 msgid "échec de l'envoi du lot ({} document(s))"
 msgstr "batch send failed ({} document(s))"
+
+#: src/pystashtemplate/outputs/manticore.py
+msgid "manticore : {} create en doublon (document déjà présent)"
+msgstr "manticore: {} duplicate create (document already present)"
+
+#: src/pystashtemplate/outputs/manticore.py
+msgid "manticore : {} create précédant un doublon rendus à l'appelant"
+msgstr "manticore: {} create preceding a duplicate returned to the caller"
 
 #: src/pystashtemplate/outputs/matrice.py
 msgid "marqueurs de la matrice des sorties absents ou dans le désordre"
@@ -259,6 +259,26 @@ msgstr "DLQ replay: {} already exists, it would be overwritten"
 #, python-brace-format
 msgid "rejeu DLQ terminé rejouées={rejouees} conservées={conservees}"
 msgstr "DLQ replay finished replayed={rejouees} kept={conservees}"
+
+#: src/pystashtemplate/outputs/schema.py
+msgid "option « {} » inconnue pour la sortie « {} » (options valides : {})"
+msgstr "unknown option \"{}\" for output \"{}\" (valid options: {})"
+
+#: src/pystashtemplate/outputs/schema.py
+msgid "sortie « {} » : l'option « {} » est requise"
+msgstr "output \"{}\": option \"{}\" is required"
+
+#: src/pystashtemplate/outputs/schema.py
+msgid "sortie « {} » : option « {} » — la valeur doit être au moins {} (reçu : {})"
+msgstr "output \"{}\": option \"{}\" — the value must be at least {} (got: {})"
+
+#: src/pystashtemplate/outputs/schema.py
+msgid "sortie « {} » : option « {} » — type {} attendu (reçu : {})"
+msgstr "output \"{}\": option \"{}\" — expected type {} (got: {})"
+
+#: src/pystashtemplate/outputs/schema.py
+msgid "sortie « {} » : option « {} » — valeurs valides : {} (reçu : {})"
+msgstr "output \"{}\": option \"{}\" — valid values: {} (got: {})"
 
 #: src/pystashtemplate/outputs/transport.py
 msgid "transport : échec réseau après {} essai(s)"
@@ -457,6 +477,9 @@ msgstr "uuid ignored: missing target option"
 #~ msgid "_id par empreinte : champs séparés par des virgules, ou « * » pour le document entier"
 #~ msgstr "Fingerprint _id: comma-separated fields, or \"*\" for the whole document"
 
+#~ msgid "codec {} inconnu (codecs disponibles : json_lines, rubydebug)"
+#~ msgstr "unknown codec {} (available codecs: json_lines, rubydebug)"
+
 #~ msgid "dead letter queue (issue #27)"
 #~ msgstr "dead letter queue (issue #27)"
 
@@ -468,6 +491,9 @@ msgstr "uuid ignored: missing target option"
 
 #~ msgid "métriques Prometheus (issue #35)"
 #~ msgstr "Prometheus metrics (issue #35)"
+
+#~ msgid "options inconnues pour cette sortie : {}"
+#~ msgstr "unknown options for this output: {}"
 
 #~ msgid "Âge maximal d'un fichier rotaté"
 #~ msgstr "Maximum age of a rotated file"

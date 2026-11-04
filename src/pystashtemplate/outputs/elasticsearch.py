@@ -49,6 +49,7 @@ from pystashtemplate.dlq import LocalDeadLetterQueue
 from pystashtemplate.i18n import _
 from pystashtemplate.outputs import Capacites, enregistrer
 from pystashtemplate.outputs.elasticsearch_bulk import ActionInvalideError, ElasticsearchBulkOutput, SendOutcome
+from pystashtemplate.outputs.schema import OptionSpec
 from pystashtemplate.tracing import atraced, traced
 
 # Schéma de nommage des data streams d'Elastic (type-dataset-namespace),
@@ -76,8 +77,18 @@ class ElasticsearchOutput(ElasticsearchBulkOutput):
         accuse_par_evenement=True,
         taille_max_requete=None,
     )
-    OPTIONS_CONNUES: ClassVar[frozenset[str]] = ElasticsearchBulkOutput.OPTIONS_CONNUES | frozenset(
-        {"api_key", "token", "data_stream", *_DATA_STREAM_DEFAUTS}
+    # Options propres à cette sortie, en plus de celles de la famille
+    # _bulk et des communes du schéma (issue #8) : authentification par
+    # clé d'API ou jeton porteur, et data streams Elastic.
+    OPTIONS_PROPRES: ClassVar[dict[str, OptionSpec]] = dict(
+        ElasticsearchBulkOutput.OPTIONS_PROPRES,
+        api_key=OptionSpec("api_key", (str,), description="Clé d'API Elastic (en-tête Authorization: ApiKey)"),
+        token=OptionSpec("token", (str,), description="Jeton porteur (en-tête Authorization: Bearer)"),
+        data_stream=OptionSpec("data_stream", (bool,), False, description="Écrire dans des data streams Elastic"),
+        **{
+            cle: OptionSpec(cle, (str,), defaut, description=f"Composant du nom du data stream ({defaut} par défaut)")
+            for cle, defaut in _DATA_STREAM_DEFAUTS.items()
+        },
     )
 
     @traced
