@@ -169,8 +169,8 @@ class HttpOutput(ElasticsearchBulkOutput):
         """Sonde le récepteur (`GET` sur le chemin d'`url`).
 
         Un récepteur générique n'a pas de protocole de santé standard :
-        toute réponse inférieure à 5xx prouve la joignabilité (le
-        récepteur a répondu) ; réseau et 5xx lèvent.
+        toute réponse prouve la joignabilité (le récepteur a répondu) ;
+        réseau et 5xx lèvent.
 
         Returns:
             `{"status": "joignable"}` quand le récepteur répond.
@@ -180,5 +180,6 @@ class HttpOutput(ElasticsearchBulkOutput):
             httpx.HTTPStatusError: réponse 5xx.
         """
         response = await self._client_http().get(self._chemin_envoi())
-        response.raise_for_status()
+        if response.status_code >= 500:
+            response.raise_for_status()
         return {"status": "joignable"}
